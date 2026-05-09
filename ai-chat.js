@@ -874,10 +874,10 @@ document.body.insertAdjacentHTML('beforeend', AI_HTML);
 // ── AI CHAT (via Worker → Groq autochain) ──
 // Model chain — Worker akan iterasi otomatis jika quota habis
 const AI_CHAT_CHAIN = [
-  'llama-3.3-70b-versatile',
-  'meta-llama/llama-4-scout-17b-16e-instruct',
-  'qwen/qwen3-32b',
-  'llama-3.1-8b-instant'
+  'qwen/qwen3-32b',                              // primary — terbaik untuk Bahasa Indonesia
+  'llama-3.3-70b-versatile',                     // fallback 1
+  'meta-llama/llama-4-scout-17b-16e-instruct',   // fallback 2
+  'llama-3.1-8b-instant'                         // last resort
 ];
 let aiOpen = false;
 let aiHistory = [];
@@ -1240,20 +1240,23 @@ Jika user meminta menambahkan tagihan atau daftar tagihan (misal daftar tagihan 
 - Jangan mengulangi rincian secara panjang lebar di teks \`answer\`.
 
 ## FORMAT RESPONS (WAJIB JSON)
-Selalu balas dalam format JSON murni TANPA markdown block (\`\`\`json). Harus persis seperti ini:
-{"answer":"Tentu, ini ringkasannya...","followups":["Analisis pengeluaranku bulan ini","Bantu aku buat anggaran"],"transaction":null,"bills":null}
+Selalu balas dalam format JSON murni TANPA markdown block (\`\`\`json). Strukturnya:
+{"answer":"...","followups":[...],"transaction":null,"bills":null}
 
-Jika MENCATAT TRANSAKSI:
-{"answer":"Tentu, silakan periksa konfirmasi transaksi berikut:","followups":[],"transaction":{"type":"income","amount":5000000,"account_name":"mandiri","category_name":"Gaji","note":"Gaji bulan ini","date":"YYYY-MM-DD"},"bills":null}
+### ATURAN KRITIS UNTUK FIELD \`answer\`:
+- WAJIB berisi jawaban LENGKAP dan DETAIL. Gunakan data keuangan yang tersedia di atas untuk memberikan angka riil, persentase, tren, dan insight.
+- Untuk pertanyaan analisis/ringkasan: Tulis minimal 3-5 poin dengan angka konkret dari data user. Gunakan format markdown (### heading, **bold**, - bullet, 1. numbered list).
+- Untuk pertanyaan sederhana: Jawab langsung tapi tetap informatif, minimal 2-3 kalimat.
+- JANGAN PERNAH menjawab generik seperti "Tentu, ini ringkasannya" lalu berhenti. Kamu HARUS menyertakan analisis nyata.
+- Panggil user dengan namanya. Gunakan emoji secukupnya (1-2 per paragraf, jangan berlebihan).
 
-Jika MENCATAT TAGIHAN:
-{"answer":"Daftar tagihan siap dicatat:","followups":[],"transaction":null,"bills":[{"name":"CIMB Niaga","bill_type":"cc","amount":50000,"due_date":"2026-05-10","status":"unpaid"}]}
+### ATURAN FIELD LAIN:
+- \`followups\`: Array berisi 1-2 string saran pertanyaan lanjutan DARI SUDUT PANDANG PENGGUNA (First-Person POV). Contoh: ["Kategori mana yang paling boros?", "Buatkan anggaran untuk bulan depan"]
+- \`transaction\`: \`null\` kecuali user meminta CATAT transaksi. Jika catat, isi objek: {"type":"income/expense/transfer","amount":angka,"account_name":"...","category_name":"...","note":"...","date":"YYYY-MM-DD"}. Untuk transfer gunakan \`from_account_name\` dan \`to_account_name\` sebagai ganti \`account_name\`.
+- \`bills\`: \`null\` kecuali user meminta CATAT tagihan. Jika catat, isi array objek: [{"name":"...","bill_type":"cc/paylater/cicilan/langganan/lainnya","amount":angka,"due_date":"YYYY-MM-DD","status":"unpaid/paid"}]
 
-Aturan JSON:
-- \`answer\`: Singkat dan ramah. Jika mencatat transaksi atau tagihan, jangan ulangi rincian di teks agar tidak redundant.
-- \`followups\`: Berikan 1-2 opsi respons lanjutan DARI SUDUT PANDANG PENGGUNA (First-Person POV).
-- \`transaction\`: Harus \`null\` atau objek valid.
-- \`bills\`: Harus \`null\` atau array dari objek tagihan valid.`;
+Contoh respons untuk "Bantu lihat ringkasan keuangan":
+{"answer":"### Ringkasan Keuangan ${s.name}\n\n**Kekayaan Bersih:** ... (ambil dari data di atas)\n\n**Bulan Ini:**\n- Pemasukan: ...\n- Pengeluaran: ...\n- Selisih: ...\n\n**Top Pengeluaran:**\n1. ...\n2. ...\n\n**Insight:** ... (analisis tren, saran hemat, dll)","followups":["Kategori mana yang paling boros bulan ini?","Buatkan anggaran untuk bulan depan"],"transaction":null,"bills":null}`;
 }
 
 async function aiSend() {
