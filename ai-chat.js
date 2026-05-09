@@ -1313,7 +1313,9 @@ async function aiCallGroq() {
       throw new Error(err?.error || 'AI error ' + resp.status);
     }
     const data = await resp.json();
-    const raw = data.content || data.choices?.[0]?.message?.content || '{}';
+    let raw = data.content || data.choices?.[0]?.message?.content || '{}';
+    // Strip Qwen3 <think>...</think> reasoning blocks
+    raw = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
     typingEl.remove();
 
     // Parse JSON response
