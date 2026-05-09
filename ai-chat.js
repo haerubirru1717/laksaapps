@@ -1318,22 +1318,60 @@ async function aiCallGroq() {
     raw = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
     typingEl.remove();
 
-    // Parse JSON response
+    // Parse JSON response — robust handler for Qwen3 quirks
     let answer = raw, followups = [], transaction = null, bills = null;
     try {
+      // Find outermost JSON object
       const match = raw.match(/\{[\s\S]*\}/);
       if (match) {
-        const parsed = JSON.parse(match[0]);
-        const textBeforeJson = raw.substring(0, match.index).trim();
-        answer = parsed.answer || textBeforeJson || "Tentu, silakan cek detail berikut:";
-        followups = Array.isArray(parsed.followups) ? parsed.followups : [];
-        transaction = parsed.transaction || null;
-        bills = parsed.bills || null;
-        if (transaction && transaction.from_account_name && transaction.to_account_name && !transaction.account_name) {
-          transaction.type = 'transfer';
+        let jsonStr = match[0];
+        let parsed = null;
+
+        // Attempt 1: strict parse
+        try { parsed = JSON.parse(jsonStr); } catch (_) {}
+
+        // Attempt 2: fix unescaped newlines inside JSON string values
+        if (!parsed) {
+          try {
+            // Replace real newlines inside quoted strings with \n escape
+            const sanitized = jsonStr.replace(/"([^"]*?)"/g, (m, inner) =>
+              '"' + inner.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t') + '"'
+            );
+            parsed = JSON.parse(sanitized);
+          } catch (_) {}
+        }
+
+        // Attempt 3: extract answer field via regex if JSON is too broken
+        if (!parsed) {
+          const ansMatch = jsonStr.match(/"answer"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"followups|"\s*,\s*"transaction|"\s*\})/);
+          if (ansMatch) {
+            answer = ansMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+          }
+          // Try extracting followups too
+          const fuMatch = jsonStr.match(/"followups"\s*:\s*\[([\s\S]*?)\]/);
+          if (fuMatch) {
+            try {
+              followups = JSON.parse('[' + fuMatch[1] + ']');
+            } catch(_) {}
+          }
+        }
+
+        if (parsed) {
+          const textBeforeJson = raw.substring(0, match.index).trim();
+          answer = parsed.answer || textBeforeJson || "Tentu, silakan cek detail berikut:";
+          followups = Array.isArray(parsed.followups) ? parsed.followups : [];
+          transaction = parsed.transaction || null;
+          bills = parsed.bills || null;
+          if (transaction && transaction.from_account_name && transaction.to_account_name && !transaction.account_name) {
+            transaction.type = 'transfer';
+          }
         }
       }
-    } catch (e) { answer = raw; }
+    } catch (e) {
+      console.warn('AI JSON parse error:', e.message);
+      // Last resort: strip JSON artifacts from raw text for display
+      answer = raw.replace(/^\s*\{\s*"answer"\s*:\s*"?/i, '').replace(/"\s*,\s*"followups[\s\S]*$/i, '').replace(/\\n/g, '\n').replace(/\\"/g, '"');
+    }
 
     aiAppendMsg('bot', answer);
     aiHistory.push({ role: 'assistant', content: answer });
