@@ -199,7 +199,6 @@ function dlF(content, name, mime) { const a = Object.assign(document.createEleme
 
 
 // ── Account Detail Sheet ──
-let accSheetId = null, accSheetTab = 'all', accSheetMon = thisMon();
 
 function openAccDetail(id) {
   accSheetId = id; accSheetTab = 'all'; accSheetMon = thisMon();
