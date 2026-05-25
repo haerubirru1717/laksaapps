@@ -4,6 +4,7 @@
 // ══════════════════════════════════════
 
 // ── CONSTANTS ──
+const PROFILE_KEY = 'laksa_profile';
 const K = { tx: 'ft_tx', bud: 'ft_bud', goals: 'ft_goals', accs: 'ft_acc', cats: 'ft_cats', set: 'ft_set', rec: 'ft_rec' };
 const COLORS = ['#ff4d1c', '#00a878', '#1c3fff', '#d4920a', '#6b4fff', '#e63c1e', '#00c4a0', '#e8a020', '#2dd4bf'];
 const DEF_CATS = [
@@ -61,7 +62,7 @@ const CLOUD_URL = 'https://laksana.haerubirru17.workers.dev';
 // In-memory cache — di-refresh setiap load halaman
 let _cache = { tx: null, accs: null, cats: null, buds: null, goals: null, bills: null, loading: false };
 
-function getProfile() { try { return JSON.parse(localStorage.getItem('laksa_profile')) || null; } catch { return null; } }
+function getProfile() { try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || null; } catch { return null; } }
 function getUserId() { return getProfile()?.tgId || null; }
 
 async function api(method, path, body) {
