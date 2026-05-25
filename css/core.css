@@ -64,41 +64,43 @@
 
     /* ── DARK GLASS THEME ── */
     html[data-theme="dark"] {
-      --bg: #080c14;
-      --bg2: rgba(255, 255, 255, .06);
-      --bg3: rgba(255, 255, 255, .04);
-      --ink: #e2e8f0;
+      --bg: #020203;
+      --bg2: rgba(255, 255, 255, .04);
+      --bg3: rgba(255, 255, 255, .03);
+      --ink: #ededef;
       --ink2: #94a3b8;
       --ink3: #64748b;
-      --border: rgba(255, 255, 255, .1);
-      --border-hi: rgba(255, 255, 255, .18);
-      --card: rgba(255, 255, 255, .06);
-      --t1: #e2e8f0;
+      --border: rgba(255, 255, 255, .08);
+      --border-hi: rgba(255, 255, 255, .15);
+      --card: rgba(255, 255, 255, .03);
+      --accent: #5e6ad2;
+      --accent2: #f7931a;
+      --t1: #ededef;
       --t2: #94a3b8;
       --t3: #64748b;
-      --bdr: rgba(255, 255, 255, .1);
-      --bdr-hi: rgba(255, 255, 255, .18);
-      --modal-bg: rgba(10, 16, 30, .97);
-      --sidebar: rgba(6, 10, 20, .85);
-      --shd: 0 4px 24px rgba(0, 0, 0, .5), 0 1px 4px rgba(0, 0, 0, .3);
-      --shd-lg: 0 12px 40px rgba(0, 0, 0, .6), 0 2px 8px rgba(0, 0, 0, .4);
+      --bdr: rgba(255, 255, 255, .08);
+      --bdr-hi: rgba(255, 255, 255, .15);
+      --modal-bg: rgba(5, 5, 6, .96);
+      --sidebar: rgba(5, 5, 6, .75);
+      --shd: 0 8px 32px rgba(94, 106, 210, .15), 0 1px 4px rgba(0, 0, 0, .5);
+      --shd-lg: 0 24px 64px rgba(94, 106, 210, .22), 0 2px 12px rgba(0, 0, 0, .6);
       --income-dim: rgba(16, 185, 129, .15);
       --expense-dim: rgba(239, 68, 68, .12);
       --gold-dim: rgba(245, 158, 11, .12);
       /* Glass surface overrides — dark */
-      --gs-1: rgba(255, 255, 255, .05);
-      --gs-2: rgba(255, 255, 255, .06);
-      --gs-3: rgba(255, 255, 255, .05);
-      --gs-4: rgba(255, 255, 255, .07);
-      --gs-5: rgba(255, 255, 255, .04);
-      --gs-6: rgba(6, 10, 20, .88);
-      --gs-7: rgba(8, 14, 28, .95);
-      --gs-8: rgba(8, 14, 28, .85);
-      --gs-9: rgba(255, 255, 255, .04);
-      --gs-border: rgba(255, 255, 255, .1);
-      --gs-border-hi: rgba(255, 255, 255, .16);
-      --mesh-a: radial-gradient(ellipse 80% 60% at 15% 5%, rgba(37, 99, 235, .2) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 85% 15%, rgba(139, 92, 246, .12) 0%, transparent 55%), radial-gradient(ellipse 70% 60% at 50% 90%, rgba(16, 185, 129, .08) 0%, transparent 60%), linear-gradient(135deg, #080c14 0%, #0d1526 50%, #080c14 100%);
-      --mesh-b: radial-gradient(circle 350px at 10% -5%, rgba(37, 99, 235, .1) 0%, transparent 70%), radial-gradient(circle 300px at 90% 25%, rgba(139, 92, 246, .08) 0%, transparent 70%);
+      --gs-1: rgba(255, 255, 255, .03);
+      --gs-2: rgba(255, 255, 255, .04);
+      --gs-3: rgba(255, 255, 255, .03);
+      --gs-4: rgba(255, 255, 255, .05);
+      --gs-5: rgba(255, 255, 255, .02);
+      --gs-6: rgba(5, 5, 6, .90);
+      --gs-7: rgba(5, 5, 6, .95);
+      --gs-8: rgba(5, 5, 6, .85);
+      --gs-9: rgba(255, 255, 255, .03);
+      --gs-border: rgba(255, 255, 255, .08);
+      --gs-border-hi: rgba(255, 255, 255, .15);
+      --mesh-a: radial-gradient(circle 600px at 15% 10%, rgba(94, 106, 210, .15) 0%, transparent 60%), radial-gradient(circle 500px at 85% 85%, rgba(247, 147, 26, .1) 0%, transparent 65%), #020203;
+      --mesh-b: radial-gradient(circle 450px at 50% 50%, rgba(94, 106, 210, .08) 0%, transparent 70%);
     }
 
     /* ── DARK: component overrides ── */
@@ -160,9 +162,11 @@
     }
 
     html[data-theme="dark"] .sidebar {
-      background: linear-gradient(150deg, rgba(30,41,59,.85) 0%, rgba(6,10,20,.72) 25%, rgba(6,10,20,.72) 100%);
-      border-right-color: rgba(255,255,255,.07);
-      box-shadow: 4px 0 32px rgba(0,0,0,.4), inset -1px 0 0 rgba(255,255,255,.05)
+      background: linear-gradient(150deg, rgba(5,5,6,.8) 0%, rgba(5,5,6,.6) 100%);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-right-color: rgba(255,255,255,.08);
+      box-shadow: 4px 0 32px rgba(0,0,0,.6), inset -1px 0 0 rgba(255,255,255,.02)
     }
 
     html[data-theme="dark"] .sfooter {
@@ -524,6 +528,13 @@
     html[data-theme="dark"] .cdd-item:hover {
       background: var(--gs-2);
       color: var(--ink)
+    }
+
+    /* Fintech Crypto OLED overrides */
+    html[data-theme="dark"] .nw-card {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.45) 0%, rgba(5, 5, 6, 0.75) 100%) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      box-shadow: 0 16px 56px rgba(94, 106, 210, 0.15), 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
     }
 
     body::before {
