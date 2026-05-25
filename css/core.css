@@ -771,6 +771,153 @@
       box-shadow: none !important;
     }
 
+    /* ── EDUCATION: Transaction & Account Detail Sheets Overrides ── */
+    html[data-theme="education"] .tx-sheet,
+    html[data-theme="education"] .acc-sheet {
+      background: #faf8f5 !important;
+      border-top: 3px solid #0f172a !important;
+      box-shadow: 0 -10px 0px rgba(15, 23, 42, 0.05) !important;
+      border-radius: 26px 26px 0 0 !important;
+    }
+    html[data-theme="education"] .tx-sheet-handle,
+    html[data-theme="education"] .acc-sheet-handle {
+      background: #0f172a !important;
+      border: 1px solid #0f172a !important;
+    }
+    html[data-theme="education"] .acc-sheet-close {
+      background: #fedbd4 !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+      color: #0f172a !important;
+      border-radius: 50% !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .acc-sheet-close:hover {
+      background: #fca5a5 !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .acc-group-card {
+      background: #ffffff !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      border-radius: 20px !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    html[data-theme="education"] .acc-stat {
+      background: #ffffff !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      border-radius: 14px !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    html[data-theme="education"] .acc-seg {
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      background: #ffffff !important;
+      border-radius: 14px !important;
+    }
+    html[data-theme="education"] .acc-tab {
+      font-weight: 700 !important;
+      color: #64748b !important;
+      border-radius: 10px !important;
+    }
+    html[data-theme="education"] .acc-tab.active {
+      background: #bae6fd !important;
+      border: 2px solid #0f172a !important;
+      color: #0f172a !important;
+      box-shadow: none !important;
+    }
+    html[data-theme="education"] .acc-mon-sel {
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      background: #ffffff !important;
+      border-radius: 14px !important;
+      color: #0f172a !important;
+      font-family: inherit !important;
+      font-weight: 700 !important;
+      padding: .3rem .6rem !important;
+      outline: none !important;
+    }
+    html[data-theme="education"] .acc-sheet-foot button {
+      background: #bae6fd !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      color: #0f172a !important;
+      border-radius: 30px !important;
+      font-weight: 800 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.05em !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .acc-sheet-foot button:hover {
+      background: #7dd3fc !important;
+      transform: translate(-1.5px, -1.5px) !important;
+      box-shadow: 5.5px 5.5px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .acc-tx-item {
+      border: 2px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      border-radius: 14px !important;
+      background: #ffffff !important;
+      margin-bottom: 0.5rem !important;
+    }
+    html[data-theme="education"] .acc-tx-date {
+      background: #bae6fd !important;
+      border: 1.5px solid #0f172a !important;
+      border-radius: 8px !important;
+      color: #0f172a !important;
+      font-weight: 700 !important;
+      padding: 0.2rem 0.6rem !important;
+      display: inline-block !important;
+      margin-bottom: 0.4rem !important;
+    }
+    html[data-theme="education"] .tx-sheet-body > div:nth-child(2) {
+      background: #ffffff !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      border-radius: 20px !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    html[data-theme="education"] .tx-sheet-body > div:nth-child(1) span {
+      background: #ffffff !important;
+      border: 1.5px solid #0f172a !important;
+      box-shadow: 1.5px 1.5px 0px #0f172a !important;
+      border-radius: 8px !important;
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .tx-sheet-foot button:first-child {
+      background: #bae6fd !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      color: #0f172a !important;
+      border-radius: 12px !important;
+      transition: all 0.15s ease !important;
+      font-weight: 700 !important;
+    }
+    html[data-theme="education"] .tx-sheet-foot button:first-child:hover {
+      background: #7dd3fc !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .tx-sheet-foot button:last-child {
+      background: #fedbd4 !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      color: #ef4444 !important;
+      border-radius: 12px !important;
+      transition: all 0.15s ease !important;
+      font-weight: 700 !important;
+    }
+    html[data-theme="education"] .tx-sheet-foot button:last-child:hover {
+      background: #fca5a5 !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+    }
+
     /* ── DARK: component overrides ── */
     html[data-theme="dark"] body {
       color: var(--ink);
