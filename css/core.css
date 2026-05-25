@@ -323,64 +323,22 @@
       border-radius: 12px !important;
     }
 
-    /* ── EDUCATION: Hero Card (.nw-card) Text Color Readability Fix ── */
+    /* ── EDUCATION: Hero Card (.nw-card) Block Styling ── */
     html[data-theme="education"] .nw-card {
-      background: #ffffff !important;
       border: 3px solid #0f172a !important;
       box-shadow: 6px 6px 0px #0f172a !important;
-      color: #0f172a !important;
     }
     html[data-theme="education"] .nw-card::before,
     html[data-theme="education"] .nw-card::after {
       display: none !important;
     }
-    html[data-theme="education"] .nw-label {
-      color: #64748b !important;
-    }
-    html[data-theme="education"] .nw-val {
-      color: #0f172a !important;
-    }
-    html[data-theme="education"] .nw-accs {
-      color: #64748b !important;
-    }
-    html[data-theme="education"] .nw-grid {
-      border-top-color: rgba(15, 23, 42, 0.12) !important;
-    }
-    html[data-theme="education"] .nw-item-lbl {
-      color: #64748b !important;
-    }
-    html[data-theme="education"] .nw-item-val {
-      color: #0f172a !important;
-    }
-    html[data-theme="education"] .nw-item-growth.pos,
-    html[data-theme="education"] .nw-item-inc .nw-item-val {
-      color: #10b981 !important; /* Vibrant Green */
-    }
-    html[data-theme="education"] .nw-item-growth.neg,
-    html[data-theme="education"] .nw-item-exp .nw-item-val {
-      color: #ef4444 !important; /* Vibrant Red */
-    }
-    html[data-theme="education"] .nw-item-growth.neu {
-      color: #64748b !important;
-    }
-    html[data-theme="education"] .nw-item-bud .nw-item-val {
-      color: #2563eb !important; /* Vibrant Blue */
-    }
-    html[data-theme="education"] .nw-item-bill .nw-item-val {
-      color: #b45309 !important; /* Vibrant Amber */
-    }
-    html[data-theme="education"] .nw-item-bill.has-overdue .nw-item-val {
-      color: #ef4444 !important;
-    }
 
-    /* ── EDUCATION: Account Cards (.dc) & E-Wallets (.ecard) Overrides ── */
+    /* ── EDUCATION: Account Cards (.dc) & E-Wallets (.ecard) Block Styling ── */
     html[data-theme="education"] .dc,
     html[data-theme="education"] .ecard {
-      background: #ffffff !important;
       border: 3px solid #0f172a !important;
       box-shadow: 5px 5px 0px #0f172a !important;
       border-radius: 20px !important;
-      color: #0f172a !important;
       transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
     }
     html[data-theme="education"] .dc:hover,
@@ -388,29 +346,11 @@
       transform: translate(-2px, -2px) !important;
       box-shadow: 7px 7px 0px #0f172a !important;
     }
-    html[data-theme="education"] .dc-bal-lbl,
-    html[data-theme="education"] .ecard-lbl {
-      color: #64748b !important;
-    }
-    html[data-theme="education"] .dc-bal,
-    html[data-theme="education"] .ecard-saldo {
-      color: #0f172a !important;
-    }
-    html[data-theme="education"] .dc-delta {
-      color: #10b981 !important;
-    }
-    html[data-theme="education"] .dc-pct,
-    html[data-theme="education"] .ecard-pct {
-      color: #64748b !important;
-    }
     html[data-theme="education"] .dc-bar-wrap {
-      background: rgba(15, 23, 42, 0.08) !important;
       border: 1.5px solid #0f172a !important;
       border-radius: 99px !important;
       overflow: hidden !important;
-    }
-    html[data-theme="education"] .dc-bar {
-      background: #10b981 !important;
+      background: rgba(255, 255, 255, 0.18) !important;
     }
     html[data-theme="education"] .dc-logo-wrap {
       border: 2px solid #0f172a !important;
@@ -433,6 +373,83 @@
       background: #f8fafc !important;
       transform: translate(-2px, -2px) !important;
       box-shadow: 7px 7px 0px #0f172a !important;
+    }
+
+    /* ── EDUCATION: Keuangan Page Overrides ── */
+    html[data-theme="education"] .keu-summary-card,
+    html[data-theme="education"] .bills-hero-main,
+    html[data-theme="education"] .bills-stat-card,
+    html[data-theme="education"] .goal-card,
+    html[data-theme="education"] .bill-card,
+    html[data-theme="education"] .budg-card {
+      background: #ffffff !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      border-radius: 20px !important;
+      color: #0f172a !important;
+      transition: all 0.2s ease !important;
+    }
+    html[data-theme="education"] .keu-summary-card:hover,
+    html[data-theme="education"] .bills-hero-main:hover,
+    html[data-theme="education"] .bills-stat-card:hover,
+    html[data-theme="education"] .goal-card:hover,
+    html[data-theme="education"] .bill-card:hover,
+    html[data-theme="education"] .budg-card:hover {
+      transform: translate(-1.5px, -1.5px) !important;
+      box-shadow: 5.5px 5.5px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .bills-hero-total,
+    html[data-theme="education"] .bills-stat-val,
+    html[data-theme="education"] .keu-summary-value {
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .bills-hero-total {
+      font-weight: 800 !important;
+    }
+    html[data-theme="education"] .keu-summary-label,
+    html[data-theme="education"] .bills-hero-label-sm,
+    html[data-theme="education"] .bills-hero-sub,
+    html[data-theme="education"] .bills-stat-lbl,
+    html[data-theme="education"] .bills-stat-sub {
+      color: #64748b !important;
+    }
+    html[data-theme="education"] .btn-add-glass {
+      background: #fedbd4 !important;
+      border: 2.5px solid #0f172a !important;
+      color: #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      border-radius: 12px !important;
+      font-weight: 700 !important;
+    }
+    html[data-theme="education"] .btn-add-glass:hover {
+      background: #bae6fd !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 4.5px 4.5px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .ptrack {
+      border: 1.5px solid #0f172a !important;
+      border-radius: 99px !important;
+      background: rgba(15, 23, 42, 0.05) !important;
+      overflow: hidden !important;
+    }
+    html[data-theme="education"] .pfill.ok {
+      background: #10b981 !important;
+      box-shadow: none !important;
+    }
+    html[data-theme="education"] .pfill.warn {
+      background: #f59e0b !important;
+      box-shadow: none !important;
+    }
+    html[data-theme="education"] .pfill.bad {
+      background: #ef4444 !important;
+      box-shadow: none !important;
+    }
+    html[data-theme="education"] .goals-nearest {
+      color: #b45309 !important;
+    }
+    html[data-theme="education"] .goal-card-icon,
+    html[data-theme="education"] .bills-stat-icon {
+      color: #0f172a !important;
     }
 
     /* ── DARK: component overrides ── */
