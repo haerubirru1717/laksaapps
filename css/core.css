@@ -603,6 +603,174 @@
       background: #10b981 !important;
     }
 
+    /* ── EDUCATION: AI Chatbot & Confirmation Card Overrides ── */
+    html[data-theme="education"] .ai-panel {
+      background: #faf8f5 !important;
+      border-left: 3px solid #0f172a !important;
+      border-top: 3px solid #0f172a !important;
+      box-shadow: -8px 0px 0px rgba(15, 23, 42, 0.05) !important;
+    }
+    @media(min-width:769px) {
+      html[data-theme="education"] .ai-panel {
+        border: 3px solid #0f172a !important;
+        border-radius: 20px 20px 0 0 !important;
+        box-shadow: -5px -5px 0px #0f172a !important;
+      }
+    }
+    html[data-theme="education"] .ai-fab {
+      background: #10b981 !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .ai-fab:hover {
+      transform: translate(-1.5px, -1.5px) !important;
+      box-shadow: 5.5px 5.5px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .ai-hdr {
+      border-bottom: 2.5px solid #0f172a !important;
+      background: #ffffff !important;
+    }
+    html[data-theme="education"] .ai-hdr-close {
+      background: #fedbd4 !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+      color: #0f172a !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .ai-hdr-close:hover {
+      background: #fca5a5 !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .ai-msg.bot .ai-bubble,
+    html[data-theme="education"] .ai-wlc-card {
+      background: #ffffff !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      border-radius: 20px !important;
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .ai-msg.user .ai-bubble {
+      background: #bae6fd !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: -4px 4px 0px #0f172a !important;
+      border-radius: 20px !important;
+      border-bottom-right-radius: 5px !important;
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .ai-sug,
+    html[data-theme="education"] .ai-wlc-chip {
+      background: #ffffff !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      color: #0f172a !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .ai-sug:hover,
+    html[data-theme="education"] .ai-wlc-chip:hover {
+      background: #bae6fd !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .ai-wlc-chip-icon {
+      background: #bae6fd !important;
+      border: 1.5px solid #0f172a !important;
+      border-radius: 6px !important;
+    }
+    html[data-theme="education"] .ai-tx-confirm {
+      background: #ffffff !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      border-radius: 20px !important;
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .ai-tx-confirm-title {
+      color: #10b981 !important;
+      font-weight: 800 !important;
+    }
+    html[data-theme="education"] .ai-tx-btn-ok {
+      background: #10b981 !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+      color: #ffffff !important;
+      font-weight: 700 !important;
+      border-radius: 10px !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .ai-tx-btn-ok:hover {
+      background: #059669 !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .ai-tx-btn-edit {
+      background: #bae6fd !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+      color: #0f172a !important;
+      font-weight: 700 !important;
+      border-radius: 10px !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .ai-tx-btn-edit:hover {
+      background: #7dd3fc !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .ai-tx-btn-cancel {
+      background: #fedbd4 !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+      color: #ef4444 !important;
+      font-weight: 700 !important;
+      border-radius: 10px !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .ai-tx-btn-cancel:hover {
+      background: #fca5a5 !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .ai-input-row {
+      background: #ffffff !important;
+      border-top: 2.5px solid #0f172a !important;
+    }
+    html[data-theme="education"] .ai-input {
+      background: #ffffff !important;
+      border: 2px solid #0f172a !important;
+      border-radius: 14px !important;
+      color: #0f172a !important;
+      font-size: 0.8rem !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .ai-input:focus {
+      border-color: #10b981 !important;
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15) !important;
+    }
+    html[data-theme="education"] .ai-send {
+      background: #10b981 !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .ai-send:hover {
+      background: #059669 !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+    }
+
+    /* ── EDUCATION: Urgency Badge & Dot Overrides ── */
+    html[data-theme="education"] .bill-badge {
+      border: 1.5px solid #0f172a !important;
+      box-shadow: 1.5px 1.5px 0px #0f172a !important;
+      font-weight: 800 !important;
+    }
+    html[data-theme="education"] .bill-dot {
+      border: 1.5px solid #0f172a !important;
+      box-shadow: none !important;
+    }
+
     /* ── DARK: component overrides ── */
     html[data-theme="dark"] body {
       color: var(--ink);
