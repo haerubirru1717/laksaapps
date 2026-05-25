@@ -293,6 +293,148 @@
       box-shadow: none !important;
     }
 
+    /* ── EDUCATION: Mobile Bottom Navbar Overrides ── */
+    html[data-theme="education"] .bnav {
+      background: #ffffff !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      border-top: 3px solid #0f172a !important;
+      box-shadow: 0 -4px 0px rgba(15, 23, 42, 0.05) !important;
+    }
+    html[data-theme="education"] .bnav-item {
+      color: #64748b !important;
+    }
+    html[data-theme="education"] .bnav-item.active {
+      color: #10b981 !important;
+    }
+    html[data-theme="education"] .bnav-item.active svg {
+      filter: none !important;
+    }
+    html[data-theme="education"] .bnav-add {
+      background: #10b981 !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      border-radius: 16px !important;
+    }
+    html[data-theme="education"] .fab-opt {
+      border: 2px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      background: #ffffff !important;
+      border-radius: 12px !important;
+    }
+
+    /* ── EDUCATION: Hero Card (.nw-card) Text Color Readability Fix ── */
+    html[data-theme="education"] .nw-card {
+      background: #ffffff !important;
+      border: 3px solid #0f172a !important;
+      box-shadow: 6px 6px 0px #0f172a !important;
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .nw-card::before,
+    html[data-theme="education"] .nw-card::after {
+      display: none !important;
+    }
+    html[data-theme="education"] .nw-label {
+      color: #64748b !important;
+    }
+    html[data-theme="education"] .nw-val {
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .nw-accs {
+      color: #64748b !important;
+    }
+    html[data-theme="education"] .nw-grid {
+      border-top-color: rgba(15, 23, 42, 0.12) !important;
+    }
+    html[data-theme="education"] .nw-item-lbl {
+      color: #64748b !important;
+    }
+    html[data-theme="education"] .nw-item-val {
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .nw-item-growth.pos,
+    html[data-theme="education"] .nw-item-inc .nw-item-val {
+      color: #10b981 !important; /* Vibrant Green */
+    }
+    html[data-theme="education"] .nw-item-growth.neg,
+    html[data-theme="education"] .nw-item-exp .nw-item-val {
+      color: #ef4444 !important; /* Vibrant Red */
+    }
+    html[data-theme="education"] .nw-item-growth.neu {
+      color: #64748b !important;
+    }
+    html[data-theme="education"] .nw-item-bud .nw-item-val {
+      color: #2563eb !important; /* Vibrant Blue */
+    }
+    html[data-theme="education"] .nw-item-bill .nw-item-val {
+      color: #b45309 !important; /* Vibrant Amber */
+    }
+    html[data-theme="education"] .nw-item-bill.has-overdue .nw-item-val {
+      color: #ef4444 !important;
+    }
+
+    /* ── EDUCATION: Account Cards (.dc) & E-Wallets (.ecard) Overrides ── */
+    html[data-theme="education"] .dc,
+    html[data-theme="education"] .ecard {
+      background: #ffffff !important;
+      border: 3px solid #0f172a !important;
+      box-shadow: 5px 5px 0px #0f172a !important;
+      border-radius: 20px !important;
+      color: #0f172a !important;
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    }
+    html[data-theme="education"] .dc:hover,
+    html[data-theme="education"] .ecard:hover {
+      transform: translate(-2px, -2px) !important;
+      box-shadow: 7px 7px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .dc-bal-lbl,
+    html[data-theme="education"] .ecard-lbl {
+      color: #64748b !important;
+    }
+    html[data-theme="education"] .dc-bal,
+    html[data-theme="education"] .ecard-saldo {
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .dc-delta {
+      color: #10b981 !important;
+    }
+    html[data-theme="education"] .dc-pct,
+    html[data-theme="education"] .ecard-pct {
+      color: #64748b !important;
+    }
+    html[data-theme="education"] .dc-bar-wrap {
+      background: rgba(15, 23, 42, 0.08) !important;
+      border: 1.5px solid #0f172a !important;
+      border-radius: 99px !important;
+      overflow: hidden !important;
+    }
+    html[data-theme="education"] .dc-bar {
+      background: #10b981 !important;
+    }
+    html[data-theme="education"] .dc-logo-wrap {
+      border: 2px solid #0f172a !important;
+      border-radius: 8px !important;
+      background: #ffffff !important;
+      padding: 2px 4.5px !important;
+      box-shadow: none !important;
+    }
+    html[data-theme="education"] .dc-add,
+    html[data-theme="education"] .ec-add {
+      background: #ffffff !important;
+      border: 3px solid #0f172a !important;
+      box-shadow: 5px 5px 0px #0f172a !important;
+      color: #0f172a !important;
+      border-radius: 20px !important;
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    }
+    html[data-theme="education"] .dc-add:hover,
+    html[data-theme="education"] .ec-add:hover {
+      background: #f8fafc !important;
+      transform: translate(-2px, -2px) !important;
+      box-shadow: 7px 7px 0px #0f172a !important;
+    }
+
     /* ── DARK: component overrides ── */
     html[data-theme="dark"] body {
       color: var(--ink);
