@@ -913,30 +913,85 @@
         </div>
         <div class="sgrid2">
           <div class="widget">
-            <h3 class="wt" style="margin-bottom:1rem">Profil &amp; Tampilan</h3>
-            <label class="flbl">Nama</label><input type="text" class="finp" id="sName" placeholder="Nama kamu"
-              style="margin-bottom:.85rem" />
-            <label class="flbl">Mata Uang</label>
-            <select class="finp" id="sCurr" style="margin-bottom:.85rem">
-              <option value="Rp">Rupiah (Rp)</option>
-              <option value="$">Dollar ($)</option>
-              <option value="€">Euro (€)</option>
-              <option value="¥">Yen (¥)</option>
-            </select>
-            <label class="flbl">Tema Tampilan</label>
-            <p class="hint" style="margin-bottom:.5rem">Pilih tema untuk melihat preview langsung, lalu klik Simpan.</p>
-            <div class="theme-sel">
-              <button class="theme-opt" id="topt-glass" onclick="applyTheme('glass',this,false)">
-                <div class="tdot"
-                  style="background:linear-gradient(135deg,rgba(99,179,237,.6),rgba(167,139,250,.5));border:1px solid rgba(255,255,255,.6)">
-                </div>Glass Terang
+            <!-- Avatar Card — dinamis via renderSettings() -->
+            <div class="profile-avatar-card" id="profileAvatarCard">
+              <div class="profile-avatar-circle" id="profileAvatarCircle">?</div>
+              <div class="profile-avatar-info">
+                <div class="pa-name" id="profileAvatarName">Pengguna</div>
+                <div class="pa-sub">Ketuk nama di bawah untuk mengubah profil</div>
+              </div>
+            </div>
+
+            <div class="settings-form-row">
+              <label class="flbl" for="sName">Nama Profil</label>
+              <input type="text" class="finp" id="sName" placeholder="Nama kamu"
+                oninput="updateProfilePreview()" />
+            </div>
+            <div class="settings-form-row">
+              <label class="flbl" for="sCurr">Mata Uang</label>
+              <select class="finp" id="sCurr">
+                <option value="Rp">🇮🇩 Rupiah (Rp)</option>
+                <option value="$">🇺🇸 Dollar ($)</option>
+                <option value="€">🇪🇺 Euro (€)</option>
+                <option value="¥">🇯🇵 Yen (¥)</option>
+              </select>
+            </div>
+
+            <div class="theme-section-label">Tema Tampilan</div>
+            <div class="theme-grid-premium" id="themeGridPremium">
+              <!-- Glass Terang -->
+              <button class="theme-card-premium" id="topt-glass"
+                onclick="applyTheme('glass',this,false)" aria-label="Tema Glass Terang">
+                <div class="theme-preview-colors">
+                  <span style="background:linear-gradient(135deg,#dbeafe,#ede9fe)"></span>
+                  <span style="background:linear-gradient(135deg,rgba(99,179,237,.7),rgba(167,139,250,.6))"></span>
+                  <span style="background:#2563eb"></span>
+                  <span style="background:#10b981"></span>
+                </div>
+                <div class="theme-card-label">Glass Terang</div>
+                <div class="theme-card-desc">Frosted glass cerah & bersih</div>
               </button>
-              <button class="theme-opt" id="topt-dark" onclick="applyTheme('dark',this,false)">
-                <div class="tdot" style="background:linear-gradient(135deg,#080c14,#1e3a5f)"></div>Glass Gelap
+              <!-- Glass Gelap -->
+              <button class="theme-card-premium" id="topt-dark"
+                onclick="applyTheme('dark',this,false)" aria-label="Tema Glass Gelap">
+                <div class="theme-preview-colors">
+                  <span style="background:linear-gradient(135deg,#020203,#1e3a5f)"></span>
+                  <span style="background:linear-gradient(135deg,#5e6ad2,#2563eb)"></span>
+                  <span style="background:#f7931a"></span>
+                  <span style="background:#10b981"></span>
+                </div>
+                <div class="theme-card-label">Glass Gelap</div>
+                <div class="theme-card-desc">Deep dark, elegan & fokus</div>
+              </button>
+              <!-- Cyber Neon -->
+              <button class="theme-card-premium" id="topt-neon"
+                onclick="applyTheme('neon',this,false)" aria-label="Tema Cyber Neon">
+                <div class="theme-preview-colors">
+                  <span style="background:linear-gradient(135deg,#070714,#1a0a2e)"></span>
+                  <span style="background:linear-gradient(135deg,#e040fb,#9c00d4)"></span>
+                  <span style="background:#00e5ff"></span>
+                  <span style="background:#00e676"></span>
+                </div>
+                <div class="theme-card-label">Cyber Neon</div>
+                <div class="theme-card-desc">Cyberpunk magenta & cyan</div>
+              </button>
+              <!-- Cozy Sepia -->
+              <button class="theme-card-premium" id="topt-sepia"
+                onclick="applyTheme('sepia',this,false)" aria-label="Tema Cozy Sepia">
+                <div class="theme-preview-colors">
+                  <span style="background:linear-gradient(135deg,#f5ede0,#eedcc8)"></span>
+                  <span style="background:linear-gradient(135deg,#b5541c,#c87941)"></span>
+                  <span style="background:#3a7c50"></span>
+                  <span style="background:#c08020"></span>
+                </div>
+                <div class="theme-card-label">Cozy Sepia</div>
+                <div class="theme-card-desc">Hangat, vintage & nyaman</div>
               </button>
             </div>
-            <button class="btn full" style="margin-top:1.2rem" onclick="saveS()">Simpan Pengaturan</button>
+
+            <button class="btn full" onclick="saveS()">Simpan Pengaturan</button>
           </div>
+
           <div class="widget">
             <div class="wh">
               <h3 class="wt">Rekening</h3>
@@ -950,43 +1005,8 @@
             <ul class="cat-chips" id="catList"></ul>
           </div>
           <div class="widget">
-            <h3 class="wt" style="margin-bottom:.9rem">🤖 AI Laksa.na</h3>
-            <div
-              style="display:flex;align-items:flex-start;gap:.65rem;padding:.8rem;border-radius:12px;background:rgba(16,185,129,.06);border:1.5px solid rgba(16,185,129,.2);margin-bottom:.9rem">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--income)" stroke-width="2.2"
-                stroke-linecap="round" style="flex-shrink:0;margin-top:.05rem">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              <div>
-                <div style="font-size:.8rem;font-weight:700;color:var(--income);margin-bottom:.2rem">AI Aktif — Tidak
-                  perlu konfigurasi</div>
-                <div style="font-size:.74rem;color:var(--ink3);line-height:1.5">Fitur Laksa.na (chat AI) dan Scan Struk
-                  berjalan langsung via server. Tidak perlu memasukkan API key apapun.</div>
-              </div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:.45rem">
-              <div
-                style="display:flex;align-items:center;justify-content:space-between;padding:.55rem .7rem;border-radius:9px;background:var(--gs-2);border:1.5px solid var(--gs-border)">
-                <span style="font-size:.78rem;color:var(--ink2);font-weight:500">AI Chat</span>
-                <span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--income)">Groq ·
-                  Llama</span>
-              </div>
-              <div
-                style="display:flex;align-items:center;justify-content:space-between;padding:.55rem .7rem;border-radius:9px;background:var(--gs-2);border:1.5px solid var(--gs-border)">
-                <span style="font-size:.78rem;color:var(--ink2);font-weight:500">Scan Struk</span>
-                <span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--income)">Groq Vision ·
-                  Llama 4</span>
-              </div>
-              <div
-                style="display:flex;align-items:center;justify-content:space-between;padding:.55rem .7rem;border-radius:9px;background:var(--gs-2);border:1.5px solid var(--gs-border)">
-                <span style="font-size:.78rem;color:var(--ink2);font-weight:500">Bot Telegram</span>
-                <span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--income)">Groq ·
-                  Auto-chain</span>
-              </div>
-            </div>
-          </div>
-          <div class="widget">
             <h3 class="wt" style="margin-bottom:.9rem">Backup &amp; Restore</h3>
+
             <p class="hint" style="margin-bottom:.9rem">Data tersimpan di browser. Backup rutin sangat disarankan.</p>
             <div style="display:flex;gap:.65rem;flex-wrap:wrap"><button class="btn2" onclick="doBackup()">↓ Backup
                 JSON</button><button class="btn2" onclick="document.getElementById('restoreF').click()">↑

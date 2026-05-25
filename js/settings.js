@@ -4,16 +4,37 @@
 
 function renderSettings() {
   const s = getSet();
-  el('sName').value = s.name || ''; el('sCurr').value = s.currency || 'Rp';
+  const nameEl = el('sName');
+  if (nameEl) nameEl.value = s.name || '';
+  const currEl = el('sCurr');
+  if (currEl) currEl.value = s.currency || 'Rp';
   applyTheme(s.theme || 'glass', null, false);
+  updateProfilePreview();
   renderAccList(); renderCatList();
 }
+
+function updateProfilePreview() {
+  const nameEl = el('sName');
+  const circleEl = el('profileAvatarCircle');
+  const nameDisplayEl = el('profileAvatarName');
+  if (!nameEl || !circleEl || !nameDisplayEl) return;
+  const name = nameEl.value.trim() || 'Pengguna';
+  const initials = name.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
+  circleEl.textContent = initials;
+  nameDisplayEl.textContent = name;
+}
+
 function saveS() {
-  const s = getSet(); s.name = el('sName').value.trim() || 'Pengguna'; s.currency = el('sCurr').value;
+  const s = getSet();
+  s.name = el('sName').value.trim() || 'Pengguna';
+  s.currency = el('sCurr').value;
   const activeTheme = document.documentElement.getAttribute('data-theme') || 'glass';
   s.theme = activeTheme;
-  sv(K.set, s); toast('Disimpan!', 'ok');
+  sv(K.set, s);
+  updateProfilePreview();
+  toast('Disimpan!', 'ok');
 }
+
 function renderAccList() {
   el('accList').innerHTML = getAccs().map(a => {
     const b = detBank(a.name); const clr = (b && b.color) ? b.color : (a.color || '#a78bfa');

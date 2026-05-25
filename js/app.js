@@ -202,19 +202,21 @@ const uid = () => 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,
 // ── THEME ──
 function applyTheme(theme, btn, save = true) {
   document.documentElement.setAttribute('data-theme', theme);
-  document.querySelectorAll('.theme-opt').forEach(b => b.classList.remove('active'));
+  // support old .theme-opt (backward compat) + new .theme-card-premium
+  document.querySelectorAll('.theme-opt,.theme-card-premium').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   else { const o = el('topt-' + theme); if (o) o.classList.add('active'); }
   if (save) {
     const s = getSet(); s.theme = theme; sv(K.set, s);
     const p = getProfile(); if (p) { p.theme = theme; saveProfile(p); }
   }
-  const isDark = theme === 'dark';
-  Chart.defaults.color = isDark ? 'rgba(210,220,240,0.7)' : 'rgba(15,23,42,0.55)';
-  Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.08)';
+  const isDark = theme === 'dark' || theme === 'neon';
+  Chart.defaults.color = isDark ? 'rgba(210,220,240,0.7)' : (theme === 'sepia' ? 'rgba(44,26,8,0.6)' : 'rgba(15,23,42,0.55)');
+  Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : (theme === 'sepia' ? 'rgba(160,110,60,0.15)' : 'rgba(15,23,42,0.08)');
   if (curPage === 'dashboard') renderDash();
   if (curPage === 'reports') renderReports();
 }
+
 
 // ── NAVIGATION ──
 function go(page) {
