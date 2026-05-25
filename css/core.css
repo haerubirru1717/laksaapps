@@ -537,6 +537,113 @@
       box-shadow: 0 16px 56px rgba(94, 106, 210, 0.15), 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
     }
 
+    /* Sub-navigation Toggles in Dark Mode */
+    html[data-theme="dark"] .keu-seg,
+    html[data-theme="dark"] .tgl-grp {
+      background: rgba(255, 255, 255, 0.03) !important;
+      border: 1px solid rgba(255, 255, 255, 0.06) !important;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+    }
+    html[data-theme="dark"] .keu-tab,
+    html[data-theme="dark"] .tgl {
+      color: rgba(255, 255, 255, 0.5) !important;
+    }
+    html[data-theme="dark"] .keu-tab.active,
+    html[data-theme="dark"] .tgl.active {
+      background: var(--accent) !important; /* Premium Indigo violet */
+      color: #fff !important;
+      border: none !important;
+      box-shadow: 0 4px 14px rgba(94, 106, 210, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+    }
+    html[data-theme="dark"] .keu-tab:not(.active):hover,
+    html[data-theme="dark"] .tgl:not(.active):hover {
+      background: rgba(255, 255, 255, 0.05) !important;
+      color: #fff !important;
+    }
+
+    /* OLED Frosted Glassmorphism Overrides */
+    html[data-theme="dark"] .keu-summary-card,
+    html[data-theme="dark"] .bcard-glass,
+    html[data-theme="dark"] .gcard-glass,
+    html[data-theme="dark"] .bills-hero-main,
+    html[data-theme="dark"] .bills-stat-card,
+    html[data-theme="dark"] .glass-card {
+      background: rgba(255, 255, 255, 0.02) !important;
+      backdrop-filter: blur(24px) saturate(120%) !important;
+      -webkit-backdrop-filter: blur(24px) saturate(120%) !important;
+      border: 1px solid rgba(255, 255, 255, 0.06) !important;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+      color: var(--ink) !important;
+    }
+
+    html[data-theme="dark"] .keu-summary-card {
+      border-radius: 16px !important;
+    }
+    html[data-theme="dark"] .bills-stat-card {
+      border-radius: 16px !important;
+    }
+
+    /* Glowing Neon Indicators for Budget Progress */
+    html[data-theme="dark"] .ptrack {
+      background: rgba(255, 255, 255, 0.05) !important;
+    }
+    html[data-theme="dark"] .pfill.ok {
+      background: linear-gradient(90deg, #10b981, #34d399) !important;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.45) !important;
+    }
+    html[data-theme="dark"] .pfill.warn {
+      background: linear-gradient(90deg, #f59e0b, #fbbf24) !important;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.4) !important;
+    }
+    html[data-theme="dark"] .pfill.bad {
+      background: linear-gradient(90deg, #ef4444, #f87171) !important;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.45) !important;
+    }
+
+    /* Premium Add Button in Goals */
+    html[data-theme="dark"] .btn-add-glass {
+      background: rgba(94, 106, 210, 0.12) !important;
+      border: 1px solid rgba(94, 106, 210, 0.3) !important;
+      color: #8b96fc !important;
+      box-shadow: 0 4px 12px rgba(94, 106, 210, 0.15) !important;
+      backdrop-filter: blur(12px) !important;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+    html[data-theme="dark"] .btn-add-glass:hover {
+      background: rgba(94, 106, 210, 0.25) !important;
+      border-color: rgba(94, 106, 210, 0.5) !important;
+      color: #bfdbfe !important;
+      box-shadow: 0 6px 16px rgba(94, 106, 210, 0.35) !important;
+      transform: translateY(-1px) !important;
+    }
+
+    /* Premium Remove Button */
+    html[data-theme="dark"] .bcard-glass-close,
+    html[data-theme="dark"] .gcard-glass-close {
+      background: rgba(255, 255, 255, 0.03) !important;
+      border: 1px solid rgba(255, 255, 255, 0.05) !important;
+      color: rgba(255, 255, 255, 0.4) !important;
+      transition: all 0.2s ease !important;
+    }
+    html[data-theme="dark"] .bcard-glass-close:hover,
+    html[data-theme="dark"] .gcard-glass-close:hover {
+      background: rgba(239, 68, 68, 0.2) !important;
+      border-color: rgba(239, 68, 68, 0.3) !important;
+      color: #ef4444 !important;
+    }
+
+    /* Minimalist Urgency styles for Bills */
+    html[data-theme="dark"] .bill-card.overdue {
+      background: rgba(239, 68, 68, 0.03) !important;
+      border-color: rgba(239, 68, 68, 0.15) !important;
+      box-shadow: 0 8px 32px rgba(239, 68, 68, 0.08) !important;
+    }
+    html[data-theme="dark"] .bill-card.due-soon {
+      background: rgba(245, 158, 11, 0.03) !important;
+      border-color: rgba(245, 158, 11, 0.12) !important;
+      box-shadow: 0 8px 32px rgba(245, 158, 11, 0.08) !important;
+    }
+
     body::before {
       content: '';
       position: fixed;
