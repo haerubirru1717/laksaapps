@@ -184,6 +184,8 @@ function handleAvatarUpload(event) {
       try {
         localStorage.setItem('laksa_avatar', compressed);
         renderDashAvatar();
+        if (typeof updateSidebarProfile === 'function') updateSidebarProfile();
+        if (typeof updateProfilePreview === 'function') updateProfilePreview();
         toast('Foto profil diperbarui!', 'ok');
       } catch (err) {
         toast('Gagal simpan foto — coba ukuran lebih kecil.', 'err');

@@ -8,7 +8,11 @@ function renderSettings() {
   if (nameEl) nameEl.value = s.name || '';
   const currEl = el('sCurr');
   if (currEl) currEl.value = s.currency || 'Rp';
-  applyTheme(s.theme || 'glass', null, false);
+  let theme = s.theme || 'glass';
+  if (theme !== 'glass' && theme !== 'dark' && theme !== 'education') {
+    theme = 'glass';
+  }
+  applyTheme(theme, null, false);
   updateProfilePreview();
   renderAccList(); renderCatList();
 }
@@ -20,7 +24,13 @@ function updateProfilePreview() {
   if (!nameEl || !circleEl || !nameDisplayEl) return;
   const name = nameEl.value.trim() || 'Pengguna';
   const initials = name.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
-  circleEl.textContent = initials;
+  
+  const savedAvatar = localStorage.getItem('laksa_avatar');
+  if (savedAvatar) {
+    circleEl.innerHTML = `<img src="${savedAvatar}" alt="Foto profil" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;" />`;
+  } else {
+    circleEl.textContent = initials;
+  }
   nameDisplayEl.textContent = name;
 }
 

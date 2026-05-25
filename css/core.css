@@ -103,135 +103,194 @@
       --mesh-b: radial-gradient(circle 450px at 50% 50%, rgba(94, 106, 210, .08) 0%, transparent 70%);
     }
 
-    /* ── CYBER NEON THEME ── */
-    html[data-theme="neon"] {
-      --bg: #070714;
-      --bg2: rgba(255, 0, 255, .04);
-      --bg3: rgba(0, 255, 255, .03);
-      --ink: #f0f0ff;
-      --ink2: #b8b8d8;
-      --ink3: #7878a8;
-      --border: rgba(255, 0, 255, .18);
-      --border-hi: rgba(0, 255, 255, .3);
-      --card: rgba(255, 0, 255, .04);
-      --accent: #e040fb;
-      --accent2: #00e5ff;
-      --income: #00e676;
-      --income-dim: rgba(0, 230, 118, .1);
-      --expense: #ff1744;
-      --expense-dim: rgba(255, 23, 68, .1);
-      --gold: #ffea00;
-      --gold-dim: rgba(255, 234, 0, .1);
-      --purple: #e040fb;
-      --t1: #f0f0ff;
-      --t2: #b8b8d8;
-      --t3: #7878a8;
-      --bdr: rgba(255, 0, 255, .18);
-      --bdr-hi: rgba(0, 255, 255, .3);
-      --modal-bg: rgba(7, 7, 20, .97);
-      --sidebar: rgba(7, 7, 20, .85);
-      --shd: 0 8px 32px rgba(224, 64, 251, .2), 0 1px 4px rgba(0, 0, 0, .7);
-      --shd-lg: 0 24px 64px rgba(0, 229, 255, .15), 0 2px 12px rgba(0, 0, 0, .8);
-      --hero-grad: linear-gradient(135deg, #e040fb 0%, #00e5ff 100%);
-      --gs-1: rgba(255, 0, 255, .05);
-      --gs-2: rgba(0, 229, 255, .04);
-      --gs-3: rgba(255, 0, 255, .03);
-      --gs-4: rgba(255, 255, 255, .06);
-      --gs-5: rgba(255, 0, 255, .025);
-      --gs-6: rgba(7, 7, 20, .90);
-      --gs-7: rgba(7, 7, 20, .95);
-      --gs-8: rgba(7, 7, 20, .85);
-      --gs-9: rgba(0, 229, 255, .04);
-      --gs-border: rgba(224, 64, 251, .2);
-      --gs-border-hi: rgba(0, 229, 255, .35);
-      --mesh-a: radial-gradient(ellipse 70% 50% at 20% 10%, rgba(224, 64, 251, .25) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 80% 80%, rgba(0, 229, 255, .2) 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 50% 50%, rgba(0, 230, 118, .08) 0%, transparent 60%), #070714;
-      --mesh-b: radial-gradient(circle 400px at 10% 90%, rgba(224, 64, 251, .12) 0%, transparent 70%), radial-gradient(circle 350px at 90% 10%, rgba(0, 229, 255, .1) 0%, transparent 70%);
+    /* ── EDUCATIONAL PLATFORM THEME (CLAYMORPHISM + BLOCK-BASED) ── */
+    html[data-theme="education"] {
+      --bg: #faf8f5;
+      --bg2: rgba(15, 23, 42, 0.04);
+      --bg3: rgba(15, 23, 42, 0.02);
+      --ink: #0f172a;
+      --ink2: #334155;
+      --ink3: #64748b;
+      --border: #0f172a;
+      --border-hi: #0f172a;
+      --card: #ffffff;
+      --accent: #10b981; /* Vibrant green */
+      --accent2: #bae6fd; /* Soft sky blue */
+      --income: #10b981;
+      --income-dim: rgba(16, 185, 129, 0.15);
+      --expense: #f87171; /* Playful soft red */
+      --expense-dim: rgba(248, 113, 113, 0.1);
+      --gold: #f59e0b;
+      --gold-dim: rgba(245, 158, 11, 0.1);
+      --purple: #a78bfa;
+      --r: 20px; /* Playful very rounded corners */
+      --shd: 5px 5px 0px #0f172a; /* Solid block shadow */
+      --shd-lg: 7px 7px 0px #0f172a; /* Larger block shadow */
+      --t1: #0f172a;
+      --t2: #334155;
+      --t3: #64748b;
+      --bdr: #0f172a;
+      --bdr-hi: #0f172a;
+      --modal-bg: #faf8f5;
+      --sidebar: #ffffff;
+      --hero-grad: linear-gradient(135deg, #fedbd4 0%, #bae6fd 100%); /* Peach to Soft Blue */
+      --gs-1: #ffffff;
+      --gs-2: #ffffff;
+      --gs-3: #f1f5f9;
+      --gs-4: #ffffff;
+      --gs-5: #ffffff;
+      --gs-6: #ffffff;
+      --gs-7: #ffffff;
+      --gs-8: #ffffff;
+      --gs-9: #ffffff;
+      --gs-border: #0f172a;
+      --gs-border-hi: #0f172a;
+      --mesh-a: linear-gradient(135deg, #faf8f5 0%, #faf8f5 100%);
+      --mesh-b: linear-gradient(135deg, #faf8f5 0%, #faf8f5 100%);
     }
 
-    /* ── COZY SEPIA THEME ── */
-    html[data-theme="sepia"] {
-      --bg: #f5ede0;
-      --bg2: rgba(180, 130, 80, .15);
-      --bg3: rgba(160, 110, 60, .1);
-      --ink: #2c1a08;
-      --ink2: #5c3d1e;
-      --ink3: #8c6b40;
-      --border: rgba(160, 110, 60, .3);
-      --border-hi: rgba(140, 90, 40, .5);
-      --card: rgba(255, 248, 235, .85);
-      --accent: #b5541c;
-      --accent2: #c87941;
-      --income: #3a7c50;
-      --income-dim: rgba(58, 124, 80, .1);
-      --expense: #b52121;
-      --expense-dim: rgba(181, 33, 33, .08);
-      --gold: #c08020;
-      --gold-dim: rgba(192, 128, 32, .1);
-      --purple: #7c4c90;
-      --r: 14px;
-      --t1: #2c1a08;
-      --t2: #5c3d1e;
-      --t3: #8c6b40;
-      --bdr: rgba(160, 110, 60, .3);
-      --bdr-hi: rgba(140, 90, 40, .5);
-      --modal-bg: rgba(252, 245, 232, .97);
-      --sidebar: rgba(248, 238, 218, .85);
-      --shd: 0 4px 24px rgba(140, 90, 40, .12), 0 1px 4px rgba(0, 0, 0, .06);
-      --shd-lg: 0 12px 40px rgba(140, 90, 40, .18), 0 2px 8px rgba(0, 0, 0, .08);
-      --hero-grad: linear-gradient(135deg, #b5541c 0%, #c87941 100%);
-      --gs-1: rgba(255, 240, 210, .7);
-      --gs-2: rgba(255, 235, 200, .55);
-      --gs-3: rgba(255, 230, 190, .5);
-      --gs-4: rgba(255, 245, 225, .8);
-      --gs-5: rgba(255, 228, 185, .45);
-      --gs-6: rgba(245, 232, 210, .9);
-      --gs-7: rgba(248, 238, 218, .95);
-      --gs-8: rgba(242, 228, 205, .85);
-      --gs-9: rgba(252, 240, 215, .6);
-      --gs-border: rgba(160, 110, 60, .25);
-      --gs-border-hi: rgba(140, 90, 40, .4);
-      --mesh-a: radial-gradient(ellipse 80% 60% at 15% 5%, rgba(200, 150, 80, .3) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 85% 15%, rgba(180, 100, 50, .18) 0%, transparent 55%), radial-gradient(ellipse 70% 60% at 50% 90%, rgba(100, 160, 90, .12) 0%, transparent 60%), linear-gradient(135deg, #f5ede0 0%, #eedcc8 50%, #f0e2cc 100%);
-      --mesh-b: radial-gradient(circle 350px at 10% -5%, rgba(181, 84, 28, .1) 0%, transparent 70%), radial-gradient(circle 300px at 90% 25%, rgba(192, 128, 32, .08) 0%, transparent 70%);
+    /* ── EDUCATION: component overrides ── */
+    html[data-theme="education"] body {
+      background-color: #faf8f5;
+      color: #0f172a;
     }
-
-    /* ── SEPIA: component overrides ── */
-    html[data-theme="sepia"] .nav-item {
-      color: rgba(92, 61, 30, .7)
+    html[data-theme="education"] .widget,
+    html[data-theme="education"] .card,
+    html[data-theme="education"] .sidebar-profile,
+    html[data-theme="education"] .desk-compose,
+    html[data-theme="education"] .btn2,
+    html[data-theme="education"] .finp,
+    html[data-theme="education"] .modal,
+    html[data-theme="education"] .tx-detail-card,
+    html[data-theme="education"] .toast,
+    html[data-theme="education"] .acc-item,
+    html[data-theme="education"] .tx-item {
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      border-radius: 20px !important;
+      background: #ffffff !important;
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
     }
-    html[data-theme="sepia"] .nav-item.active {
-      background: linear-gradient(135deg, rgba(181, 84, 28, .2), rgba(200, 121, 65, .15));
-      color: #5c2a08;
-      border-color: rgba(181, 84, 28, .3)
+    html[data-theme="education"] .widget:hover,
+    html[data-theme="education"] .card:hover,
+    html[data-theme="education"] .sidebar-profile:hover,
+    html[data-theme="education"] .tx-item:hover {
+      transform: translate(-2px, -2px) !important;
+      box-shadow: 6px 6px 0px #0f172a !important;
     }
-    html[data-theme="sepia"] .bnav-item.active {
-      color: #7c3010
+    html[data-theme="education"] .profile-avatar-card {
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      border-radius: 20px !important;
+      background: #ffffff !important;
     }
-
-    /* ── NEON: component overrides ── */
-    html[data-theme="neon"] body {
-      color: var(--ink);
-      background: var(--bg)
+    html[data-theme="education"] .flbl {
+      color: #0f172a !important;
+      font-weight: 800 !important;
     }
-    html[data-theme="neon"] .nav-item {
-      color: rgba(184, 184, 216, .6)
+    html[data-theme="education"] .finp:focus {
+      outline: none !important;
+      border-color: #10b981 !important;
     }
-    html[data-theme="neon"] .nav-item:hover {
-      background: rgba(224, 64, 251, .1);
-      color: var(--ink);
-      border-color: rgba(224, 64, 251, .2)
+    html[data-theme="education"] .btn {
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      border-radius: 30px !important;
+      background: #10b981 !important;
+      color: #ffffff !important;
+      font-weight: 800 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.05em !important;
+      transition: all 0.15s ease !important;
     }
-    html[data-theme="neon"] .nav-item.active {
-      background: linear-gradient(135deg, rgba(224, 64, 251, .25), rgba(0, 229, 255, .15));
-      color: #e0c0ff;
-      border-color: rgba(224, 64, 251, .35);
-      box-shadow: 0 4px 16px rgba(224, 64, 251, .3), inset 0 1px 0 rgba(255, 255, 255, .05)
+    html[data-theme="education"] .btn:hover {
+      transform: translate(-2px, -2px) !important;
+      box-shadow: 6px 6px 0px #0f172a !important;
+      background: #059669 !important;
     }
-    html[data-theme="neon"] .bnav-item.active {
-      color: #e040fb
+    html[data-theme="education"] .btn:active {
+      transform: translate(1px, 1px) !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
     }
-    html[data-theme="neon"] .bnav-item.active .bnav-pill {
-      background: rgba(224, 64, 251, .25);
-      box-shadow: 0 0 16px rgba(224, 64, 251, .4)
+    html[data-theme="education"] .nav-item {
+      border-radius: 14px !important;
+      border: 2px solid transparent !important;
+      font-weight: 700 !important;
+      color: #475569 !important;
+    }
+    html[data-theme="education"] .nav-item:hover {
+      background: #bae6fd !important;
+      border-color: #0f172a !important;
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .nav-item.active {
+      background: #fedbd4 !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .nav-item.active .ni svg {
+      stroke: #0f172a !important;
+      filter: none !important;
+    }
+    html[data-theme="education"] .sidebar {
+      border-right: 3px solid #0f172a !important;
+      background: #ffffff !important;
+      box-shadow: none !important;
+    }
+    html[data-theme="education"] .sfooter {
+      border-top: 2.5px solid #0f172a !important;
+    }
+    html[data-theme="education"] .sfooter::before {
+      display: none !important;
+    }
+    html[data-theme="education"] .brand-name {
+      background: none !important;
+      -webkit-background-clip: initial !important;
+      -webkit-text-fill-color: initial !important;
+      color: #0f172a !important;
+      font-weight: 900 !important;
+    }
+    html[data-theme="education"] .bnav-item.active {
+      color: #10b981 !important;
+    }
+    html[data-theme="education"] .bnav-item.active .bnav-pill {
+      background: #fedbd4 !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .btn2 {
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+      background: #ffffff !important;
+      color: #0f172a !important;
+      font-weight: 700 !important;
+      border-radius: 12px !important;
+    }
+    html[data-theme="education"] .btn2:hover {
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      background: #f1f5f9 !important;
+    }
+    html[data-theme="education"] .tgl-grp,
+    html[data-theme="education"] .keu-seg {
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      background: #ffffff !important;
+      border-radius: 14px !important;
+    }
+    html[data-theme="education"] .tgl,
+    html[data-theme="education"] .keu-tab {
+      font-weight: 700 !important;
+      color: #64748b !important;
+      border-radius: 10px !important;
+    }
+    html[data-theme="education"] .tgl.active,
+    html[data-theme="education"] .keu-tab.active {
+      background: #bae6fd !important;
+      border: 2px solid #0f172a !important;
+      color: #0f172a !important;
+      box-shadow: none !important;
     }
 
     /* ── DARK: component overrides ── */
@@ -698,13 +757,30 @@
     html[data-theme="dark"] .gcard-glass,
     html[data-theme="dark"] .bills-hero-main,
     html[data-theme="dark"] .bills-stat-card,
-    html[data-theme="dark"] .glass-card {
-      background: rgba(255, 255, 255, 0.02) !important;
-      backdrop-filter: blur(24px) saturate(120%) !important;
-      -webkit-backdrop-filter: blur(24px) saturate(120%) !important;
-      border: 1px solid rgba(255, 255, 255, 0.06) !important;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+    html[data-theme="dark"] .glass-card,
+    html[data-theme="dark"] .widget,
+    html[data-theme="dark"] .card,
+    html[data-theme="dark"] .modal,
+    html[data-theme="dark"] .toast,
+    html[data-theme="dark"] .tx-item,
+    html[data-theme="dark"] .sidebar-profile,
+    html[data-theme="dark"] .acc-item {
+      background: rgba(10, 15, 30, 0.35) !important;
+      backdrop-filter: blur(28px) saturate(140%) !important;
+      -webkit-backdrop-filter: blur(28px) saturate(140%) !important;
+      border: 1px solid rgba(255, 255, 255, 0.07) !important;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
       color: var(--ink) !important;
+    }
+
+    html[data-theme="dark"] .widget:hover,
+    html[data-theme="dark"] .card:hover,
+    html[data-theme="dark"] .tx-item:hover,
+    html[data-theme="dark"] .sidebar-profile:hover {
+      border-color: rgba(99, 102, 241, 0.25) !important;
+      background: rgba(15, 23, 42, 0.45) !important;
+      box-shadow: 0 20px 60px rgba(99, 102, 241, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+      transform: translateY(-1.5px);
     }
 
     html[data-theme="dark"] .keu-summary-card {
@@ -712,6 +788,16 @@
     }
     html[data-theme="dark"] .bills-stat-card {
       border-radius: 16px !important;
+    }
+
+    /* Grid Latar Belakang untuk Tema Gelap OLED */
+    html[data-theme="dark"] body::before {
+      background-image: linear-gradient(rgba(99, 102, 241, 0.03) 1.2px, transparent 1.2px),
+                        linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1.2px, transparent 1.2px),
+                        radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.16) 0%, transparent 60%),
+                        radial-gradient(circle at 85% 85%, rgba(16, 185, 129, 0.1) 0%, transparent 60%);
+      background-size: 45px 45px, 45px 45px, 100% 100%, 100% 100%;
+      background-color: #000000 !important;
     }
 
     /* Glowing Neon Indicators for Budget Progress */

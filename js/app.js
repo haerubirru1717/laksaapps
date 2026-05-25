@@ -201,6 +201,9 @@ const uid = () => 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,
 
 // ── THEME ──
 function applyTheme(theme, btn, save = true) {
+  if (theme !== 'glass' && theme !== 'dark' && theme !== 'education') {
+    theme = 'glass';
+  }
   document.documentElement.setAttribute('data-theme', theme);
   // support old .theme-opt (backward compat) + new .theme-card-premium
   document.querySelectorAll('.theme-opt,.theme-card-premium').forEach(b => b.classList.remove('active'));
@@ -210,9 +213,9 @@ function applyTheme(theme, btn, save = true) {
     const s = getSet(); s.theme = theme; sv(K.set, s);
     const p = getProfile(); if (p) { p.theme = theme; saveProfile(p); }
   }
-  const isDark = theme === 'dark' || theme === 'neon';
-  Chart.defaults.color = isDark ? 'rgba(210,220,240,0.7)' : (theme === 'sepia' ? 'rgba(44,26,8,0.6)' : 'rgba(15,23,42,0.55)');
-  Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : (theme === 'sepia' ? 'rgba(160,110,60,0.15)' : 'rgba(15,23,42,0.08)');
+  const isDark = theme === 'dark';
+  Chart.defaults.color = isDark ? 'rgba(210,220,240,0.7)' : (theme === 'education' ? '#0f172a' : 'rgba(15,23,42,0.55)');
+  Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : (theme === 'education' ? 'rgba(15,23,42,0.15)' : 'rgba(15,23,42,0.08)');
   if (curPage === 'dashboard') renderDash();
   if (curPage === 'reports') renderReports();
 }
@@ -439,7 +442,14 @@ function updateSidebarProfile() {
   if (!el) return;
   if (profile && profile.name) {
     el.style.display = 'flex';
-    if (ava) ava.textContent = profile.name.charAt(0).toUpperCase();
+    const savedAvatar = localStorage.getItem('laksa_avatar');
+    if (ava) {
+      if (savedAvatar) {
+        ava.innerHTML = `<img src="${savedAvatar}" alt="Foto profil" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;" />`;
+      } else {
+        ava.textContent = profile.name.charAt(0).toUpperCase();
+      }
+    }
     if (name) name.textContent = profile.name;
   } else {
     el.style.display = 'none';
@@ -452,11 +462,14 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal
 document.addEventListener('DOMContentLoaded', async () => {
   // Tema dari localStorage
   const s = getSet();
-  const theme = s.theme || 'glass';
+  let theme = s.theme || 'glass';
+  if (theme !== 'glass' && theme !== 'dark' && theme !== 'education') {
+    theme = 'glass';
+  }
   document.documentElement.setAttribute('data-theme', theme);
   const isDark = theme === 'dark';
-  Chart.defaults.color = isDark ? 'rgba(210,220,240,0.7)' : 'rgba(15,23,42,0.55)';
-  Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.08)';
+  Chart.defaults.color = isDark ? 'rgba(210,220,240,0.7)' : (theme === 'education' ? '#0f172a' : 'rgba(15,23,42,0.55)');
+  Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : (theme === 'education' ? 'rgba(15,23,42,0.15)' : 'rgba(15,23,42,0.08)');
 
   // Account scroll arrows listener
   const accsEl = document.getElementById('accsScroll');

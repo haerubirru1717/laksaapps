@@ -243,13 +243,6 @@
             <line x1="6" y1="20" x2="6" y2="14" />
             <line x1="2" y1="20" x2="22" y2="20" />
           </svg></span>Laporan</button>
-      <button class="nav-item" data-page="settings" onclick="go('settings')"><span class="ni"><svg width="16"
-            height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3" />
-            <path
-              d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
-          </svg></span>Pengaturan</button>
     </nav>
     <!-- Desktop: user profile chip -->
     <div class="sidebar-profile" id="sidebarProfile" style="display:none" onclick="go('settings')">
@@ -266,7 +259,7 @@
       </svg>
     </div>
     <div class="sfooter">
-      <div class="sbadge"><span class="sdot"></span>Tersimpan Lokal</div>
+      <div class="sbadge" style="letter-spacing: 0.04em;"><span class="sdot"></span>Laksa v1.2.0</div>
     </div>
   </aside>
 
@@ -914,11 +907,11 @@
         <div class="sgrid2">
           <div class="widget">
             <!-- Avatar Card — dinamis via renderSettings() -->
-            <div class="profile-avatar-card" id="profileAvatarCard">
+            <div class="profile-avatar-card" id="profileAvatarCard" onclick="triggerAvatarUpload(event)" style="cursor:pointer" title="Ketuk untuk ubah foto profil">
               <div class="profile-avatar-circle" id="profileAvatarCircle">?</div>
               <div class="profile-avatar-info">
                 <div class="pa-name" id="profileAvatarName">Pengguna</div>
-                <div class="pa-sub">Ketuk nama di bawah untuk mengubah profil</div>
+                <div class="pa-sub">Ketuk di sini untuk mengubah foto profil</div>
               </div>
             </div>
 
@@ -941,7 +934,7 @@
             <div class="theme-grid-premium" id="themeGridPremium">
               <!-- Glass Terang -->
               <button class="theme-card-premium" id="topt-glass"
-                onclick="applyTheme('glass',this,false)" aria-label="Tema Glass Terang">
+                onclick="applyTheme('glass',this,true)" aria-label="Tema Glass Terang">
                 <div class="theme-preview-colors">
                   <span style="background:linear-gradient(135deg,#dbeafe,#ede9fe)"></span>
                   <span style="background:linear-gradient(135deg,rgba(99,179,237,.7),rgba(167,139,250,.6))"></span>
@@ -953,39 +946,27 @@
               </button>
               <!-- Glass Gelap -->
               <button class="theme-card-premium" id="topt-dark"
-                onclick="applyTheme('dark',this,false)" aria-label="Tema Glass Gelap">
+                onclick="applyTheme('dark',this,true)" aria-label="Tema Glass Gelap">
                 <div class="theme-preview-colors">
-                  <span style="background:linear-gradient(135deg,#020203,#1e3a5f)"></span>
+                  <span style="background:linear-gradient(135deg,#020203,#111726)"></span>
                   <span style="background:linear-gradient(135deg,#5e6ad2,#2563eb)"></span>
                   <span style="background:#f7931a"></span>
                   <span style="background:#10b981"></span>
                 </div>
-                <div class="theme-card-label">Glass Gelap</div>
-                <div class="theme-card-desc">Deep dark, elegan & fokus</div>
+                <div class="theme-card-label">Glass Gelap (OLED)</div>
+                <div class="theme-card-desc">Deep dark, grid modern & glowing</div>
               </button>
-              <!-- Cyber Neon -->
-              <button class="theme-card-premium" id="topt-neon"
-                onclick="applyTheme('neon',this,false)" aria-label="Tema Cyber Neon">
+              <!-- Educational Platform -->
+              <button class="theme-card-premium" id="topt-education"
+                onclick="applyTheme('education',this,true)" aria-label="Tema Educational Platform">
                 <div class="theme-preview-colors">
-                  <span style="background:linear-gradient(135deg,#070714,#1a0a2e)"></span>
-                  <span style="background:linear-gradient(135deg,#e040fb,#9c00d4)"></span>
-                  <span style="background:#00e5ff"></span>
-                  <span style="background:#00e676"></span>
+                  <span style="background:linear-gradient(135deg,#faf8f5,#fedbd4)"></span>
+                  <span style="background:linear-gradient(135deg,#bae6fd,#93c5fd)"></span>
+                  <span style="background:#10b981"></span>
+                  <span style="background:#ffffff"></span>
                 </div>
-                <div class="theme-card-label">Cyber Neon</div>
-                <div class="theme-card-desc">Cyberpunk magenta & cyan</div>
-              </button>
-              <!-- Cozy Sepia -->
-              <button class="theme-card-premium" id="topt-sepia"
-                onclick="applyTheme('sepia',this,false)" aria-label="Tema Cozy Sepia">
-                <div class="theme-preview-colors">
-                  <span style="background:linear-gradient(135deg,#f5ede0,#eedcc8)"></span>
-                  <span style="background:linear-gradient(135deg,#b5541c,#c87941)"></span>
-                  <span style="background:#3a7c50"></span>
-                  <span style="background:#c08020"></span>
-                </div>
-                <div class="theme-card-label">Cozy Sepia</div>
-                <div class="theme-card-desc">Hangat, vintage & nyaman</div>
+                <div class="theme-card-label">Educational Platform</div>
+                <div class="theme-card-desc">Claymorphism & block-based playful</div>
               </button>
             </div>
 

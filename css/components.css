@@ -4114,18 +4114,17 @@
     html[data-theme="dark"] .theme-card-premium.active::after {
       background: #5e6ad2;
     }
-    html[data-theme="neon"] .theme-card-premium.active {
-      border-color: #e040fb;
-      box-shadow: 0 0 0 3px rgba(224,64,251,.2), 0 0 18px rgba(224,64,251,.25);
+    html[data-theme="education"] .theme-card-premium {
+      background: #ffffff;
+      border: 2.5px solid #0f172a;
+      box-shadow: 3px 3px 0px #0f172a;
     }
-    html[data-theme="neon"] .theme-card-premium.active::after {
-      background: #e040fb;
+    html[data-theme="education"] .theme-card-premium.active {
+      border-color: #10b981;
+      box-shadow: 0 0 0 3px rgba(16,185,129,.2), 4px 4px 0px #0f172a;
+      background: #ffffff;
     }
-    html[data-theme="sepia"] .theme-card-premium.active {
-      border-color: #b5541c;
-      box-shadow: 0 0 0 3px rgba(181,84,28,.2);
-    }
-    html[data-theme="sepia"] .theme-card-premium.active::after {
-      background: #b5541c;
+    html[data-theme="education"] .theme-card-premium.active::after {
+      background: #10b981;
     }
 
