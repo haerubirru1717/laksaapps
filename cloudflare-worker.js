@@ -35,6 +35,10 @@ const CHAT_MODELS = [
   "meta-llama/llama-4-scout-17b-16e-instruct",   // fallback 2
   "llama-3.1-8b-instant",                        // last resort
 ];
+const VISION_MODELS = [
+  "meta-llama/llama-4-scout-17b-16e-instruct",   // primary — current Groq vision model
+  "meta-llama/llama-4-maverick-17b-128e-instruct", // fallback
+];
 
 // Volatile state per chat (in-memory)
 // Hanya dipakai saat fallback pilih rekening lewat keyboard
@@ -44,13 +48,13 @@ const PENDING = new Map(); // chatId → { parsed, rawText, cat }
 // ENTRY POINT
 // ─────────────────────────────────────────────────────
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
     try {
       if (request.method === "POST" && (url.pathname === "/webhook" || url.pathname === "/telegram-webhook")) {
         const body = await request.json();
-        await handleTelegram(body, env);
+        ctx.waitUntil(handleTelegram(body, env));
         return new Response("OK");
       }
       return cors(await routeAPI(request, url, env));
@@ -859,18 +863,26 @@ async function sendMyId(chatId, userId, firstName, env) {
 // ─────────────────────────────────────────────────────
 // AI — GROQ HELPERS
 // ─────────────────────────────────────────────────────
+function fetchWithTimeout(url, options, timeoutMs = 15000) {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), timeoutMs)),
+  ]);
+}
+
 async function groqChat(messages, env, { models = PARSE_MODELS, maxTokens = 300, temperature = 0.1, jsonMode = false } = {}) {
   let lastError = null;
   for (const model of models) {
     try {
       const payload = { model, messages, temperature, max_tokens: maxTokens };
       if (jsonMode) payload.response_format = { type: "json_object" };
-      const res  = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const res  = await fetchWithTimeout("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${env.GROQ_API_KEY}` },
         body: JSON.stringify(payload),
       });
       if (res.status === 429 || res.status === 503) { lastError = `${model}: HTTP ${res.status}`; continue; }
+      if (!res.ok) { lastError = `${model}: HTTP ${res.status}`; continue; }
       const data = await res.json();
       if (data.error) { lastError = `${model}: ${data.error.message}`; continue; }
       if (data.choices?.[0]?.message?.content) {
@@ -974,20 +986,7 @@ async function parseCorrection(text, currentTx, env) {
 // OCR STRUK — strict null/NaN 0-Rupiah Voucher Fix
 // ─────────────────────────────────────────────────────
 async function ocrReceipt(base64, mime, env) {
-  try {
-    const ocrRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${env.GROQ_API_KEY}` },
-      body: JSON.stringify({
-        model: "llama-3.2-11b-vision-preview",
-        temperature: 0.1,
-        max_tokens: 1024,
-        messages: [{
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `Analisis struk belanja ini dan keluarkan data dalam bentuk JSON murni tanpa tambahan markdown block. Format objek JSON:
+  const visionPrompt = `Analisis struk belanja ini dan keluarkan data dalam bentuk JSON murni tanpa tambahan markdown block. Format objek JSON:
 {
   "store": "Nama toko/merchant",
   "date": "Tanggal transaksi format YYYY-MM-DD",
@@ -1003,47 +1002,66 @@ async function ocrReceipt(base64, mime, env) {
 PENTING:
 - Ekstrak diskon belanja jika ada ke dalam 'discount'.
 - Jika struk total bernilai 0 rupiah karena didiskon penuh atau voucher, keluarkan nilai 'total' sebagai 0 (JANGAN menolaknya, keluarkan 0).
-- JANGAN menyertakan block \`\`\`json di awal dan di akhir, langsung keluarkan objek JSON.`
-            },
-            { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
-          ],
-        }],
-      }),
-    });
-    if (!ocrRes.ok) return { _error: `Vision error ${ocrRes.status}` };
-    
-    const resData = await ocrRes.json();
-    const rawText = resData.choices?.[0]?.message?.content?.trim() || "";
-    const parsed  = extractJSON(rawText);
+- JANGAN menyertakan block \`\`\`json di awal dan di akhir, langsung keluarkan objek JSON.`;
 
-    // Strict 0-Rupiah Null/NaN Verification
-    const hasTotal  = parsed.total !== undefined && parsed.total !== null && parsed.total !== "" && !isNaN(parsed.total);
-    const hasAmount = parsed.amount !== undefined && parsed.amount !== null && parsed.amount !== "" && !isNaN(parsed.amount);
-    if (!hasTotal && !hasAmount) return { _error: "Total tidak terdeteksi." };
+  let lastError = null;
+  for (const model of VISION_MODELS) {
+    try {
+      const ocrRes = await fetchWithTimeout("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${env.GROQ_API_KEY}` },
+        body: JSON.stringify({
+          model,
+          temperature: 0.1,
+          max_tokens: 1024,
+          messages: [{
+            role: "user",
+            content: [
+              { type: "text", text: visionPrompt },
+              { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
+            ],
+          }],
+        }),
+      }, 25000);
+      if (ocrRes.status === 429 || ocrRes.status === 503) { lastError = `${model}: HTTP ${ocrRes.status}`; continue; }
+      if (!ocrRes.ok) { lastError = `${model}: HTTP ${ocrRes.status}`; continue; }
 
-    const extractNum = (s) => {
-      if (s === undefined || s === null || s === "") return 0;
-      if (typeof s === "number") return s;
-      const m = String(s).match(/[\d][\d.,]*/g);
-      if (!m) return 0;
-      return parseInt(m[m.length - 1].replace(/[.,]/g, ""), 10) || 0;
-    };
+      const resData = await ocrRes.json();
+      if (resData.error) { lastError = `${model}: ${resData.error.message}`; continue; }
+      const rawText = resData.choices?.[0]?.message?.content?.trim() || "";
+      if (!rawText) { lastError = `${model}: empty response`; continue; }
+      const parsed  = extractJSON(rawText);
 
-    const total    = extractNum(parsed.total !== undefined ? parsed.total : parsed.amount);
-    const tunai    = extractNum(parsed.tunai);
-    const discount = extractNum(parsed.discount);
-    let   change   = extractNum(parsed.change);
-    if (change === 0 && tunai > total) change = tunai - total;
+      // Strict 0-Rupiah Null/NaN Verification
+      const hasTotal  = parsed.total !== undefined && parsed.total !== null && parsed.total !== "" && !isNaN(parsed.total);
+      const hasAmount = parsed.amount !== undefined && parsed.amount !== null && parsed.amount !== "" && !isNaN(parsed.amount);
+      if (!hasTotal && !hasAmount) { lastError = `${model}: Total tidak terdeteksi`; continue; }
 
-    return {
-      store:      parsed.store || null,
-      date:       parsed.date  || null,
-      note:       parsed.note  || (parsed.store ? `Belanja di ${parsed.store}` : "Belanja"),
-      items:      Array.isArray(parsed.items) ? parsed.items : [],
-      total, discount, change, tunai,
-      confidence: parsed.confidence || "medium",
-    };
-  } catch (e) { return { _error: e.message }; }
+      const extractNum = (s) => {
+        if (s === undefined || s === null || s === "") return 0;
+        if (typeof s === "number") return s;
+        const m = String(s).match(/[\d][\d.,]*/g);
+        if (!m) return 0;
+        return parseInt(m[m.length - 1].replace(/[.,]/g, ""), 10) || 0;
+      };
+
+      const total    = extractNum(parsed.total !== undefined ? parsed.total : parsed.amount);
+      const tunai    = extractNum(parsed.tunai);
+      const discount = extractNum(parsed.discount);
+      let   change   = extractNum(parsed.change);
+      if (change === 0 && tunai > total) change = tunai - total;
+
+      return {
+        store:      parsed.store || null,
+        date:       parsed.date  || null,
+        note:       parsed.note  || (parsed.store ? `Belanja di ${parsed.store}` : "Belanja"),
+        items:      Array.isArray(parsed.items) ? parsed.items : [],
+        total, discount, change, tunai,
+        confidence: parsed.confidence || "medium",
+      };
+    } catch (e) { lastError = `${model}: ${e.message}`; continue; }
+  }
+  return { _error: lastError || "Semua model vision gagal." };
 }
 
 // ─────────────────────────────────────────────────────
