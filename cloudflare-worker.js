@@ -3,7 +3,7 @@
  * ─────────────────────────────────────────────────────
  * Single source of truth: Cloudflare D1.
  *
- * ENV VARS : TELEGRAM_TOKEN, GROQ_API_KEY
+ * ENV VARS : TELEGRAM_TOKEN, GROQ_API_KEY, TELEGRAM_WEBHOOK_SECRET (optional)
  * D1 BINDING: DB
  *
  * Fitur Bot Telegram:
@@ -35,22 +35,44 @@ const CHAT_MODELS = [
   "meta-llama/llama-4-scout-17b-16e-instruct",   // fallback 2
   "llama-3.1-8b-instant",                        // last resort
 ];
+const VISION_MODELS = [
+  "meta-llama/llama-4-scout-17b-16e-instruct",   // primary — current Groq vision model
+  "meta-llama/llama-4-maverick-17b-128e-instruct", // fallback
+];
 
-// Volatile state per chat (in-memory)
-// Hanya dipakai saat fallback pilih rekening lewat keyboard
-const PENDING = new Map(); // chatId → { parsed, rawText, cat }
+// Max age for pending text entries (ms)
+const PENDING_TEXT_TTL_MS = 5 * 60 * 1000; // 5 menit
 
 // ─────────────────────────────────────────────────────
 // ENTRY POINT
 // ─────────────────────────────────────────────────────
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
     try {
       if (request.method === "POST" && (url.pathname === "/webhook" || url.pathname === "/telegram-webhook")) {
+        // Webhook secret verification
+        const secret = env.TELEGRAM_WEBHOOK_SECRET;
+        if (secret) {
+          const headerSecret = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
+          if (headerSecret !== secret) {
+            return new Response("Unauthorized", { status: 403 });
+          }
+        }
         const body = await request.json();
-        await handleTelegram(body, env);
+        // Deduplication: skip already-processed updates
+        const updateId = body.update_id;
+        if (updateId) {
+          const existing = await env.DB.prepare(
+            "SELECT update_id FROM processed_updates WHERE update_id = ?"
+          ).bind(updateId).first().catch(() => null);
+          if (existing) return new Response("OK");
+          await env.DB.prepare(
+            "INSERT OR IGNORE INTO processed_updates (update_id) VALUES (?)"
+          ).bind(updateId).run().catch(() => {});
+        }
+        ctx.waitUntil(handleTelegram(body, env));
         return new Response("OK");
       }
       return cors(await routeAPI(request, url, env));
@@ -138,6 +160,13 @@ async function routeAPI(req, url, env) {
     if (m === "DELETE") return deleteBill(uid, billM[1], env);
   }
 
+  // transaction-items
+  if (path === "/transaction-items" && m === "GET") {
+    const txId = url.searchParams.get("transaction_id");
+    if (!txId) return jsonRes({ error: "transaction_id diperlukan" }, 400);
+    return getTransactionItems(uid, txId, env);
+  }
+
   // piutang
   if (path === "/piutang") {
     if (m === "GET")  return getPiutang(uid, env);
@@ -176,7 +205,7 @@ async function handleTelegram(body, env) {
     if (text === "/saldo")   { await sendSaldo(chatId, userId, env); return; }
     if (text === "/riwayat") { await sendRiwayat(chatId, userId, env); return; }
     if (text === "/tagihan") { await sendTagihan(chatId, userId, env); return; }
-    if (text === "/batal")   { PENDING.delete(chatId); await tgSend(chatId, "❌ Dibatalkan.", env); return; }
+    if (text === "/batal")   { await clearPendingText(chatId, env); await tgSend(chatId, "❌ Dibatalkan.", env); return; }
 
     // Reply ke pesan bot → koreksi transaksi
     if (msg.reply_to_message?.from?.is_bot) {
@@ -215,6 +244,7 @@ async function handleCallback(cb, env) {
   if (data === "saldo")   { await sendSaldo(chatId, userId, env); return; }
   if (data === "riwayat") { await sendRiwayat(chatId, userId, env); return; }
   if (data === "tagihan") { await sendTagihan(chatId, userId, env); return; }
+  if (data === "myid")    { await sendMyId(chatId, userId, cb.from.first_name, env); return; }
 
   // Pilih rekening (fallback keyboard)
   if (data.startsWith("acc:")) { await handleAccPick(chatId, userId, data.slice(4), env); return; }
@@ -279,7 +309,13 @@ ID: ${txId}`,
     await handleReceiptKeyboardConfirm(chatId, userId, cb.message.message_id, pendingId, accountId, env);
   } else if (data.startsWith("cancel:")) {
     const pendingId = data.split(":")[1];
+    const draft = await env.DB.prepare("SELECT note FROM pending_scans WHERE id = ?").bind(pendingId).first();
     await env.DB.prepare("DELETE FROM pending_scans WHERE id = ?").bind(pendingId).run();
+    // Hapus pesan rincian struk jika ada
+    if (draft) {
+      const { rincianMsgId } = parseDraftNote(draft.note);
+      if (rincianMsgId) await deleteTgMessage(chatId, rincianMsgId, env);
+    }
     await editTgMessage(chatId, cb.message.message_id, "❌ *Pencatatan struk dibatalkan.*", env);
   }
 }
@@ -341,8 +377,8 @@ async function handleFreeText(chatId, userId, text, env) {
     return;
   }
 
-  // 5. Rekening tidak ketemu → fallback keyboard
-  PENDING.set(chatId, { parsed, rawText: text, cat });
+  // 5. Rekening tidak ketemu → fallback keyboard (persistent via D1)
+  await savePendingText(chatId, parsed, text, cat, env);
   await tgSend(chatId,
     `📋 *${fmtType(parsed.type)}: Rp${fmt(parsed.amount)}*\n📝 ${parsed.note || "-"}\n\n*Pilih rekening:*`,
     env,
@@ -351,11 +387,11 @@ async function handleFreeText(chatId, userId, text, env) {
 }
 
 async function handleAccPick(chatId, userId, accId, env) {
-  const pending = PENDING.get(chatId);
+  const pending = await loadPendingText(chatId, env);
   if (!pending) { await tgSend(chatId, "❌ Sesi habis. Kirim ulang transaksinya ya.", env); return; }
   const acc = await env.DB.prepare(`SELECT * FROM accounts WHERE id = ? AND user_id = ?`).bind(accId, userId).first();
   if (!acc) { await tgSend(chatId, "❌ Rekening tidak valid.", env); return; }
-  PENDING.delete(chatId);
+  await clearPendingText(chatId, env);
   const { parsed, rawText, cat } = pending;
   await saveTx(chatId, userId, parsed, acc, cat, rawText, env);
 }
@@ -516,6 +552,7 @@ async function handlePhoto(msg, chatId, userId, env) {
         VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, '[foto struk]', 'telegram')
       `).bind(id, userId, date, parsed.amount, parsed.note || "", parsed.store || null, matchedAcc.id, cat?.id || null).run();
 
+      await saveTransactionItems(id, result.items, env);
       await adjustBalance(matchedAcc.id, "expense", parsed.amount, +1, env);
 
       let successMsg = `✅ *Tersimpan Otomatis!*\n`;
@@ -537,11 +574,8 @@ async function handlePhoto(msg, chatId, userId, env) {
 
     // ── FALLBACK INTERACTIVE KEYBOARD ──
     const pendingId = "pend_" + randomId();
-    await env.DB.prepare(`
-      INSERT INTO pending_scans (id, user_id, store, amount, date, note)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).bind(pendingId, userId, result.store || "Merchant", result.total, result.date || todayStr(), result.note || "Scan Struk").run();
 
+    // Pesan 1: Rincian struk (read-only)
     let rincian = `🛒 *RINCIAN STRUK BELANJA*\n\n`;
     rincian += `🏪 *Toko:* ${result.store || "-"}\n`;
     rincian += `📅 *Tanggal:* ${fmtDate(result.date || todayStr())}\n`;
@@ -553,17 +587,29 @@ async function handlePhoto(msg, chatId, userId, env) {
         rincian += `${i + 1}. _${it.name}_ (x${it.qty || 1}) - Rp${fmt(it.total_price || 0)}\n`;
       });
     }
-    rincian += `\n❓ *Apakah rincian belanjaan di atas sudah benar?*\nSilakan pilih rekening pembayaran di bawah ini untuk menyimpannya:`;
+    const rincianMsgId = await tgSend(chatId, rincian, env);
 
-    const inlineKeyboard = accs.map(acc => [
-      { text: `💳 ${acc.name} (Saldo: Rp${fmt(acc.balance)})`, callback_data: `pay:${pendingId}:${acc.id}` }
-    ]);
-    inlineKeyboard.push([{ text: "❌ Batalkan Pencatatan", callback_data: `cancel:${pendingId}` }]);
+    // Store pending scan — encode rincian message_id + items in note for cleanup & save
+    const noteWithMeta = JSON.stringify({ note: result.note || "Scan Struk", rincianMsgId, items: result.items || [] });
+    await env.DB.prepare(`
+      INSERT INTO pending_scans (id, user_id, store, amount, date, note)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(pendingId, userId, result.store || "Merchant", result.total, result.date || todayStr(), noteWithMeta).run();
 
-    await tgSend(chatId, rincian, env, inlineKeyboard);
+    // Pesan 2: Pilih rekening (inline keyboard 2 kolom, compact)
+    const accButtons = accs.map(acc => ({ text: `💳 ${acc.name}`, callback_data: `pay:${pendingId}:${acc.id}` }));
+    const accKeyboard = chunks(accButtons, 2);
+    accKeyboard.push([{ text: "❌ Batalkan", callback_data: `cancel:${pendingId}` }]);
+
+    await tgSend(chatId, "💳 *Pilih rekening pembayaran:*", env, accKeyboard);
   } catch (err) {
     await tgSend(chatId, "❌ *Gagal memproses struk:* " + err.message + "\nSilakan kirim ulang foto struk yang lebih jelas.", env);
   }
+}
+
+function parseDraftNote(raw) {
+  try { const o = JSON.parse(raw); return { note: o.note || "Scan Struk", rincianMsgId: o.rincianMsgId || null, items: o.items || [] }; }
+  catch { return { note: raw || "Scan Struk", rincianMsgId: null, items: [] }; }
 }
 
 async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId, accountId, env) {
@@ -574,21 +620,31 @@ async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId
       return;
     }
 
+    const { note: draftNote, rincianMsgId, items } = parseDraftNote(draft.note);
     const account = await env.DB.prepare("SELECT name, balance FROM accounts WHERE id = ? AND user_id = ?").bind(accountId, userId).first();
     if (!account) throw new Error("Rekening tidak ditemukan.");
 
     const amount = Number(draft.amount) || 0;
     const newBalance = Number(account.balance) - amount;
 
+    // Resolve kategori secara dinamis (bukan hardcode 'c12')
+    const cats = await dbCategories(userId, env);
+    const filteredCats = cats.filter(c => c.type === "expense" || c.type === "both");
+    const cat = resolveCategory(null, draftNote, draft.store, "expense", filteredCats);
+
     // Simpan transaksi
     const txId = randomId();
     await env.DB.prepare(`
       INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
-      VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, 'c12', '[foto struk]', 'telegram')
-    `).bind(txId, userId, draft.date, amount, draft.note, draft.store, accountId).run();
+      VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, '[foto struk]', 'telegram')
+    `).bind(txId, userId, draft.date, amount, draftNote, draft.store, accountId, cat?.id || null).run();
 
+    await saveTransactionItems(txId, items, env);
     await adjustBalance(accountId, "expense", amount, +1, env);
     await env.DB.prepare("DELETE FROM pending_scans WHERE id = ?").bind(pendingId).run();
+
+    // Hapus pesan rincian struk (Pesan 1) agar chat tetap bersih
+    if (rincianMsgId) await deleteTgMessage(chatId, rincianMsgId, env);
 
     const successMsg = `✅ *TRANSAKSI BERHASIL DICATAT!*\n\n🏪 *Merchant:* ${draft.store}\n💵 *Total Belanja:* Rp${fmt(amount)}\n💳 *Metode:* ${account.name}\n💰 *Sisa Saldo:* Rp${fmt(newBalance)}\n📅 *Tanggal:* ${fmtDate(draft.date)}\n\n_Catatan transaksi berhasil disinkronkan ke aplikasi Laksa Anda._`;
     await editTgMessage(chatId, messageId, successMsg, env, [[{ text: "🏠 Menu", callback_data: "menu" }]]);
@@ -709,6 +765,7 @@ async function deleteTx(chatId, userId, txId, env) {
   const tx = await env.DB.prepare(`SELECT * FROM transactions WHERE id = ? AND user_id = ?`).bind(txId, userId).first();
   if (!tx) { await tgSend(chatId, "❌ Transaksi tidak ditemukan.", env); return; }
   await adjustBalance(tx.account_id, tx.type, tx.amount, -1, env);
+  await env.DB.prepare("DELETE FROM transaction_items WHERE transaction_id = ?").bind(txId).run().catch(() => {});
   await env.DB.prepare(`DELETE FROM transactions WHERE id = ?`).bind(txId).run();
   await tgSend(chatId, "🗑️ *Transaksi dihapus.*", env, [[{ text: "🏠 Menu", callback_data: "menu" }]]);
 }
@@ -722,19 +779,14 @@ async function sendMenu(chatId, env) {
     `Ketik langsung untuk mencatat:\n` +
     `_beli bakso 15rb pakai mandiri_\n` +
     `_gaji masuk 5jt ke bca_\n\n` +
-    `Atau kirim foto struk 📸\n\n` +
-    `*Perintah:*\n` +
-    `/saldo — lihat saldo rekening\n` +
-    `/riwayat — 10 transaksi terakhir\n` +
-    `/tagihan — tagihan aktif\n` +
-    `/myid — Telegram ID kamu\n` +
-    `/batal — batalkan aksi`,
+    `Atau kirim foto struk 📸`,
     env,
     [[
-      { text: "💳 Saldo",    callback_data: "saldo"   },
+      { text: "💰 Saldo",    callback_data: "saldo"   },
       { text: "📋 Riwayat", callback_data: "riwayat" },
     ],[
-      { text: "🗓️ Tagihan", callback_data: "tagihan" },
+      { text: "📑 Tagihan", callback_data: "tagihan" },
+      { text: "ℹ️ Info Akun", callback_data: "myid" },
     ]]
   );
 }
@@ -852,25 +904,33 @@ async function sendTagihan(chatId, userId, env) {
 async function sendMyId(chatId, userId, firstName, env) {
   await tgSend(chatId,
     `🪪 *Telegram ID kamu:*\n\n\`${userId}\`\n\nHai ${firstName || ""}! Salin angka ini ke halaman setup website Laksa. 🔒`,
-    env
+    env, [[{ text: "🏠 Menu", callback_data: "menu" }]]
   );
 }
 
 // ─────────────────────────────────────────────────────
 // AI — GROQ HELPERS
 // ─────────────────────────────────────────────────────
+function fetchWithTimeout(url, options, timeoutMs = 15000) {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), timeoutMs)),
+  ]);
+}
+
 async function groqChat(messages, env, { models = PARSE_MODELS, maxTokens = 300, temperature = 0.1, jsonMode = false } = {}) {
   let lastError = null;
   for (const model of models) {
     try {
       const payload = { model, messages, temperature, max_tokens: maxTokens };
       if (jsonMode) payload.response_format = { type: "json_object" };
-      const res  = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const res  = await fetchWithTimeout("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${env.GROQ_API_KEY}` },
         body: JSON.stringify(payload),
       });
       if (res.status === 429 || res.status === 503) { lastError = `${model}: HTTP ${res.status}`; continue; }
+      if (!res.ok) { lastError = `${model}: HTTP ${res.status}`; continue; }
       const data = await res.json();
       if (data.error) { lastError = `${model}: ${data.error.message}`; continue; }
       if (data.choices?.[0]?.message?.content) {
@@ -974,20 +1034,7 @@ async function parseCorrection(text, currentTx, env) {
 // OCR STRUK — strict null/NaN 0-Rupiah Voucher Fix
 // ─────────────────────────────────────────────────────
 async function ocrReceipt(base64, mime, env) {
-  try {
-    const ocrRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${env.GROQ_API_KEY}` },
-      body: JSON.stringify({
-        model: "llama-3.2-11b-vision-preview",
-        temperature: 0.1,
-        max_tokens: 1024,
-        messages: [{
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `Analisis struk belanja ini dan keluarkan data dalam bentuk JSON murni tanpa tambahan markdown block. Format objek JSON:
+  const visionPrompt = `Analisis struk belanja ini dan keluarkan data dalam bentuk JSON murni tanpa tambahan markdown block. Format objek JSON:
 {
   "store": "Nama toko/merchant",
   "date": "Tanggal transaksi format YYYY-MM-DD",
@@ -1003,47 +1050,66 @@ async function ocrReceipt(base64, mime, env) {
 PENTING:
 - Ekstrak diskon belanja jika ada ke dalam 'discount'.
 - Jika struk total bernilai 0 rupiah karena didiskon penuh atau voucher, keluarkan nilai 'total' sebagai 0 (JANGAN menolaknya, keluarkan 0).
-- JANGAN menyertakan block \`\`\`json di awal dan di akhir, langsung keluarkan objek JSON.`
-            },
-            { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
-          ],
-        }],
-      }),
-    });
-    if (!ocrRes.ok) return { _error: `Vision error ${ocrRes.status}` };
-    
-    const resData = await ocrRes.json();
-    const rawText = resData.choices?.[0]?.message?.content?.trim() || "";
-    const parsed  = extractJSON(rawText);
+- JANGAN menyertakan block \`\`\`json di awal dan di akhir, langsung keluarkan objek JSON.`;
 
-    // Strict 0-Rupiah Null/NaN Verification
-    const hasTotal  = parsed.total !== undefined && parsed.total !== null && parsed.total !== "" && !isNaN(parsed.total);
-    const hasAmount = parsed.amount !== undefined && parsed.amount !== null && parsed.amount !== "" && !isNaN(parsed.amount);
-    if (!hasTotal && !hasAmount) return { _error: "Total tidak terdeteksi." };
+  let lastError = null;
+  for (const model of VISION_MODELS) {
+    try {
+      const ocrRes = await fetchWithTimeout("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${env.GROQ_API_KEY}` },
+        body: JSON.stringify({
+          model,
+          temperature: 0.1,
+          max_tokens: 1024,
+          messages: [{
+            role: "user",
+            content: [
+              { type: "text", text: visionPrompt },
+              { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
+            ],
+          }],
+        }),
+      }, 25000);
+      if (ocrRes.status === 429 || ocrRes.status === 503) { lastError = `${model}: HTTP ${ocrRes.status}`; continue; }
+      if (!ocrRes.ok) { lastError = `${model}: HTTP ${ocrRes.status}`; continue; }
 
-    const extractNum = (s) => {
-      if (s === undefined || s === null || s === "") return 0;
-      if (typeof s === "number") return s;
-      const m = String(s).match(/[\d][\d.,]*/g);
-      if (!m) return 0;
-      return parseInt(m[m.length - 1].replace(/[.,]/g, ""), 10) || 0;
-    };
+      const resData = await ocrRes.json();
+      if (resData.error) { lastError = `${model}: ${resData.error.message}`; continue; }
+      const rawText = resData.choices?.[0]?.message?.content?.trim() || "";
+      if (!rawText) { lastError = `${model}: empty response`; continue; }
+      const parsed  = extractJSON(rawText);
 
-    const total    = extractNum(parsed.total !== undefined ? parsed.total : parsed.amount);
-    const tunai    = extractNum(parsed.tunai);
-    const discount = extractNum(parsed.discount);
-    let   change   = extractNum(parsed.change);
-    if (change === 0 && tunai > total) change = tunai - total;
+      // Strict 0-Rupiah Null/NaN Verification
+      const hasTotal  = parsed.total !== undefined && parsed.total !== null && parsed.total !== "" && !isNaN(parsed.total);
+      const hasAmount = parsed.amount !== undefined && parsed.amount !== null && parsed.amount !== "" && !isNaN(parsed.amount);
+      if (!hasTotal && !hasAmount) { lastError = `${model}: Total tidak terdeteksi`; continue; }
 
-    return {
-      store:      parsed.store || null,
-      date:       parsed.date  || null,
-      note:       parsed.note  || (parsed.store ? `Belanja di ${parsed.store}` : "Belanja"),
-      items:      Array.isArray(parsed.items) ? parsed.items : [],
-      total, discount, change, tunai,
-      confidence: parsed.confidence || "medium",
-    };
-  } catch (e) { return { _error: e.message }; }
+      const extractNum = (s) => {
+        if (s === undefined || s === null || s === "") return 0;
+        if (typeof s === "number") return s;
+        const m = String(s).match(/[\d][\d.,]*/g);
+        if (!m) return 0;
+        return parseInt(m[m.length - 1].replace(/[.,]/g, ""), 10) || 0;
+      };
+
+      const total    = extractNum(parsed.total !== undefined ? parsed.total : parsed.amount);
+      const tunai    = extractNum(parsed.tunai);
+      const discount = extractNum(parsed.discount);
+      let   change   = extractNum(parsed.change);
+      if (change === 0 && tunai > total) change = tunai - total;
+
+      return {
+        store:      parsed.store || null,
+        date:       parsed.date  || null,
+        note:       parsed.note  || (parsed.store ? `Belanja di ${parsed.store}` : "Belanja"),
+        items:      Array.isArray(parsed.items) ? parsed.items : [],
+        total, discount, change, tunai,
+        confidence: parsed.confidence || "medium",
+      };
+    } catch (e) { lastError = `${model}: ${e.message}`; continue; }
+  }
+  return { _error: lastError || "Semua model vision gagal." };
 }
 
 // ─────────────────────────────────────────────────────
@@ -1311,7 +1377,32 @@ async function setupDatabase(env) {
       )
     `).run();
 
-    return jsonRes({ status: "success", message: "Database tables created successfully (accounts, categories, transactions, budgets, goals, bills, pending_scans, piutang)" });
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS pending_texts (
+        chat_id TEXT PRIMARY KEY,
+        data TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS processed_updates (
+        update_id INTEGER PRIMARY KEY,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS transaction_items (
+        id TEXT PRIMARY KEY,
+        transaction_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        qty INTEGER DEFAULT 1,
+        price REAL DEFAULT 0
+      )
+    `).run();
+
+    return jsonRes({ status: "success", message: "Database tables created successfully (accounts, categories, transactions, transaction_items, budgets, goals, bills, pending_scans, piutang, pending_texts, processed_updates)" });
   } catch (e) {
     return jsonRes({ error: e.message }, 500);
   }
@@ -1351,6 +1442,49 @@ async function dbCategories(userId, env) {
     results = r.results || [];
   }
   return results || [];
+}
+
+// ─────────────────────────────────────────────────────
+// PENDING TEXT HELPERS (D1-backed, replaces in-memory Map)
+// ─────────────────────────────────────────────────────
+async function savePendingText(chatId, parsed, rawText, cat, env) {
+  const data = JSON.stringify({ parsed, rawText, cat });
+  await env.DB.prepare(
+    "INSERT OR REPLACE INTO pending_texts (chat_id, data, created_at) VALUES (?, ?, datetime('now'))"
+  ).bind(String(chatId), data).run();
+}
+
+async function loadPendingText(chatId, env) {
+  const row = await env.DB.prepare(
+    "SELECT data, created_at FROM pending_texts WHERE chat_id = ?"
+  ).bind(String(chatId)).first();
+  if (!row) return null;
+  const age = Date.now() - new Date(row.created_at + "Z").getTime();
+  if (age > PENDING_TEXT_TTL_MS) {
+    await clearPendingText(chatId, env);
+    return null;
+  }
+  try { return JSON.parse(row.data); } catch { return null; }
+}
+
+async function clearPendingText(chatId, env) {
+  await env.DB.prepare("DELETE FROM pending_texts WHERE chat_id = ?").bind(String(chatId)).run();
+}
+
+async function saveTransactionItems(txId, items, env) {
+  if (!items || !items.length) return;
+  for (const item of items) {
+    await env.DB.prepare(
+      "INSERT INTO transaction_items (id, transaction_id, name, qty, price) VALUES (?, ?, ?, ?, ?)"
+    ).bind(randomId(), txId, item.name || "", item.qty || 1, item.total_price || 0).run();
+  }
+}
+
+async function getTransactionItems(uid, txId, env) {
+  const tx = await env.DB.prepare("SELECT id FROM transactions WHERE id = ? AND user_id = ?").bind(txId, uid).first();
+  if (!tx) return jsonRes({ error: "Transaksi tidak ditemukan" }, 404);
+  const { results } = await env.DB.prepare("SELECT * FROM transaction_items WHERE transaction_id = ?").bind(txId).all();
+  return jsonRes(results || []);
 }
 
 async function getTxFull(id, env) {
@@ -1481,6 +1615,7 @@ async function deleteTransaction(uid, id, env) {
   const tx = await env.DB.prepare("SELECT * FROM transactions WHERE id = ? AND user_id = ?").bind(id, uid).first();
   if (tx) {
     await adjustBalance(tx.account_id, tx.type, tx.amount, -1, env);
+    await env.DB.prepare("DELETE FROM transaction_items WHERE transaction_id = ?").bind(id).run().catch(() => {});
     await env.DB.prepare("DELETE FROM transactions WHERE id = ? AND user_id = ?").bind(id, uid).run();
   }
   return jsonRes({ status: "deleted" });
@@ -1694,9 +1829,15 @@ function extractJSON(raw) {
 function likelyTx(text) {
   const lower = text.toLowerCase();
   const hasNum = /\b\d+(?:[.,]\d+)?\s*(?:rb|k|jt|juta|ribu)?\b/.test(lower);
-  const keywords = ["beli", "bayar", "gaji", "pemasukan", "pengeluaran", "transfer", "pindah", "masuk", "keluar", "belanja", "topup", "tarik", "uang", "saldo", "cashback", "refund"];
+  const keywords = ["beli", "bayar", "gaji", "pemasukan", "pengeluaran", "transfer", "pindah", "masuk", "keluar", "belanja", "topup", "tarik", "uang", "saldo", "cashback", "refund", "tambah", "setor", "tabung", "nabung", "cicil", "angsuran", "hutang", "piutang"];
   const hasKeyword = keywords.some(k => lower.includes(k));
   return hasNum || hasKeyword;
+}
+
+function stripMarkdown(text) {
+  return text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // [text](url) → text
+    .replace(/[*_`]/g, "");                     // remove *, _, `
 }
 
 async function tgSend(chatId, text, env, keyboard = null) {
@@ -1709,11 +1850,25 @@ async function tgSend(chatId, text, env, keyboard = null) {
   if (keyboard) {
     payload.reply_markup = { inline_keyboard: keyboard };
   }
-  await fetch(`${TG(TOKEN)}/sendMessage`, {
+  const res = await fetch(`${TG(TOKEN)}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
+  if (res.ok) {
+    const data = await res.json().catch(() => null);
+    return data?.result?.message_id || null;
+  }
+  // Retry without Markdown — strip formatting chars so they don't show as raw text
+  delete payload.parse_mode;
+  payload.text = stripMarkdown(text);
+  const res2 = await fetch(`${TG(TOKEN)}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data2 = await res2.json().catch(() => null);
+  return data2?.result?.message_id || null;
 }
 
 async function tgSendForceReply(chatId, text, env) {
@@ -1730,6 +1885,15 @@ async function tgSendForceReply(chatId, text, env) {
   });
 }
 
+async function deleteTgMessage(chatId, messageId, env) {
+  const TOKEN = env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN;
+  await fetch(`${TG(TOKEN)}/deleteMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, message_id: messageId })
+  }).catch(() => {});
+}
+
 async function editTgMessage(chatId, messageId, text, env, keyboard = null) {
   const TOKEN = env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN;
   const payload = {
@@ -1741,11 +1905,20 @@ async function editTgMessage(chatId, messageId, text, env, keyboard = null) {
   if (keyboard) {
     payload.reply_markup = { inline_keyboard: keyboard };
   }
-  await fetch(`${TG(TOKEN)}/editMessageText`, {
+  const res = await fetch(`${TG(TOKEN)}/editMessageText`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
+  if (!res.ok) {
+    delete payload.parse_mode;
+    payload.text = stripMarkdown(text);
+    await fetch(`${TG(TOKEN)}/editMessageText`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  }
 }
 
 // ─────────────────────────────────────────────────────
