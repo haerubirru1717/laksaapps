@@ -32,6 +32,25 @@ function updateProfilePreview() {
     circleEl.textContent = initials;
   }
   nameDisplayEl.textContent = name;
+
+  // Update Telegram ID
+  const p = getProfile();
+  const tgEl = el('profileAvatarTg');
+  if (tgEl && p) {
+    tgEl.textContent = 'Telegram ID: ' + (p.tgId || '—');
+    const connTgEl = el('connectedTgId');
+    if (connTgEl) connTgEl.textContent = p.tgId || '—';
+  }
+
+  // Update Theme Display Value
+  const activeTheme = document.documentElement.getAttribute('data-theme') || 'glass';
+  const themeLabels = {
+    'glass': 'Glass Terang',
+    'dark': 'Glass Gelap (OLED)',
+    'education': 'Educational Platform'
+  };
+  const themeValEl = el('activeThemeVal');
+  if (themeValEl) themeValEl.textContent = themeLabels[activeTheme] || activeTheme;
 }
 
 function saveS() {
@@ -59,9 +78,37 @@ function saveS() {
 }
 
 function renderAccList() {
-  el('accList').innerHTML = getAccs().map(a => {
-    const b = detBank(a.name); const clr = (b && b.color) ? b.color : (a.color || '#a78bfa');
-    return `<li class="acc-item"><span style="display:flex;align-items:center;gap:.42rem;text-transform:uppercase;min-width:0;"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${clr};flex-shrink:0;"></span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(a.name)}</span></span><span style="display:flex;align-items:center;gap:.5rem;flex-shrink:0;"><span class="acc-item-bal">${fCur(a.balance)}</span><button class="abtn del" onclick="delAcc('${a.id}')" title="Hapus rekening"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></span></li>`;
+  const listEl = el('accList');
+  if (!listEl) return;
+  listEl.innerHTML = getAccs().map(a => {
+    const b = detBank(a.name);
+    const logo = getLogoHtml(a.name, b, 'acc-logo', 'acc-logo-fb', 'width:100%;height:100%;object-fit:cover;border-radius:50%;', true);
+    
+    // Logo bg
+    const c1 = (b && b.color) ? b.color : (a.color || '#7c3aed');
+    const c2 = (b && b.c2) ? b.c2 : (a.color || '#4e1fb5');
+    const logoBg = `background:linear-gradient(135deg,${c1},${c2})`;
+    
+    return `
+      <div class="sett-list-item" onclick="openAccDetail('${a.id}')">
+        <div class="sett-acc-logo" style="${logoBg}">
+          ${logo}
+        </div>
+        <div class="sett-item-info">
+          <div class="sett-item-title" style="text-transform:uppercase">${esc(a.name)}</div>
+          <div class="sett-item-sub">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><polyline points="12 12 16 14"/></svg>
+            Saldo: ${fCur(a.balance)}
+          </div>
+        </div>
+        <div class="sett-item-action" onclick="event.stopPropagation()">
+          <button class="abtn del" onclick="delAcc('${a.id}')" title="Hapus rekening" style="color:var(--expense);margin-right:0.3rem;background:transparent;border:none;cursor:pointer;padding:4px;display:flex;align-items:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--ink3);opacity:0.6"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+    `;
   }).join('');
 }
 async function addAcc(data) {
@@ -372,4 +419,22 @@ function renderAccSheetBody() {
     }).join('');
     return `<div class="acc-tx-group"><div class="acc-tx-date">${fDate(date)}</div>${items}</div>`;
   }).join('');
+}
+
+function toggleThemeSection() {
+  const elCollapse = el('settThemeCollapse');
+  const chev = el('themeChevron');
+  if (!elCollapse || !chev) return;
+  const isHidden = elCollapse.style.display === 'none';
+  elCollapse.style.display = isHidden ? 'block' : 'none';
+  chev.style.transform = isHidden ? 'rotate(90deg)' : '';
+}
+
+function toggleProfileEdit() {
+  const elCollapse = el('settProfileCollapse');
+  const chev = el('profileChevron');
+  if (!elCollapse || !chev) return;
+  const isHidden = elCollapse.style.display === 'none';
+  elCollapse.style.display = isHidden ? 'block' : 'none';
+  chev.style.transform = isHidden ? 'rotate(90deg)' : '';
 }
