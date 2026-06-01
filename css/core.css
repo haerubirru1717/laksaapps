@@ -88,17 +88,17 @@
       --expense-dim: rgba(239, 68, 68, .12);
       --gold-dim: rgba(245, 158, 11, .12);
       /* Glass surface overrides — dark */
-      --gs-1: rgba(255, 255, 255, .03);
-      --gs-2: rgba(255, 255, 255, .04);
-      --gs-3: rgba(255, 255, 255, .03);
-      --gs-4: rgba(255, 255, 255, .05);
-      --gs-5: rgba(255, 255, 255, .02);
+      --gs-1: rgba(255, 255, 255, .10);
+      --gs-2: rgba(255, 255, 255, .12);
+      --gs-3: rgba(255, 255, 255, .08);
+      --gs-4: rgba(255, 255, 255, .14);
+      --gs-5: rgba(255, 255, 255, .06);
       --gs-6: rgba(5, 5, 6, .90);
       --gs-7: rgba(5, 5, 6, .95);
       --gs-8: rgba(5, 5, 6, .85);
-      --gs-9: rgba(255, 255, 255, .03);
-      --gs-border: rgba(255, 255, 255, .08);
-      --gs-border-hi: rgba(255, 255, 255, .15);
+      --gs-9: rgba(255, 255, 255, .08);
+      --gs-border: rgba(255, 255, 255, .12);
+      --gs-border-hi: rgba(255, 255, 255, .22);
       --mesh-a: radial-gradient(circle 600px at 15% 10%, rgba(94, 106, 210, .15) 0%, transparent 60%), radial-gradient(circle 500px at 85% 85%, rgba(247, 147, 26, .1) 0%, transparent 65%), #020203;
       --mesh-b: radial-gradient(circle 450px at 50% 50%, rgba(94, 106, 210, .08) 0%, transparent 70%);
     }
