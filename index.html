@@ -846,6 +846,12 @@
               </div>
             </div>
           </div>
+          <div style="display:flex;justify-content:flex-end;align-items:center;margin:0 .3rem .9rem;gap:.5rem;user-select:none;">
+            <label style="display:inline-flex;align-items:center;gap:.38rem;cursor:pointer;font-size:.76rem;color:var(--ink3);font-weight:600;">
+              <input type="checkbox" id="toggleShowPaidBills" onchange="togglePaidBillsVisibility()" style="width:14px;height:14px;cursor:pointer;accent-color:var(--accent);" />
+              Tampilkan Tagihan Lunas
+            </label>
+          </div>
           <div class="bill-grid" id="billGrid"></div>
           <div class="empty" id="billEmpty" style="display:none"><svg width="40" height="40" viewBox="0 0 24 24"
               fill="none" stroke="currentColor" stroke-width="1.5" opacity=".25">

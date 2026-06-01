@@ -252,11 +252,24 @@ function renderBillsHero(bills) {
   } else if (bar) bar.innerHTML = `<div class="bills-hero-segbar-seg" style="width:100%;background:var(--gs-border);"></div>`;
 }
 
+let showPaidBills = false;
+function togglePaidBillsVisibility() {
+  const chk = document.getElementById('toggleShowPaidBills');
+  if (chk) {
+    showPaidBills = chk.checked;
+    renderBills();
+  }
+}
+
 function renderBills() {
   const bills = getBills(), grid = el('billGrid'), emp = el('billEmpty');
   renderBillsHero(bills);
   if (!bills.length) { grid.innerHTML = ''; emp.style.display = 'flex'; return; }
   emp.style.display = 'none';
+  
+  const chk = document.getElementById('toggleShowPaidBills');
+  if (chk) chk.checked = showPaidBills;
+
   const ORDER = { overdue: 0, 'due-soon': 1, upcoming: 2, paid: 3 };
   const sorted = [...bills].sort((a, b) => {
     const sa = billDueStatus(a), sb = billDueStatus(b);
@@ -265,7 +278,25 @@ function renderBills() {
     if (sa.due && sb.due) return sa.due - sb.due;
     return 0;
   });
-  grid.innerHTML = sorted.map(b => {
+
+  let displayBills = sorted;
+  if (!showPaidBills) {
+    displayBills = sorted.filter(b => billDueStatus(b).cls !== 'paid');
+  }
+
+  if (!displayBills.length) {
+    grid.innerHTML = `<div class="empty" style="display:flex;padding:3rem 1.5rem;text-align:center;flex-direction:column;align-items:center;justify-content:center;width:100%;box-sizing:border-box;">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--income)" stroke-width="1.8" style="margin-bottom:.5rem;opacity:.9;filter:drop-shadow(0 0 8px rgba(34,197,120,0.3));">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+        <polyline points="22 4 12 14.01 9 11.01" />
+      </svg>
+      <h3 style="font-size:0.95rem;font-weight:700;color:var(--ink);margin-bottom:0.25rem;">Semua Tagihan Lunas! 🎉</h3>
+      <p style="font-size:0.76rem;color:var(--ink3);">Keren, tidak ada tagihan jatuh tempo bulan ini yang tersisa.</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = displayBills.map(b => {
     const st = billDueStatus(b);
     const typeLbl = BILL_TYPES.find(t => t.id === b.bill_type)?.label || 'Lainnya';
     const dueLabel = b.due_type === 'once' && b.due_date
