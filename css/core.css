@@ -254,11 +254,6 @@
     html[data-theme="education"] .bnav-item.active {
       color: #10b981 !important;
     }
-    html[data-theme="education"] .bnav-item.active .bnav-pill {
-      background: #fedbd4 !important;
-      border: 2px solid #0f172a !important;
-      box-shadow: 2px 2px 0px #0f172a !important;
-    }
     html[data-theme="education"] .btn2 {
       border: 2px solid #0f172a !important;
       box-shadow: 2px 2px 0px #0f172a !important;
@@ -294,18 +289,20 @@
     }
 
     /* ── EDUCATION: Mobile Bottom Navbar Overrides ── */
-    html[data-theme="education"] .bnav {
+    html[data-theme="education"] .bnav-capsule {
       background: #ffffff !important;
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
-      border-top: 3px solid #0f172a !important;
-      box-shadow: 0 -4px 0px rgba(15, 23, 42, 0.05) !important;
+      border: 3px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
     }
     html[data-theme="education"] .bnav-item {
       color: #64748b !important;
     }
     html[data-theme="education"] .bnav-item.active {
       color: #10b981 !important;
+      background: #bae6fd !important;
+      border: 2px solid #0f172a !important;
     }
     html[data-theme="education"] .bnav-item.active svg {
       filter: none !important;
@@ -314,7 +311,7 @@
       background: #10b981 !important;
       border: 2.5px solid #0f172a !important;
       box-shadow: 3px 3px 0px #0f172a !important;
-      border-radius: 16px !important;
+      border-radius: 50% !important;
     }
     html[data-theme="education"] .fab-opt {
       border: 2px solid #0f172a !important;
@@ -963,17 +960,19 @@
       box-shadow: 0 0 20px rgba(37,99,235,.4), inset 0 1px 0 rgba(255,255,255,.15)
     }
 
+    html[data-theme="dark"] .bnav-capsule {
+      background: rgba(8, 8, 12, 0.82);
+      border-color: rgba(255, 255, 255, 0.06);
+      box-shadow: 0 4px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
     html[data-theme="dark"] .bnav-item {
-      color: rgba(100,116,139,.8)
+      color: rgba(148, 163, 184, 0.6)
     }
 
     html[data-theme="dark"] .bnav-item.active {
-      color: #93c5fd
-    }
-
-    html[data-theme="dark"] .bnav-item.active .bnav-pill {
-      background: rgba(37,99,235,.3);
-      box-shadow: 0 2px 12px rgba(37,99,235,.3)
+      color: #93c5fd;
+      background: rgba(37, 99, 235, 0.18);
     }
 
     html[data-theme="dark"] .sidebar {
@@ -1005,10 +1004,8 @@
       box-shadow: 0 4px 20px rgba(37,99,235,.45), inset 0 1px 0 rgba(255,255,255,.15)
     }
 
-    html[data-theme="dark"] .bnav {
-      background: rgba(6,10,20,.78);
-      border-top-color: rgba(255,255,255,.07);
-      box-shadow: 0 -8px 32px rgba(0,0,0,.4), 0 -1px 0 rgba(255,255,255,.05)
+    html[data-theme="dark"] .bnav-add {
+      box-shadow: 0 4px 20px rgba(37, 99, 235, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
     }
 
     html[data-theme="dark"] .finp {
