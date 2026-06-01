@@ -1330,6 +1330,8 @@ Selalu balas dalam format JSON murni TANPA markdown block (\`\`\`json). Struktur
   * PENTING: Pertanyaan ini harus berupa hal yang ingin DITANYAKAN PENGGUNA kepada AI, bukan pertanyaan dari AI ke pengguna!
   * JANGAN PERNAH menyertakan dialog AI seperti "Ada transaksi lain yang ingin dicatat?", "Mau lihat tagihan?", atau "Ada yang bisa dibantu?".
   * JANGAN PERNAH menyertakan tanda tanya di akhir chip saran jika itu berupa pertanyaan retoris AI kepada user.
+  * JANGAN PERNAH menyarankan pertanyaan yang berujung pada tips teoritis, nasihat umum (seperti "Bagaimana cara menghemat?", "Berikan tips keuangan"), atau fitur yang belum diintegrasikan di sistem (seperti membuat anggaran/budget baru).
+  * SETIAP saran pertanyaan lanjutan HARUS berorientasi pada data keuangan riil (seperti cek saldo, cek tagihan, cek kategori boros) atau aksi pencatatan nyata (seperti mencatat transaksi/tagihan).
   * CONTOH YANG BENAR: ["Berapa sisa saldo BNI saya?", "Tolong tunjukkan daftar tagihan bulan ini", "Kategori mana yang paling boros?", "Bagaimana status anggaran saya?"]
 - \`transaction\`: \`null\` kecuali user meminta CATAT transaksi. Jika catat, isi objek: {"type":"income/expense/transfer","amount":angka,"account_name":"...","category_name":"...","note":"...","date":"YYYY-MM-DD"}. Untuk transfer gunakan \`from_account_name\` dan \`to_account_name\` sebagai ganti \`account_name\`.
 - \`bills\`: \`null\` kecuali user meminta CATAT tagihan. Jika catat, isi array objek: [{"name":"...","bill_type":"cc/paylater/cicilan/langganan/lainnya","amount":angka,"due_date":"YYYY-MM-DD","status":"unpaid/paid"}]
@@ -1842,6 +1844,11 @@ function sanitizeFollowups(followups) {
   return followups.map(s => {
     let text = s.trim();
     
+    // 1. FILTER OUT: Generic advice, tips, or unhandled/theoretical actions that the AI can't execute
+    if (/(?:tips|saran|bagaimana\s+cara|cara\s+menghemat|buat\s+anggaran|buat\s+budget|tambah\s+target|tambah\s+anggaran|rencana\s+keuangan|edukasi)/i.test(text)) {
+      return null;
+    }
+    
     // Pattern 1: "Ada transaksi lain yang ingin dicatat?" or "Ada ... yang ingin dicatat/dilihat?"
     if (/^ada\s+(.+?)\s+yang\s+ingin\s+dicatat\??$/i.test(text)) {
       return "Catat transaksi lainnya";
@@ -1890,7 +1897,7 @@ function sanitizeFollowups(followups) {
     
     text = text.replace(/\bkamu\b|\banda\b/gi, 'saya').replace(/\bmu\b/gi, 'ku');
     return text;
-  });
+  }).filter(Boolean);
 }
 
 function aiAppendMsg(role, text) {
