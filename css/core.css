@@ -1056,6 +1056,12 @@
       color: var(--ink2)
     }
 
+    html[data-theme="dark"] .swipe-confirm-sheet {
+      background: rgba(10, 11, 20, 0.96) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.65) !important;
+    }
+
     /* dark mode — dash topbar */
     html[data-theme="dark"] .dash-greeting-time {
       color: var(--ink3)

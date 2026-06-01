@@ -192,9 +192,15 @@ const BILL_TYPES = [
 ];
 
 function billDueStatus(bill) {
-  if (bill.status === 'paid') return { cls: 'paid', label: 'Lunas', dotCls: 'paid' };
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const y = today.getFullYear(), m = today.getMonth();
+  const currentMonthStr = `${y}-${String(m + 1).padStart(2, '0')}`;
+  
+  const isPaidThisMonth = bill.status === 'paid' && 
+    (bill.due_type !== 'monthly' || (bill.paid_date && bill.paid_date.startsWith(currentMonthStr)));
+
+  if (isPaidThisMonth) return { cls: 'paid', label: 'Lunas', dotCls: 'paid' };
+
   const dueDay = bill.due_day || 1;
   let due = new Date(y, m, dueDay);
   if (bill.due_type === 'once' && bill.due_date) {
@@ -302,14 +308,29 @@ function showSwipeConfirm(bill, card) {
   const bg = card.parentElement ? card.parentElement.querySelector('.action-bg') : null;
   const lbl = card.parentElement ? card.parentElement.querySelector('.check-label') : null;
 
+  const accs = getAccs();
+  const accOpts = accs.map(a => `<option value="${a.id}">${esc(a.name)} (${fCur(a.balance)})</option>`).join('');
+
   const overlay = document.createElement('div');
   overlay.className = 'swipe-confirm-overlay';
   overlay.id = 'swipeConfirmOverlay';
   overlay.innerHTML = `
     <div class="swipe-confirm-sheet">
       <div class="swipe-confirm-title">Konfirmasi Pelunasan</div>
-      <div class="swipe-confirm-name">${bill.name}</div>
+      <div class="swipe-confirm-name">${esc(bill.name)}</div>
       <div class="swipe-confirm-amt">${bill.amount > 0 ? fCur(bill.amount) : 'Nominal tidak diset'}</div>
+      
+      <div class="swipe-confirm-inputs" style="margin: 1.2rem 0; text-align: left;">
+        <label class="flbl" style="display:block;margin-bottom:.42rem;font-size:.76rem;color:var(--ink2);font-weight:600;">Sumber Rekening Pembayaran</label>
+        <select class="finp" id="swipePayAccId" style="width:100%;font-size:.82rem;padding:.52rem .72rem;border-radius:10px;background:var(--gs-4);border:1.5px solid var(--gs-border);color:var(--ink);margin-bottom:.85rem;">
+          ${accOpts}
+        </select>
+        <div style="display:flex;align-items:center;gap:.5rem;user-select:none;">
+          <input type="checkbox" id="swipeCreateTx" checked style="width:15px;height:15px;cursor:pointer;" />
+          <label for="swipeCreateTx" style="font-size:.76rem;color:var(--ink2);font-weight:500;cursor:pointer;">Catat pengeluaran di rekening ini</label>
+        </div>
+      </div>
+
       <div class="swipe-confirm-btns">
         <button class="swipe-confirm-cancel" id="swipeConfirmCancel">Batal</button>
         <button class="swipe-confirm-ok" id="swipeConfirmOk">✓ Ya, Sudah Lunas</button>
@@ -331,11 +352,40 @@ function showSwipeConfirm(bill, card) {
   overlay.addEventListener('click', e => { if (e.target === overlay) closeOverlay(); });
 
   document.getElementById('swipeConfirmOk').onclick = async () => {
-    overlay.remove();
-    card.style.transform = `translateX(${card.parentElement ? card.parentElement.offsetWidth : 400}px)`;
-    if (bg) bg.style.opacity = 1;
+    const okBtn = document.getElementById('swipeConfirmOk');
+    const cancelBtn = document.getElementById('swipeConfirmCancel');
+    const accId = document.getElementById('swipePayAccId')?.value;
+    const createTx = document.getElementById('swipeCreateTx')?.checked;
+    
+    if (okBtn) { okBtn.disabled = true; okBtn.textContent = 'Memproses...'; }
+    if (cancelBtn) cancelBtn.disabled = true;
+
     try {
+      const payDate = today();
+      // 1. Tandai lunas di D1
       await api('PATCH', `/bills/${bill.id}`, { status: 'paid', paid_date: new Date().toISOString() });
+      
+      // 2. Buat transaksi jika dicentang & nominal > 0 & rekening valid
+      if (createTx && bill.amount > 0 && accId) {
+        const cats = getCats();
+        const tagCat = cats.find(c => c.name.toLowerCase().includes('tagihan') || c.name.toLowerCase().includes('utilitas')) || cats[cats.length - 1];
+        await api('POST', '/transactions', {
+          type: 'expense',
+          amount: bill.amount,
+          date: payDate,
+          account_id: accId,
+          category_id: tagCat?.id || cats[0]?.id,
+          note: `Bayar ${bill.name}`,
+          source: 'website'
+        });
+        const m = payDate.slice(0, 7);
+        await Promise.all([fetchTx(m), fetchAccs()]);
+      }
+      
+      overlay.remove();
+      card.style.transform = `translateX(${card.parentElement ? card.parentElement.offsetWidth : 400}px)`;
+      if (bg) bg.style.opacity = 1;
+      
       setTimeout(() => {
         const w = card.parentElement;
         if (w) {
@@ -347,12 +397,16 @@ function showSwipeConfirm(bill, card) {
           w.style.marginBottom = '0';
         }
       }, 200);
+      
       toast('Tagihan ditandai lunas ✓', 'ok');
       await fetchBills();
       renderBills();
       renderDashBills();
+      if (typeof refresh === 'function') refresh();
     } catch(err) {
       toast('Gagal: ' + err.message, 'err');
+      if (okBtn) { okBtn.disabled = false; okBtn.textContent = '✓ Ya, Sudah Lunas'; }
+      if (cancelBtn) cancelBtn.disabled = false;
       card.style.transition = 'transform 0.3s';
       card.style.transform = 'translateX(0)';
       if (bg) bg.style.opacity = 0;
