@@ -3,7 +3,7 @@
  * ─────────────────────────────────────────────────────
  * Single source of truth: Cloudflare D1.
  *
- * ENV VARS : TELEGRAM_TOKEN, GROQ_API_KEY
+ * ENV VARS : TELEGRAM_TOKEN, GROQ_API_KEY, TELEGRAM_WEBHOOK_SECRET (optional)
  * D1 BINDING: DB
  *
  * Fitur Bot Telegram:
@@ -40,9 +40,8 @@ const VISION_MODELS = [
   "meta-llama/llama-4-maverick-17b-128e-instruct", // fallback
 ];
 
-// Volatile state per chat (in-memory)
-// Hanya dipakai saat fallback pilih rekening lewat keyboard
-const PENDING = new Map(); // chatId → { parsed, rawText, cat }
+// Max age for pending text entries (ms)
+const PENDING_TEXT_TTL_MS = 5 * 60 * 1000; // 5 menit
 
 // ─────────────────────────────────────────────────────
 // ENTRY POINT
@@ -53,7 +52,26 @@ export default {
     if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
     try {
       if (request.method === "POST" && (url.pathname === "/webhook" || url.pathname === "/telegram-webhook")) {
+        // Webhook secret verification
+        const secret = env.TELEGRAM_WEBHOOK_SECRET;
+        if (secret) {
+          const headerSecret = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
+          if (headerSecret !== secret) {
+            return new Response("Unauthorized", { status: 403 });
+          }
+        }
         const body = await request.json();
+        // Deduplication: skip already-processed updates
+        const updateId = body.update_id;
+        if (updateId) {
+          const existing = await env.DB.prepare(
+            "SELECT update_id FROM processed_updates WHERE update_id = ?"
+          ).bind(updateId).first().catch(() => null);
+          if (existing) return new Response("OK");
+          await env.DB.prepare(
+            "INSERT OR IGNORE INTO processed_updates (update_id) VALUES (?)"
+          ).bind(updateId).run().catch(() => {});
+        }
         ctx.waitUntil(handleTelegram(body, env));
         return new Response("OK");
       }
@@ -180,7 +198,7 @@ async function handleTelegram(body, env) {
     if (text === "/saldo")   { await sendSaldo(chatId, userId, env); return; }
     if (text === "/riwayat") { await sendRiwayat(chatId, userId, env); return; }
     if (text === "/tagihan") { await sendTagihan(chatId, userId, env); return; }
-    if (text === "/batal")   { PENDING.delete(chatId); await tgSend(chatId, "❌ Dibatalkan.", env); return; }
+    if (text === "/batal")   { await clearPendingText(chatId, env); await tgSend(chatId, "❌ Dibatalkan.", env); return; }
 
     // Reply ke pesan bot → koreksi transaksi
     if (msg.reply_to_message?.from?.is_bot) {
@@ -345,8 +363,8 @@ async function handleFreeText(chatId, userId, text, env) {
     return;
   }
 
-  // 5. Rekening tidak ketemu → fallback keyboard
-  PENDING.set(chatId, { parsed, rawText: text, cat });
+  // 5. Rekening tidak ketemu → fallback keyboard (persistent via D1)
+  await savePendingText(chatId, parsed, text, cat, env);
   await tgSend(chatId,
     `📋 *${fmtType(parsed.type)}: Rp${fmt(parsed.amount)}*\n📝 ${parsed.note || "-"}\n\n*Pilih rekening:*`,
     env,
@@ -355,11 +373,11 @@ async function handleFreeText(chatId, userId, text, env) {
 }
 
 async function handleAccPick(chatId, userId, accId, env) {
-  const pending = PENDING.get(chatId);
+  const pending = await loadPendingText(chatId, env);
   if (!pending) { await tgSend(chatId, "❌ Sesi habis. Kirim ulang transaksinya ya.", env); return; }
   const acc = await env.DB.prepare(`SELECT * FROM accounts WHERE id = ? AND user_id = ?`).bind(accId, userId).first();
   if (!acc) { await tgSend(chatId, "❌ Rekening tidak valid.", env); return; }
-  PENDING.delete(chatId);
+  await clearPendingText(chatId, env);
   const { parsed, rawText, cat } = pending;
   await saveTx(chatId, userId, parsed, acc, cat, rawText, env);
 }
@@ -584,12 +602,17 @@ async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId
     const amount = Number(draft.amount) || 0;
     const newBalance = Number(account.balance) - amount;
 
+    // Resolve kategori secara dinamis (bukan hardcode 'c12')
+    const cats = await dbCategories(userId, env);
+    const filteredCats = cats.filter(c => c.type === "expense" || c.type === "both");
+    const cat = resolveCategory(null, draft.note, draft.store, "expense", filteredCats);
+
     // Simpan transaksi
     const txId = randomId();
     await env.DB.prepare(`
       INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
-      VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, 'c12', '[foto struk]', 'telegram')
-    `).bind(txId, userId, draft.date, amount, draft.note, draft.store, accountId).run();
+      VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, '[foto struk]', 'telegram')
+    `).bind(txId, userId, draft.date, amount, draft.note, draft.store, accountId, cat?.id || null).run();
 
     await adjustBalance(accountId, "expense", amount, +1, env);
     await env.DB.prepare("DELETE FROM pending_scans WHERE id = ?").bind(pendingId).run();
@@ -1329,7 +1352,22 @@ async function setupDatabase(env) {
       )
     `).run();
 
-    return jsonRes({ status: "success", message: "Database tables created successfully (accounts, categories, transactions, budgets, goals, bills, pending_scans, piutang)" });
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS pending_texts (
+        chat_id TEXT PRIMARY KEY,
+        data TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS processed_updates (
+        update_id INTEGER PRIMARY KEY,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+
+    return jsonRes({ status: "success", message: "Database tables created successfully (accounts, categories, transactions, budgets, goals, bills, pending_scans, piutang, pending_texts, processed_updates)" });
   } catch (e) {
     return jsonRes({ error: e.message }, 500);
   }
@@ -1369,6 +1407,33 @@ async function dbCategories(userId, env) {
     results = r.results || [];
   }
   return results || [];
+}
+
+// ─────────────────────────────────────────────────────
+// PENDING TEXT HELPERS (D1-backed, replaces in-memory Map)
+// ─────────────────────────────────────────────────────
+async function savePendingText(chatId, parsed, rawText, cat, env) {
+  const data = JSON.stringify({ parsed, rawText, cat });
+  await env.DB.prepare(
+    "INSERT OR REPLACE INTO pending_texts (chat_id, data, created_at) VALUES (?, ?, datetime('now'))"
+  ).bind(String(chatId), data).run();
+}
+
+async function loadPendingText(chatId, env) {
+  const row = await env.DB.prepare(
+    "SELECT data, created_at FROM pending_texts WHERE chat_id = ?"
+  ).bind(String(chatId)).first();
+  if (!row) return null;
+  const age = Date.now() - new Date(row.created_at + "Z").getTime();
+  if (age > PENDING_TEXT_TTL_MS) {
+    await clearPendingText(chatId, env);
+    return null;
+  }
+  try { return JSON.parse(row.data); } catch { return null; }
+}
+
+async function clearPendingText(chatId, env) {
+  await env.DB.prepare("DELETE FROM pending_texts WHERE chat_id = ?").bind(String(chatId)).run();
 }
 
 async function getTxFull(id, env) {
@@ -1712,7 +1777,7 @@ function extractJSON(raw) {
 function likelyTx(text) {
   const lower = text.toLowerCase();
   const hasNum = /\b\d+(?:[.,]\d+)?\s*(?:rb|k|jt|juta|ribu)?\b/.test(lower);
-  const keywords = ["beli", "bayar", "gaji", "pemasukan", "pengeluaran", "transfer", "pindah", "masuk", "keluar", "belanja", "topup", "tarik", "uang", "saldo", "cashback", "refund"];
+  const keywords = ["beli", "bayar", "gaji", "pemasukan", "pengeluaran", "transfer", "pindah", "masuk", "keluar", "belanja", "topup", "tarik", "uang", "saldo", "cashback", "refund", "tambah", "setor", "tabung", "nabung", "cicil", "angsuran", "hutang", "piutang"];
   const hasKeyword = keywords.some(k => lower.includes(k));
   return hasNum || hasKeyword;
 }
