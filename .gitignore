@@ -1,0 +1,7 @@
+ui-ux-pro-max-skill/
+.gemini/
+.env
+.env.local
+.env.*
+node_modules/
+dist/
