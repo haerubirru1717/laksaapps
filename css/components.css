@@ -1595,11 +1595,16 @@
     .keu-seg-wrap {
       padding: .2rem 0 .9rem;
       display: flex;
-      justify-content: center
+      justify-content: center;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none
     }
+    .keu-seg-wrap::-webkit-scrollbar { display: none }
 
     .keu-seg {
       display: inline-flex;
+      flex-shrink: 0;
       background: rgba(0, 0, 0, 0.04);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
@@ -1613,14 +1618,14 @@
     .keu-tab {
       display: flex;
       align-items: center;
-      gap: .4rem;
-      padding: 8px 20px;
+      gap: .35rem;
+      padding: 6px 14px;
       border-radius: 99px;
       border: none;
       background: transparent;
       color: var(--ink3);
       font-family: inherit;
-      font-size: .8rem;
+      font-size: .78rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);

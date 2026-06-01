@@ -2719,11 +2719,16 @@
     .keu-seg-wrap {
       padding: .2rem 0 .9rem;
       display: flex;
-      justify-content: center
+      justify-content: center;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none
     }
+    .keu-seg-wrap::-webkit-scrollbar { display: none }
 
     .keu-seg {
       display: inline-flex;
+      flex-shrink: 0;
       background: var(--gs-2);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
@@ -2737,14 +2742,14 @@
     .keu-tab {
       display: flex;
       align-items: center;
-      gap: .4rem;
-      padding: .42rem 1.2rem;
+      gap: .35rem;
+      padding: .42rem .85rem;
       border-radius: 10px;
       border: none;
       background: transparent;
       color: var(--ink3);
       font-family: inherit;
-      font-size: .8rem;
+      font-size: .78rem;
       font-weight: 600;
       cursor: pointer;
       transition: all .18s;
@@ -5957,7 +5962,7 @@
         <div class="ph">
           <div>
             <h1 class="ptitle">Keuangan</h1>
-            <p class="psub">Anggaran, Target &amp; Tagihan</p>
+            <p class="psub">Anggaran, Target, Tagihan &amp; Piutang</p>
           </div>
         </div>
         <div class="keu-seg-wrap">
