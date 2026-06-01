@@ -148,3 +148,13 @@
       transform: translateY(-1px);
       box-shadow: 0 6px 20px rgba(37, 99, 235, .45)
     }
+
+    @media(max-width:360px) {
+      .setup-themes {
+        flex-direction: column;
+      }
+      .setup-theme-opt {
+        width: 100%;
+      }
+    }
+

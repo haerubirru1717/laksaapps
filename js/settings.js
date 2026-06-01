@@ -61,7 +61,7 @@ function saveS() {
 function renderAccList() {
   el('accList').innerHTML = getAccs().map(a => {
     const b = detBank(a.name); const clr = (b && b.color) ? b.color : (a.color || '#a78bfa');
-    return `<li class="acc-item"><span style="display:flex;align-items:center;gap:.42rem;text-transform:uppercase"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${clr}"></span>${esc(a.name)}</span><span style="display:flex;align-items:center;gap:.5rem"><span class="acc-item-bal">${fCur(a.balance)}</span><button class="abtn del" onclick="delAcc('${a.id}')" title="Hapus rekening"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></span></li>`;
+    return `<li class="acc-item"><span style="display:flex;align-items:center;gap:.42rem;text-transform:uppercase;min-width:0;"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${clr};flex-shrink:0;"></span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(a.name)}</span></span><span style="display:flex;align-items:center;gap:.5rem;flex-shrink:0;"><span class="acc-item-bal">${fCur(a.balance)}</span><button class="abtn del" onclick="delAcc('${a.id}')" title="Hapus rekening"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></span></li>`;
   }).join('');
 }
 async function addAcc(data) {

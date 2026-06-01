@@ -106,7 +106,7 @@ function renderRHist() {
   if (!list) return; cnt.textContent = r.length + ' struk';
   if (!r.length) { list.innerHTML = ''; emp.style.display = 'flex'; return; }
   emp.style.display = 'none';
-  list.innerHTML = r.slice(0, 20).map(rx => `<li class="rhist-item"><div><div class="rhist-store">${esc(rx.store)}</div><div class="rhist-meta">${fDate(rx.date)} · ${rx.itemCount} item</div></div><div class="rhist-total">−${fCur(rx.total)}</div></li>`).join('');
+  list.innerHTML = r.slice(0, 20).map(rx => `<li class="rhist-item"><div style="min-width:0;flex:1;margin-right:.5rem;"><div class="rhist-store">${esc(rx.store)}</div><div class="rhist-meta">${fDate(rx.date)} · ${rx.itemCount} item</div></div><div class="rhist-total">−${fCur(rx.total)}</div></li>`).join('');
 }
 function rTab(tab, btn) { document.querySelectorAll('.rtab').forEach(b => b.classList.remove('active')); document.querySelectorAll('.rtab-c').forEach(c => c.classList.remove('active')); btn.classList.add('active'); const c = el('tab-' + tab); if (c) c.classList.add('active'); }
 

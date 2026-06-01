@@ -968,6 +968,17 @@
       flex-shrink: 0
     }
 
+    @media(max-width:480px) {
+      .donut-wrap {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: center;
+      }
+      .legend {
+        width: 100%;
+      }
+    }
+
     /* PROGRESS */
     .prog-list {
       list-style: none;
@@ -1469,6 +1480,13 @@
       border-collapse: collapse;
       font-size: .8rem;
       table-layout: fixed
+    }
+
+    @media(max-width:768px) {
+      .tbl {
+        table-layout: auto;
+        min-width: 550px;
+      }
     }
 
     .tbl th {
@@ -2015,6 +2033,30 @@
       background: var(--gs-4)
     }
 
+    @media(max-width:640px) {
+      .fbar {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: .5rem !important;
+        padding: .65rem !important;
+      }
+      .fsrch {
+        grid-column: span 2 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+      .fsel {
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      .finput.mon {
+        grid-column: span 2 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+      }
+    }
+
     /* ── EMPTY STATES — frosted ── */
     .empty {
       display: flex;
@@ -2340,10 +2382,19 @@
       border-color: var(--gs-border-hi)
     }
 
+    .rhist-item > div:first-child {
+      min-width: 0;
+      flex: 1;
+      margin-right: .5rem;
+    }
+
     .rhist-store {
       font-size: .8rem;
       font-weight: 600;
-      color: var(--ink)
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .rhist-meta {
@@ -2353,6 +2404,7 @@
     }
 
     .rhist-total {
+      flex-shrink: 0;
       font-family: 'Inter', sans-serif;
       font-size: .8rem;
       font-weight: 700;
@@ -2776,6 +2828,19 @@
       margin-top: 1.1rem;
       padding-top: .9rem;
       border-top: 1.5px solid var(--border)
+    }
+
+    @media(max-width:480px) {
+      .mfoot {
+        flex-direction: column-reverse;
+        gap: .5rem;
+      }
+      .mfoot button,
+      .mfoot .btn,
+      .mfoot .btn2 {
+        width: 100% !important;
+        margin: 0 !important;
+      }
     }
 
     .hint {
@@ -3930,7 +3995,11 @@
       .card-top > div[style*="display:flex;gap:6px"],
       .card-top > div[style*="display: flex; gap: 6px;"],
       .card-top > div[style*="display:flex;gap:6px;align-items:center;"],
-      .card-top > div[style*="display: flex; gap: 6px; align-items: center;"] {
+      .card-top > div[style*="display: flex; gap: 6px; align-items: center;"],
+      .card-actions {
+        display: flex;
+        gap: 6px;
+        align-items: center;
         justify-content: flex-end;
         align-self: flex-end;
       }
