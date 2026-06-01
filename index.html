@@ -10,11 +10,11 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
     rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <script src="banks.js?v=1.2.5"></script>
-  <link rel="stylesheet" href="css/core.css?v=1.2.5" />
-  <link rel="stylesheet" href="css/layout.css?v=1.2.5" />
-  <link rel="stylesheet" href="css/components.css?v=1.2.5" />
-  <link rel="stylesheet" href="css/pages.css?v=1.2.5" />
+  <script src="banks.js?v=1.2.6"></script>
+  <link rel="stylesheet" href="css/core.css?v=1.2.6" />
+  <link rel="stylesheet" href="css/layout.css?v=1.2.6" />
+  <link rel="stylesheet" href="css/components.css?v=1.2.6" />
+  <link rel="stylesheet" href="css/pages.css?v=1.2.6" />
 </head>
 
 <body>
@@ -948,96 +948,207 @@
           </div>
         </div>
         <div class="sgrid2">
-          <div class="widget">
-            <!-- Avatar Card — dinamis via renderSettings() -->
-            <div class="profile-avatar-card" id="profileAvatarCard" onclick="triggerAvatarUpload(event)" style="cursor:pointer" title="Ketuk untuk ubah foto profil">
-              <div class="profile-avatar-circle" id="profileAvatarCircle">?</div>
-              <div class="profile-avatar-info">
-                <div class="pa-name" id="profileAvatarName">Pengguna</div>
-                <div class="pa-sub">Ketuk di sini untuk mengubah foto profil</div>
+          <!-- KOLOM KIRI: Profil & Koneksi -->
+          <div style="display:flex;flex-direction:column;gap:1rem">
+            <!-- Profil Card -->
+            <div class="theme-section-label">Profil Kamu</div>
+            <div class="settings-card" style="padding:1rem;margin-bottom:0">
+              <div class="profile-avatar-card" id="profileAvatarCard" onclick="toggleProfileEdit()" style="cursor:pointer;margin-bottom:0;box-shadow:none;border:none;background:transparent;padding:0" title="Ketuk untuk ubah nama profil">
+                <div class="profile-avatar-circle" id="profileAvatarCircle" onclick="triggerAvatarUpload(event);event.stopPropagation()" title="Ketuk untuk ubah foto profil" style="box-shadow: 0 4px 12px rgba(37,99,235,.2)">?</div>
+                <div class="profile-avatar-info">
+                  <div class="pa-name" id="profileAvatarName" style="font-size:1rem;font-weight:700">Pengguna</div>
+                  <div class="pa-sub" id="profileAvatarTg" style="font-size:0.75rem;color:var(--ink3)">Telegram ID: —</div>
+                </div>
+                <div class="sett-item-action">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" id="profileChevron" style="transition:transform 0.2s"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+              </div>
+              
+              <!-- Collapsible Profile Edit -->
+              <div class="sett-profile-collapse" id="settProfileCollapse" style="display:none;padding: 1rem 0 0;margin-top:1rem;border-top:1px solid var(--border)">
+                <div class="settings-form-row" style="margin-bottom:0">
+                  <label class="flbl" for="sName" style="margin-bottom:0.4rem">Nama Profil</label>
+                  <div style="display:flex;gap:0.5rem">
+                    <input type="text" class="finp" id="sName" placeholder="Nama kamu" oninput="updateProfilePreview()" style="flex:1;height:38px" />
+                    <button class="btn" onclick="saveS()" style="padding:0 1.1rem;font-size:0.78rem;height:38px;border-radius:10px;margin:0">Simpan</button>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div class="settings-form-row">
-              <label class="flbl" for="sName">Nama Profil</label>
-              <input type="text" class="finp" id="sName" placeholder="Nama kamu"
-                oninput="updateProfilePreview()" />
-            </div>
-            <div class="settings-form-row">
-              <label class="flbl" for="sCurr">Mata Uang</label>
-              <select class="finp" id="sCurr">
-                <option value="Rp">🇮🇩 Rupiah (Rp)</option>
-                <option value="$">🇺🇸 Dollar ($)</option>
-                <option value="€">🇪🇺 Euro (€)</option>
-                <option value="¥">🇯🇵 Yen (¥)</option>
-              </select>
-            </div>
-
-            <div class="theme-section-label">Tema Tampilan</div>
-            <div class="theme-grid-premium" id="themeGridPremium">
-              <!-- Glass Terang -->
-              <button class="theme-card-premium" id="topt-glass"
-                onclick="applyTheme('glass',this,true)" aria-label="Tema Glass Terang">
-                <div class="theme-preview-colors">
-                  <span style="background:linear-gradient(135deg,#dbeafe,#ede9fe)"></span>
-                  <span style="background:linear-gradient(135deg,rgba(99,179,237,.7),rgba(167,139,250,.6))"></span>
-                  <span style="background:#2563eb"></span>
-                  <span style="background:#10b981"></span>
+            <!-- Koneksi Telegram -->
+            <div class="theme-section-label">Koneksi Telegram</div>
+            <div class="settings-card" style="margin-bottom:0">
+              <div class="sett-list-item" style="cursor:default">
+                <div class="sett-item-icon" style="color:#10b981;background:rgba(16,185,129,0.08)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </div>
-                <div class="theme-card-label">Glass Terang</div>
-                <div class="theme-card-desc">Frosted glass cerah & bersih</div>
-              </button>
-              <!-- Glass Gelap -->
-              <button class="theme-card-premium" id="topt-dark"
-                onclick="applyTheme('dark',this,true)" aria-label="Tema Glass Gelap">
-                <div class="theme-preview-colors">
-                  <span style="background:linear-gradient(135deg,#020203,#111726)"></span>
-                  <span style="background:linear-gradient(135deg,#5e6ad2,#2563eb)"></span>
-                  <span style="background:#f7931a"></span>
-                  <span style="background:#10b981"></span>
+                <div class="sett-item-info">
+                  <div class="sett-item-title" id="connectedTgId">—</div>
+                  <div class="sett-item-sub">Sinkronisasi Cloud Aktif</div>
                 </div>
-                <div class="theme-card-label">Glass Gelap (OLED)</div>
-                <div class="theme-card-desc">Deep dark, grid modern & glowing</div>
-              </button>
-              <!-- Educational Platform -->
-              <button class="theme-card-premium" id="topt-education"
-                onclick="applyTheme('education',this,true)" aria-label="Tema Educational Platform">
-                <div class="theme-preview-colors">
-                  <span style="background:linear-gradient(135deg,#faf8f5,#fedbd4)"></span>
-                  <span style="background:linear-gradient(135deg,#bae6fd,#93c5fd)"></span>
-                  <span style="background:#10b981"></span>
-                  <span style="background:#ffffff"></span>
+                <div class="sett-item-action">
+                  <button class="abtn" onclick="refreshData(thisMon())" title="Refresh data dari server" style="color:var(--ink2);background:transparent;border:none;cursor:pointer;padding:4px;display:flex;align-items:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
+                  <button class="abtn del" onclick="logoutAkun(event)" title="Putus koneksi &amp; Keluar" style="color:var(--expense);background:transparent;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;margin-left:0.2rem"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
                 </div>
-                <div class="theme-card-label">Educational Platform</div>
-                <div class="theme-card-desc">Claymorphism & block-based playful</div>
-              </button>
+              </div>
+              <div class="sett-list-item" onclick="logoutAkun(event)" style="justify-content:center;color:var(--accent);font-weight:700;font-size:0.8rem;border-top:1px solid var(--border)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:0.4rem"><path d="M15 3h6v6M10 14L21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                Hubungkan Telegram Lain
+              </div>
             </div>
 
-            <button class="btn full" onclick="saveS()">Simpan Pengaturan</button>
+            <!-- Rekening Kamu -->
+            <div class="theme-section-label">Rekening Kamu</div>
+            <div class="settings-card" style="margin-bottom:0">
+              <div id="accList"></div>
+              <div class="sett-list-item" onclick="openModal('addAccount')" style="justify-content:center;color:var(--accent);font-weight:700;font-size:0.8rem;border-top:1px solid var(--border)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:0.4rem"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Tambah Rekening Baru
+              </div>
+            </div>
           </div>
 
-          <div class="widget">
-            <div class="wh">
-              <h3 class="wt">Rekening</h3>
-            </div>
-            <ul class="acc-list" id="accList"></ul>
-          </div>
-          <div class="widget">
-            <div class="wh">
-              <h3 class="wt">Kategori Kustom</h3>
-            </div>
-            <ul class="cat-chips" id="catList"></ul>
-          </div>
-          <div class="widget">
-            <h3 class="wt" style="margin-bottom:.9rem">Backup &amp; Restore</h3>
+          <!-- KOLOM KANAN: Setelan Aplikasi & Backup -->
+          <div style="display:flex;flex-direction:column;gap:1rem">
+            <!-- Setelan Aplikasi -->
+            <div class="theme-section-label">Setelan Aplikasi</div>
+            <div class="settings-card" style="margin-bottom:0">
+              <!-- Mata Uang -->
+              <div class="sett-list-item" style="cursor:default">
+                <div class="sett-item-icon" style="color:var(--accent)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                </div>
+                <div class="sett-item-info">
+                  <div class="sett-item-title">Mata Uang</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.3rem">
+                  <select class="sett-item-select" id="sCurr" onchange="saveS()">
+                    <option value="Rp">🇮🇩 Rupiah (Rp)</option>
+                    <option value="$">🇺🇸 Dollar ($)</option>
+                    <option value="€">🇪🇺 Euro (€)</option>
+                    <option value="¥">🇯🇵 Yen (¥)</option>
+                  </select>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--ink3);opacity:0.6"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+              </div>
 
-            <p class="hint" style="margin-bottom:.9rem">Data tersimpan di browser. Backup rutin sangat disarankan.</p>
-            <div style="display:flex;gap:.65rem;flex-wrap:wrap"><button class="btn2" onclick="doBackup()">↓ Backup
-                JSON</button><button class="btn2" onclick="document.getElementById('restoreF').click()">↑
-                Restore</button><input type="file" id="restoreF" accept=".json" style="display:none"
-                onchange="doRestore(event)" /></div>
-            <div class="danger-zone">
-              <h4>Zona Berbahaya</h4><button class="btn-danger" onclick="resetAll()">Hapus Semua Data</button>
+              <!-- Tema Tampilan -->
+              <div class="sett-list-item" onclick="toggleThemeSection()">
+                <div class="sett-item-icon" style="color:var(--accent)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/><path d="M12 18C15.3137 18 18 15.3137 18 12C18 8.68629 15.3137 6 12 6C8.68629 6 6 8.68629 6 12C6 15.3137 8.68629 18 12 18Z"/></svg>
+                </div>
+                <div class="sett-item-info">
+                  <div class="sett-item-title">Tema Tampilan</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.3rem">
+                  <span class="sett-item-val" id="activeThemeVal">Glass Terang</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" id="themeChevron" style="color:var(--ink3);opacity:0.6;transition:transform 0.2s"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+              </div>
+
+              <!-- Collapsible Theme Grid -->
+              <div class="sett-theme-collapse" id="settThemeCollapse" style="display:none;padding: 1rem;background:rgba(0,0,0,0.015);border-bottom:1px solid var(--border)">
+                <div class="theme-grid-premium" id="themeGridPremium" style="margin-bottom:0">
+                  <!-- Glass Terang -->
+                  <button class="theme-card-premium" id="topt-glass"
+                    onclick="applyTheme('glass',this,true)" aria-label="Tema Glass Terang">
+                    <div class="theme-preview-colors">
+                      <span style="background:linear-gradient(135deg,#dbeafe,#ede9fe)"></span>
+                      <span style="background:linear-gradient(135deg,rgba(99,179,237,.7),rgba(167,139,250,.6))"></span>
+                      <span style="background:#2563eb"></span>
+                      <span style="background:#10b981"></span>
+                    </div>
+                    <div class="theme-card-label" style="font-size:0.68rem;margin-top:0.3rem">Glass Terang</div>
+                  </button>
+                  <!-- Glass Gelap -->
+                  <button class="theme-card-premium" id="topt-dark"
+                    onclick="applyTheme('dark',this,true)" aria-label="Tema Glass Gelap">
+                    <div class="theme-preview-colors">
+                      <span style="background:linear-gradient(135deg,#020203,#111726)"></span>
+                      <span style="background:linear-gradient(135deg,#5e6ad2,#2563eb)"></span>
+                      <span style="background:#f7931a"></span>
+                      <span style="background:#10b981"></span>
+                    </div>
+                    <div class="theme-card-label" style="font-size:0.68rem;margin-top:0.3rem">Glass Gelap</div>
+                  </button>
+                  <!-- Educational Platform -->
+                  <button class="theme-card-premium" id="topt-education"
+                    onclick="applyTheme('education',this,true)" aria-label="Tema Educational Platform">
+                    <div class="theme-preview-colors">
+                      <span style="background:linear-gradient(135deg,#faf8f5,#fedbd4)"></span>
+                      <span style="background:linear-gradient(135deg,#bae6fd,#93c5fd)"></span>
+                      <span style="background:#10b981"></span>
+                      <span style="background:#ffffff"></span>
+                    </div>
+                    <div class="theme-card-label" style="font-size:0.68rem;margin-top:0.3rem">Educational</div>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Ekspor CSV -->
+              <div class="sett-list-item" onclick="expCSV()">
+                <div class="sett-item-icon" style="color:var(--accent)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </div>
+                <div class="sett-item-info">
+                  <div class="sett-item-title">Ekspor Laporan (CSV)</div>
+                </div>
+                <div class="sett-item-action">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+              </div>
+
+              <!-- Backup JSON -->
+              <div class="sett-list-item" onclick="doBackup()">
+                <div class="sett-item-icon" style="color:var(--accent)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                </div>
+                <div class="sett-item-info">
+                  <div class="sett-item-title">Backup JSON</div>
+                </div>
+                <div class="sett-item-action">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+              </div>
+
+              <!-- Restore JSON -->
+              <div class="sett-list-item" onclick="document.getElementById('restoreF').click()">
+                <div class="sett-item-icon" style="color:var(--accent)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </div>
+                <div class="sett-item-info">
+                  <div class="sett-item-title">Restore JSON</div>
+                </div>
+                <input type="file" id="restoreF" accept=".json" style="display:none" onchange="doRestore(event)" />
+                <div class="sett-item-action">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+              </div>
+            </div>
+
+            <!-- Kategori Kustom -->
+            <div class="theme-section-label">Kategori Kustom</div>
+            <div class="settings-card" style="padding:1rem;margin-bottom:0">
+              <div class="cat-chips" id="catList" style="margin-bottom:0.75rem"></div>
+              <div class="sett-list-item" onclick="openModal('addCategory')" style="justify-content:center;color:var(--accent);font-weight:700;font-size:0.8rem;border-top:1px solid var(--border);padding-top:0.75rem;padding-bottom:0">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:0.4rem"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Tambah Kategori Baru
+              </div>
+            </div>
+
+            <!-- Tombol Keluar & Danger Zone -->
+            <button class="sett-btn-logout" onclick="logoutAkun(event)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              Logout / Ganti Akun
+            </button>
+            
+            <div style="text-align:center;margin-top:0.3rem">
+              <button class="lbtn" onclick="resetAll()" style="color:var(--expense);font-size:0.7rem;font-weight:600;text-decoration:none;border:none;background:transparent;cursor:pointer">Hapus Semua Data Aplikasi</button>
             </div>
           </div>
         </div>
@@ -1070,17 +1181,17 @@
   <div class="acc-sheet" id="accSheet"></div>
 
   <!-- Laksa Modules -->
-  <script src="js/app.js?v=1.2.5"></script>
-  <script src="js/dashboard.js?v=1.2.5"></script>
-  <script src="js/transactions.js?v=1.2.5"></script>
-  <script src="js/receipt.js?v=1.2.5"></script>
-  <script src="js/keuangan.js?v=1.2.5"></script>
-  <script src="js/reports.js?v=1.2.5"></script>
-  <script src="js/settings.js?v=1.2.5"></script>
-  <script src="js/modals.js?v=1.2.5"></script>
+  <script src="js/app.js?v=1.2.6"></script>
+  <script src="js/dashboard.js?v=1.2.6"></script>
+  <script src="js/transactions.js?v=1.2.6"></script>
+  <script src="js/receipt.js?v=1.2.6"></script>
+  <script src="js/keuangan.js?v=1.2.6"></script>
+  <script src="js/reports.js?v=1.2.6"></script>
+  <script src="js/settings.js?v=1.2.6"></script>
+  <script src="js/modals.js?v=1.2.6"></script>
 
   <!-- Laksa AI Plugin -->
-  <script src="ai-chat.js?v=1.2.5"></script>
+  <script src="ai-chat.js?v=1.2.6"></script>
 </body>
 
 </html>
