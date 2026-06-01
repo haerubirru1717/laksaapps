@@ -564,6 +564,7 @@ async function handlePhoto(msg, chatId, userId, env) {
       VALUES (?, ?, ?, ?, ?, ?)
     `).bind(pendingId, userId, result.store || "Merchant", result.total, result.date || todayStr(), result.note || "Scan Struk").run();
 
+    // Pesan 1: Rincian struk (read-only)
     let rincian = `🛒 *RINCIAN STRUK BELANJA*\n\n`;
     rincian += `🏪 *Toko:* ${result.store || "-"}\n`;
     rincian += `📅 *Tanggal:* ${fmtDate(result.date || todayStr())}\n`;
@@ -575,14 +576,14 @@ async function handlePhoto(msg, chatId, userId, env) {
         rincian += `${i + 1}. _${it.name}_ (x${it.qty || 1}) - Rp${fmt(it.total_price || 0)}\n`;
       });
     }
-    rincian += `\n❓ *Apakah rincian belanjaan di atas sudah benar?*\nSilakan pilih rekening pembayaran di bawah ini untuk menyimpannya:`;
+    await tgSend(chatId, rincian, env);
 
-    const inlineKeyboard = accs.map(acc => [
-      { text: `💳 ${acc.name} (Saldo: Rp${fmt(acc.balance)})`, callback_data: `pay:${pendingId}:${acc.id}` }
-    ]);
-    inlineKeyboard.push([{ text: "❌ Batalkan Pencatatan", callback_data: `cancel:${pendingId}` }]);
+    // Pesan 2: Pilih rekening (inline keyboard 2 kolom, compact)
+    const accButtons = accs.map(acc => ({ text: `💳 ${acc.name}`, callback_data: `pay:${pendingId}:${acc.id}` }));
+    const accKeyboard = chunks(accButtons, 2);
+    accKeyboard.push([{ text: "❌ Batalkan", callback_data: `cancel:${pendingId}` }]);
 
-    await tgSend(chatId, rincian, env, inlineKeyboard);
+    await tgSend(chatId, "💳 *Pilih rekening pembayaran:*", env, accKeyboard);
   } catch (err) {
     await tgSend(chatId, "❌ *Gagal memproses struk:* " + err.message + "\nSilakan kirim ulang foto struk yang lebih jelas.", env);
   }
