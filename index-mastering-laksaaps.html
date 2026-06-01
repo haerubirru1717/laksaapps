@@ -2725,6 +2725,13 @@
       scrollbar-width: none
     }
     .keu-seg-wrap::-webkit-scrollbar { display: none }
+    @media(max-width:768px) {
+      .keu-seg-wrap {
+        justify-content: flex-start;
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+    }
 
     .keu-seg {
       display: inline-flex;
@@ -4890,6 +4897,18 @@
       display: grid; grid-template-columns: repeat(3,1fr);
       gap: 10px; margin-bottom: 18px;
     }
+    @media(max-width:640px) {
+      .keu-summary-strip {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .keu-summary-card {
+        padding: 10px 14px;
+      }
+      .keu-summary-value {
+        font-size: 1.15rem;
+      }
+    }
     .keu-summary-card {
       background: var(--gs-1);
       backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
@@ -5020,6 +5039,20 @@
     .bill-card.upcoming { background: var(--gs-1); border-color: var(--gs-border); }
     .bill-card.paid { opacity: 0.65; cursor: default; }
     .card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+    @media(max-width:640px) {
+      .card-top {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 10px;
+      }
+      .card-top > div[style*="display:flex;gap:6px"],
+      .card-top > div[style*="display: flex; gap: 6px;"],
+      .card-top > div[style*="display:flex;gap:6px;align-items:center;"],
+      .card-top > div[style*="display: flex; gap: 6px; align-items: center;"] {
+        justify-content: flex-end;
+        align-self: flex-end;
+      }
+    }
     .card-left { display: flex; align-items: center; gap: 10px; }
     .bill-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; }
     .bill-dot.overdue { background: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25); animation: pulse-red 1.8s infinite; }
