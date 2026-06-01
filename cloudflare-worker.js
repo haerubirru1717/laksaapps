@@ -1296,7 +1296,22 @@ async function setupDatabase(env) {
       )
     `).run();
 
-    return jsonRes({ status: "success", message: "Database tables created successfully" });
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS piutang (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        borrower_name TEXT NOT NULL,
+        amount REAL NOT NULL DEFAULT 0,
+        returned REAL NOT NULL DEFAULT 0,
+        note TEXT,
+        lend_date TEXT,
+        due_date TEXT,
+        status TEXT NOT NULL DEFAULT 'active',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+
+    return jsonRes({ status: "success", message: "Database tables created successfully (accounts, categories, transactions, budgets, goals, bills, pending_scans, piutang)" });
   } catch (e) {
     return jsonRes({ error: e.message }, 500);
   }
