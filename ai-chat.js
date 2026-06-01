@@ -781,6 +781,50 @@ const AI_STYLE = `<style>
 
     /* ai-model-bar removed — autochain aktif */
 
+    /* ── AI MARKDOWN TABLE STYLE ── */
+    .ai-table-container {
+      width: 100%;
+      overflow-x: auto;
+      margin: 0.6rem 0;
+      border-radius: 12px;
+      border: 1px solid var(--gs-border);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+      background: var(--gs-2);
+    }
+
+    .ai-md-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.76rem;
+      text-align: left;
+      color: var(--ink);
+    }
+
+    .ai-md-table th {
+      background: var(--gs-3);
+      padding: 0.55rem 0.7rem;
+      font-weight: 700;
+      color: var(--accent);
+      border-bottom: 1.5px solid var(--gs-border);
+      text-transform: uppercase;
+      font-size: 0.65rem;
+      letter-spacing: 0.04em;
+    }
+
+    .ai-md-table td {
+      padding: 0.5rem 0.7rem;
+      border-bottom: 1px solid var(--gs-border);
+      vertical-align: middle;
+    }
+
+    .ai-md-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .ai-md-table tr:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
 </style>`;
 
 const AI_HTML = `  <!-- AI CHAT BUBBLE -->
@@ -1239,6 +1283,37 @@ Jika user meminta menambahkan tagihan atau daftar tagihan (misal daftar tagihan 
 - Properti tagihan: \`name\` (string, wajib. PENTING: Ekstrak HANYA nama layanan/bank. Jangan gabungkan nominal/harga ke dalam nama!), \`bill_type\` (string, WAJIB salah satu ID ini: "cc" untuk kartu kredit, "paylater" untuk paylater, "cicilan", "langganan", atau "lainnya"), \`amount\` (angka murni dari nominal/harga tagihan walau tanpa label "Rp", opsional, isi 0 jika tidak ada), \`due_date\` (string YYYY-MM-DD, pastikan parse tanggal jatuh tempo dengan akurat, misal "10 mei 2026" -> "2026-05-10"), \`status\` (string "unpaid" atau "paid").
 - Jangan mengulangi rincian secara panjang lebar di teks \`answer\`.
 
+## 7. ANALISIS WAKTU & HARI INI (ATURAN LOGIKA MUTLAK)
+- Hari ini adalah tanggal: **${today()}**
+- Periksa dengan teliti daftar "10 Transaksi Terakhir". Jika terdapat transaksi dengan tanggal sama persis dengan hari ini yaitu **${today()}**, maka itu ARTINYA HARI INI ADA TRANSAKSI!
+- Jika ada transaksi hari ini:
+  * KAMU WAJIB menyatakan secara jujur dan tegas bahwa **ada transaksi/pengeluaran hari ini**.
+  * JANGAN PERNAH, dalam kondisi apapun, mengatakan "belum ada pengeluaran hari ini" atau "belum ada transaksi baru hari ini" jika di daftar transaksi terdapat transaksi bertanggal **${today()}**!
+  * Tindakan menulis "belum ada pengeluaran hari ini tercatat, tapi terakhir ada pengeluaran tanggal ${today()} sebesar..." adalah KEBOHONGAN LOGIKA yang sangat dilarang dan dinilai bodoh.
+  * Jika ada transaksi hari ini, sebutkan detailnya langsung: "Hari ini (${today()}) kamu memiliki pengeluaran/pemasukan sebesar..."
+- Jika memang tidak ada transaksi bertanggal **${today()}** di daftar "10 Transaksi Terakhir", barulah kamu boleh menyatakan belum ada pengeluaran hari ini.
+
+## 8. REKENING & FORMAT TABEL MODERN UNTUK DATA TERSTRUKTUR
+- Jika pengguna meminta daftar rekening, akun keuangan, saldo, anggaran (budget), tagihan (bills), atau ringkasan data finansial terstruktur lainnya, **KAMU WAJIB MENYAJIKANNYA DALAM BENTUK TABEL MARKDOWN YANG INDAH DAN RAPI**.
+- Contoh Format Tabel Rekening/Saldo:
+| Rekening / E-Wallet | Tipe | Saldo |
+| :--- | :--- | :--- |
+| BNI | Bank | Rp 9.666.838 |
+| GoPay | E-Wallet | Rp 800.000 |
+
+- Contoh Format Tabel Anggaran (Budget):
+| Kategori Anggaran | Batas Anggaran | Terpakai | Status |
+| :--- | :--- | :--- | :--- |
+| Makanan | Rp 1.500.000 | Rp 1.200.000 (80%) | Aman ✅ |
+| Belanja | Rp 500.000 | Rp 550.000 (110%) | Over Limit ⚠️ |
+
+- Contoh Format Tabel Tagihan (Bills):
+| Nama Tagihan | Tipe | Nominal | Status | Jatuh Tempo |
+| :--- | :--- | :--- | :--- | :--- |
+| Kartu Kredit BNI | cc | Rp 1.500.000 | Belum Lunas ❌ | Tgl 10 tiap bulan |
+
+- Dengan format tabel markdown ini, Laksa.na akan terlihat sangat premium, rapi, dan profesional. JANGAN PERNAH menyajikan data terstruktur tersebut dalam bentuk paragraf teks panjang horizontal yang menumpuk!
+
 ## FORMAT RESPONS (WAJIB JSON)
 Selalu balas dalam format JSON murni TANPA markdown block (\`\`\`json). Strukturnya:
 {"answer":"...","followups":[...],"transaction":null,"bills":null}
@@ -1251,7 +1326,11 @@ Selalu balas dalam format JSON murni TANPA markdown block (\`\`\`json). Struktur
 - Panggil user dengan namanya. Gunakan emoji secukupnya (1-2 per paragraf, jangan berlebihan).
 
 ### ATURAN FIELD LAIN:
-- \`followups\`: Array berisi 1-2 string saran pertanyaan lanjutan DARI SUDUT PANDANG PENGGUNA (First-Person POV). Contoh: ["Kategori mana yang paling boros?", "Buatkan anggaran untuk bulan depan"]
+- \`followups\`: Array berisi 1-2 string saran pertanyaan lanjutan DARI SUDUT PANDANG PENGGUNA (First-Person POV / Dari Sisi User).
+  * PENTING: Pertanyaan ini harus berupa hal yang ingin DITANYAKAN PENGGUNA kepada AI, bukan pertanyaan dari AI ke pengguna!
+  * JANGAN PERNAH menyertakan dialog AI seperti "Ada transaksi lain yang ingin dicatat?", "Mau lihat tagihan?", atau "Ada yang bisa dibantu?".
+  * JANGAN PERNAH menyertakan tanda tanya di akhir chip saran jika itu berupa pertanyaan retoris AI kepada user.
+  * CONTOH YANG BENAR: ["Berapa sisa saldo BNI saya?", "Tolong tunjukkan daftar tagihan bulan ini", "Kategori mana yang paling boros?", "Bagaimana status anggaran saya?"]
 - \`transaction\`: \`null\` kecuali user meminta CATAT transaksi. Jika catat, isi objek: {"type":"income/expense/transfer","amount":angka,"account_name":"...","category_name":"...","note":"...","date":"YYYY-MM-DD"}. Untuk transfer gunakan \`from_account_name\` dan \`to_account_name\` sebagai ganti \`account_name\`.
 - \`bills\`: \`null\` kecuali user meminta CATAT tagihan. Jika catat, isi array objek: [{"name":"...","bill_type":"cc/paylater/cicilan/langganan/lainnya","amount":angka,"due_date":"YYYY-MM-DD","status":"unpaid/paid"}]
 
@@ -1385,10 +1464,11 @@ async function aiCallGroq() {
       }
     }
 
-    if (followups.length) {
+    const sanitizedFollowups = typeof sanitizeFollowups === 'function' ? sanitizeFollowups(followups) : followups;
+    if (sanitizedFollowups.length) {
       const sugsEl = el('aiSugs');
       sugsEl.style.display = 'flex';
-      sugsEl.innerHTML = followups.map(s => `<button class="ai-sug" onclick="aiSendSug(this,event)">${esc(s)}</button>`).join('');
+      sugsEl.innerHTML = sanitizedFollowups.map(s => `<button class="ai-sug" onclick="aiSendSug(this,event)">${esc(s)}</button>`).join('');
     }
   } catch (err) {
     typingEl.remove();
@@ -1651,47 +1731,166 @@ window.aiConfirmBills = async function(bills, bubbleId) {
   }
 };
 
+function aiRenderInlineMarkdown(text) {
+  let line = text;
+  // Inline: **bold**
+  line = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Inline: __underline__
+  line = line.replace(/__(.+?)__/g, '<u style="text-decoration-color:rgba(37,99,235,.5)">$1</u>');
+  // Inline: *italic*
+  line = line.replace(/\*([^*]+?)\*/g, '<em>$1</em>');
+  // Inline: `code`
+  line = line.replace(/`([^`]+)`/g, '<code class="ai-md-code">$1</code>');
+  return line;
+}
+
 function aiRenderMarkdown(text) {
-  // Process line by line for predictable output
   const lines = text.split('\n');
   let html = '';
+  
   for (let i = 0; i < lines.length; i++) {
-    let line = lines[i];
-    // Escape HTML
-    line = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    // Inline: **bold**
-    line = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    // Inline: __underline__
-    line = line.replace(/__(.+?)__/g, '<u style="text-decoration-color:rgba(37,99,235,.5)">$1</u>');
-    // Inline: *italic*
-    line = line.replace(/\*([^*]+?)\*/g, '<em>$1</em>');
-    // Inline: `code`
-    line = line.replace(/`([^`]+)`/g, '<code class="ai-md-code">$1</code>');
+    let line = lines[i].trim();
+    
+    // Check if it's a markdown table row
+    if (line.startsWith('|')) {
+      let tableLines = [];
+      while (i < lines.length && lines[i].trim().startsWith('|')) {
+        tableLines.push(lines[i].trim());
+        i++;
+      }
+      i--; // Adjust back since the loop will increment i
+      
+      if (tableLines.length > 0) {
+        let tableHtml = '<div class="ai-table-container"><table class="ai-md-table">';
+        let hasHeader = false;
+        
+        for (let j = 0; j < tableLines.length; j++) {
+          let rowStr = tableLines[j];
+          // Skip alignment/separator row (e.g. |:---|---:| or |--|--|)
+          if (/^[|:\-\s]+$/.test(rowStr)) {
+            continue;
+          }
+          
+          let cells = rowStr.split('|').map(c => c.trim());
+          if (rowStr.startsWith('|')) cells.shift();
+          if (rowStr.endsWith('|')) cells.pop();
+          
+          if (!hasHeader) {
+            tableHtml += '<thead><tr>';
+            cells.forEach(cell => {
+              let escapedCell = cell.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              let formattedCell = aiRenderInlineMarkdown(escapedCell);
+              tableHtml += `<th>${formattedCell}</th>`;
+            });
+            tableHtml += '</tr></thead><tbody>';
+            hasHeader = true;
+          } else {
+            tableHtml += '<tr>';
+            cells.forEach(cell => {
+              let escapedCell = cell.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              let formattedCell = aiRenderInlineMarkdown(escapedCell);
+              tableHtml += `<td>${formattedCell}</td>`;
+            });
+            tableHtml += '</tr>';
+          }
+        }
+        
+        if (hasHeader) {
+          tableHtml += '</tbody>';
+        }
+        tableHtml += '</table></div>';
+        html += tableHtml;
+        continue;
+      }
+    }
+    
+    let rawLine = lines[i];
+    let escapedLine = rawLine.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    let formattedLine = aiRenderInlineMarkdown(escapedLine);
+    
     // ### header
-    if (/^###\s+/.test(line)) {
-      html += `<div class="ai-md-h">${line.replace(/^###\s+/, '')}</div>`;
+    if (/^###\s+/.test(rawLine)) {
+      html += `<div class="ai-md-h">${rawLine.replace(/^###\s+/, '')}</div>`;
     }
     // Numbered list: 1. 2. etc
-    else if (/^\d+\.\s+/.test(line)) {
-      const num = line.match(/^(\d+)\./)[1];
-      const content = line.replace(/^\d+\.\s+/, '');
-      html += `<div class="ai-md-li"><span class="ai-md-num">${num}</span><span>${content}</span></div>`;
+    else if (/^\d+\.\s+/.test(rawLine)) {
+      const num = rawLine.match(/^(\d+)\./)[1];
+      const content = rawLine.replace(/^\d+\.\s+/, '');
+      let escapedContent = content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      html += `<div class="ai-md-li"><span class="ai-md-num">${num}</span><span>${aiRenderInlineMarkdown(escapedContent)}</span></div>`;
     }
     // Bullet list: - or * or •
-    else if (/^[-*•]\s+/.test(line)) {
-      const content = line.replace(/^[-*•]\s+/, '');
-      html += `<div class="ai-md-li"><span class="ai-md-dot">•</span><span>${content}</span></div>`;
+    else if (/^[-*•]\s+/.test(rawLine)) {
+      const content = rawLine.replace(/^[-*•]\s+/, '');
+      let escapedContent = content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      html += `<div class="ai-md-li"><span class="ai-md-dot">•</span><span>${aiRenderInlineMarkdown(escapedContent)}</span></div>`;
     }
     // Empty line → spacer
-    else if (line.trim() === '') {
+    else if (rawLine.trim() === '') {
       html += '<div class="ai-md-gap"></div>';
     }
     // Normal line
     else {
-      html += `<div class="ai-md-p">${line}</div>`;
+      html += `<div class="ai-md-p">${formattedLine}</div>`;
     }
   }
   return html;
+}
+
+function sanitizeFollowups(followups) {
+  if (!Array.isArray(followups)) return [];
+  return followups.map(s => {
+    let text = s.trim();
+    
+    // Pattern 1: "Ada transaksi lain yang ingin dicatat?" or "Ada ... yang ingin dicatat/dilihat?"
+    if (/^ada\s+(.+?)\s+yang\s+ingin\s+dicatat\??$/i.test(text)) {
+      return "Catat transaksi lainnya";
+    }
+    if (/^ada\s+(.+?)\s+yang\s+ingin\s+(dilihat|ditanyakan)\??$/i.test(text)) {
+      let match = text.match(/^ada\s+(.+?)\s+yang\s+ingin\s+(dilihat|ditanyakan)\??$/i);
+      return `Tampilkan ${match[1]} saya`;
+    }
+    
+    // Pattern 2: "Lihat detail/riwayat ... ?" or "Lihat ... ?"
+    if (/^lihat\s+(.+?)\??$/i.test(text)) {
+      let match = text.match(/^lihat\s+(.+?)\??$/i);
+      let content = match[1].replace(/\bkamu\b|\banda\b/gi, 'saya').replace(/\bmu\b/gi, 'ku');
+      return `Tampilkan ${content}`;
+    }
+    
+    // Pattern 3: "Apakah kamu/Anda ingin ... ?" or "Apakah ingin ... ?"
+    if (/^apakah\s+(kamu\s+|anda\s+)?ingin\s+(.+?)\??$/i.test(text)) {
+      let match = text.match(/^apakah\s+(kamu\s+|anda\s+)?ingin\s+(.+?)\??$/i);
+      let content = match[2].replace(/\bkamu\b|\banda\b/gi, 'saya').replace(/\bmu\b/gi, 'ku');
+      return `Saya ingin ${content}`;
+    }
+    
+    // Pattern 4: "Mau lihat/mau ... ?" or "Mau ... ?"
+    if (/^mau\s+(.+?)\??$/i.test(text)) {
+      let match = text.match(/^mau\s+(.+?)\??$/i);
+      let content = match[1].replace(/\bkamu\b|\banda\b/gi, 'saya').replace(/\bmu\b/gi, 'ku');
+      return `Tampilkan ${content}`;
+    }
+    
+    // General cleanup of question marks at the end if it asks the user
+    if (/apakah\s+ada\s+yang\s+bisa\s+(saya|kami|laksa)\s+bantu/i.test(text)) {
+      return "Tampilkan ringkasan keuangan saya";
+    }
+    
+    if (text.endsWith('?')) {
+      if (/^(ingin|mau|perlu|siap|bisa)\s+/i.test(text)) {
+        text = text.replace(/^(ingin|mau|perlu|siap|bisa)\s+/i, '');
+        text = text.replace(/\?$/, '');
+        text = text.trim();
+        text = text.charAt(0).toUpperCase() + text.slice(1);
+        text = text.replace(/\bkamu\b|\banda\b/gi, 'saya').replace(/\bmu\b/gi, 'ku');
+        return text;
+      }
+    }
+    
+    text = text.replace(/\bkamu\b|\banda\b/gi, 'saya').replace(/\bmu\b/gi, 'ku');
+    return text;
+  });
 }
 
 function aiAppendMsg(role, text) {
