@@ -301,7 +301,13 @@ ID: ${txId}`,
     await handleReceiptKeyboardConfirm(chatId, userId, cb.message.message_id, pendingId, accountId, env);
   } else if (data.startsWith("cancel:")) {
     const pendingId = data.split(":")[1];
+    const draft = await env.DB.prepare("SELECT note FROM pending_scans WHERE id = ?").bind(pendingId).first();
     await env.DB.prepare("DELETE FROM pending_scans WHERE id = ?").bind(pendingId).run();
+    // Hapus pesan rincian struk jika ada
+    if (draft) {
+      const { rincianMsgId } = parseDraftNote(draft.note);
+      if (rincianMsgId) await deleteTgMessage(chatId, rincianMsgId, env);
+    }
     await editTgMessage(chatId, cb.message.message_id, "❌ *Pencatatan struk dibatalkan.*", env);
   }
 }
@@ -559,10 +565,6 @@ async function handlePhoto(msg, chatId, userId, env) {
 
     // ── FALLBACK INTERACTIVE KEYBOARD ──
     const pendingId = "pend_" + randomId();
-    await env.DB.prepare(`
-      INSERT INTO pending_scans (id, user_id, store, amount, date, note)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).bind(pendingId, userId, result.store || "Merchant", result.total, result.date || todayStr(), result.note || "Scan Struk").run();
 
     // Pesan 1: Rincian struk (read-only)
     let rincian = `🛒 *RINCIAN STRUK BELANJA*\n\n`;
@@ -576,7 +578,14 @@ async function handlePhoto(msg, chatId, userId, env) {
         rincian += `${i + 1}. _${it.name}_ (x${it.qty || 1}) - Rp${fmt(it.total_price || 0)}\n`;
       });
     }
-    await tgSend(chatId, rincian, env);
+    const rincianMsgId = await tgSend(chatId, rincian, env);
+
+    // Store pending scan — encode rincian message_id in note for cleanup
+    const noteWithMeta = JSON.stringify({ note: result.note || "Scan Struk", rincianMsgId });
+    await env.DB.prepare(`
+      INSERT INTO pending_scans (id, user_id, store, amount, date, note)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(pendingId, userId, result.store || "Merchant", result.total, result.date || todayStr(), noteWithMeta).run();
 
     // Pesan 2: Pilih rekening (inline keyboard 2 kolom, compact)
     const accButtons = accs.map(acc => ({ text: `💳 ${acc.name}`, callback_data: `pay:${pendingId}:${acc.id}` }));
@@ -589,6 +598,11 @@ async function handlePhoto(msg, chatId, userId, env) {
   }
 }
 
+function parseDraftNote(raw) {
+  try { const o = JSON.parse(raw); return { note: o.note || "Scan Struk", rincianMsgId: o.rincianMsgId || null }; }
+  catch { return { note: raw || "Scan Struk", rincianMsgId: null }; }
+}
+
 async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId, accountId, env) {
   try {
     const draft = await env.DB.prepare("SELECT * FROM pending_scans WHERE id = ?").bind(pendingId).first();
@@ -597,6 +611,7 @@ async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId
       return;
     }
 
+    const { note: draftNote, rincianMsgId } = parseDraftNote(draft.note);
     const account = await env.DB.prepare("SELECT name, balance FROM accounts WHERE id = ? AND user_id = ?").bind(accountId, userId).first();
     if (!account) throw new Error("Rekening tidak ditemukan.");
 
@@ -606,17 +621,20 @@ async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId
     // Resolve kategori secara dinamis (bukan hardcode 'c12')
     const cats = await dbCategories(userId, env);
     const filteredCats = cats.filter(c => c.type === "expense" || c.type === "both");
-    const cat = resolveCategory(null, draft.note, draft.store, "expense", filteredCats);
+    const cat = resolveCategory(null, draftNote, draft.store, "expense", filteredCats);
 
     // Simpan transaksi
     const txId = randomId();
     await env.DB.prepare(`
       INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
       VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, '[foto struk]', 'telegram')
-    `).bind(txId, userId, draft.date, amount, draft.note, draft.store, accountId, cat?.id || null).run();
+    `).bind(txId, userId, draft.date, amount, draftNote, draft.store, accountId, cat?.id || null).run();
 
     await adjustBalance(accountId, "expense", amount, +1, env);
     await env.DB.prepare("DELETE FROM pending_scans WHERE id = ?").bind(pendingId).run();
+
+    // Hapus pesan rincian struk (Pesan 1) agar chat tetap bersih
+    if (rincianMsgId) await deleteTgMessage(chatId, rincianMsgId, env);
 
     const successMsg = `✅ *TRANSAKSI BERHASIL DICATAT!*\n\n🏪 *Merchant:* ${draft.store}\n💵 *Total Belanja:* Rp${fmt(amount)}\n💳 *Metode:* ${account.name}\n💰 *Sisa Saldo:* Rp${fmt(newBalance)}\n📅 *Tanggal:* ${fmtDate(draft.date)}\n\n_Catatan transaksi berhasil disinkronkan ke aplikasi Laksa Anda._`;
     await editTgMessage(chatId, messageId, successMsg, env, [[{ text: "🏠 Menu", callback_data: "menu" }]]);
@@ -1783,6 +1801,12 @@ function likelyTx(text) {
   return hasNum || hasKeyword;
 }
 
+function stripMarkdown(text) {
+  return text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // [text](url) → text
+    .replace(/[*_`]/g, "");                     // remove *, _, `
+}
+
 async function tgSend(chatId, text, env, keyboard = null) {
   const TOKEN = env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN;
   const payload = {
@@ -1798,15 +1822,20 @@ async function tgSend(chatId, text, env, keyboard = null) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
-  // Retry without Markdown if Telegram rejects formatting
-  if (!res.ok) {
-    delete payload.parse_mode;
-    await fetch(`${TG(TOKEN)}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+  if (res.ok) {
+    const data = await res.json().catch(() => null);
+    return data?.result?.message_id || null;
   }
+  // Retry without Markdown — strip formatting chars so they don't show as raw text
+  delete payload.parse_mode;
+  payload.text = stripMarkdown(text);
+  const res2 = await fetch(`${TG(TOKEN)}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data2 = await res2.json().catch(() => null);
+  return data2?.result?.message_id || null;
 }
 
 async function tgSendForceReply(chatId, text, env) {
@@ -1821,6 +1850,15 @@ async function tgSendForceReply(chatId, text, env) {
       reply_markup: { force_reply: true, selective: true }
     })
   });
+}
+
+async function deleteTgMessage(chatId, messageId, env) {
+  const TOKEN = env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN;
+  await fetch(`${TG(TOKEN)}/deleteMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, message_id: messageId })
+  }).catch(() => {});
 }
 
 async function editTgMessage(chatId, messageId, text, env, keyboard = null) {
@@ -1839,9 +1877,9 @@ async function editTgMessage(chatId, messageId, text, env, keyboard = null) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
-  // Retry without Markdown if Telegram rejects formatting
   if (!res.ok) {
     delete payload.parse_mode;
+    payload.text = stripMarkdown(text);
     await fetch(`${TG(TOKEN)}/editMessageText`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
