@@ -1,16 +1,17 @@
 /**
- * CLOUDFLARE WORKER BACKEND WITH INTERACTIVE TELEGRAM BOT & RECEIPT SCANNER
+ * CLOUDFLARE WORKER BACKEND WITH INTERACTIVE & CAPTION-BASED TELEGRAM BOT
  * 
- * Skenario Alur Kerja (Workflow) Interaktif Telegram Struk:
- * 1. Pengguna mengirimkan foto struk ke Bot Telegram.
- * 2. Worker mengunduh gambar struk dari API Telegram, mengompres, dan mengirimkan ke Groq Vision API.
- * 3. Groq membaca struk (termasuk penanganan nominal Rp 0 secara cerdas) dan mengembalikan JSON.
- * 4. Struk disimpan sementara sebagai DRAFT di tabel `pending_scans` di database D1 SQLite.
- * 5. Bot mengirim pesan perincian struk (Toko, Tanggal, Item, Total) bersama tombol inline (Inline Keyboard)
- *    yang berisi daftar rekening/e-wallet riil milik pengguna yang diambil dari tabel `accounts`.
- * 6. Pengguna meninjau struk, lalu memilih tombol rekening yang digunakan untuk membayar transaksi tersebut.
- * 7. Setelah tombol dipilih, Worker mencatat transaksi ke tabel `transactions`, memotong saldo rekening terkait,
- *    menghapus data draft di `pending_scans`, dan membalas chat dengan notifikasi sukses lunas!
+ * Skenario Alur Kerja (Workflow) Super Cerdas & Intuitif Telegram Struk:
+ * 1. Pengguna melampirkan foto struk dan menambahkan kalimat keterangan (caption), 
+ *    misalnya "bayar pakai bank mandiri" atau cukup ketik "mandiri".
+ * 2. Bot membaca keterangan (caption) tersebut saat gambar diunggah.
+ * 3. Jika nama rekening/e-wallet pengguna COCOK dengan kata kunci di caption:
+ *    - Bot otomatis menganalisis struk lewat AI Vision.
+ *    - Transaksi LANGSUNG disimpan ke database D1 SQLite menggunakan rekening tercocok.
+ *    - Saldo langsung dipotong dan bot mengirim notifikasi sukses instan tanpa perlu tombol pilihan lagi (Zero-Click Save!).
+ * 4. Jika keterangan kosong ATAU tidak ada nama rekening yang cocok di caption:
+ *    - Bot otomatis jatuh ke workflow fallback: menyimpan draf di `pending_scans` dan mengirimkan 
+ *      Inline Keyboard berisi daftar rekening riil pengguna untuk dipilih secara manual sekali klik.
  */
 
 export default {
@@ -47,17 +48,15 @@ export default {
         });
       }
 
-      // 3. MOCK WEB API ENDPOINTS (GET /accounts, dll. untuk kebutuhan aplikasi)
+      // 3. MOCK WEB API ENDPOINTS
       const userId = url.searchParams.get("user_id");
       if (url.pathname === "/accounts" && request.method === "GET") {
-        // Query riil dari database D1 SQLite Anda
         const { results } = await env.DB.prepare("SELECT * FROM accounts WHERE user_id = ? ORDER BY name ASC").bind(userId).all();
         return new Response(JSON.stringify(results), {
           headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
       }
 
-      // Default Response
       if (url.pathname === "/") {
         return new Response("Laksa Premium Backend API & Telegram Bot is Online! 🚀", {
           headers: { ...corsHeaders, "Content-Type": "text/plain" }
@@ -109,6 +108,7 @@ async function handleTelegramUpdate(update, env) {
   if (update.message && update.message.photo) {
     const chatId = update.message.chat.id;
     const tgId = String(chatId);
+    const caption = (update.message.caption || "").trim().toLowerCase();
     
     // Cari user_id berdasarkan Telegram ID di database
     const user = await env.DB.prepare("SELECT name FROM users WHERE telegram_id = ?").bind(tgId).first();
@@ -151,6 +151,85 @@ async function handleTelegramUpdate(update, env) {
       const dateStr = parsed.date || new Date().toISOString().slice(0, 10);
       const notes = parsed.items ? parsed.items.map(i => `${i.name} (x${i.qty || 1})`).join(", ").slice(0, 200) : "Scan Struk";
 
+      // Ambil daftar rekening pengguna untuk pencocokan caption atau tombol pilihan
+      const accounts = await env.DB.prepare("SELECT id, name, balance FROM accounts WHERE user_id = ?").bind(tgId).all();
+      if (!accounts.results || accounts.results.length === 0) {
+        await sendText(chatId, "⚠️ *Rekening belum diset.*\nSilakan buat minimal 1 rekening terlebih dahulu di web aplikasi Laksa Anda.");
+        return;
+      }
+
+      // ── LOGIKA DETEKSI OTOMATIS VIA CAPTION (REKENING MATCHING) ──
+      let matchedAcc = null;
+      if (caption) {
+        // Cari nama rekening yang terkandung dalam teks caption pengguna
+        matchedAcc = accounts.results.find(acc => {
+          const accName = acc.name.toLowerCase();
+          const cleanName = accName.replace(/\bbank\b|\be-wallet\b|\bcard\b/gi, "").trim();
+          return caption.includes(accName) || (cleanName.length >= 3 && caption.includes(cleanName));
+        });
+
+        // Fallback pencocokan singkatan standar jika belum cocok secara langsung
+        if (!matchedAcc) {
+          matchedAcc = accounts.results.find(acc => {
+            const accName = acc.name.toLowerCase();
+            if (accName.includes("bni") && caption.includes("bni")) return true;
+            if (accName.includes("bca") && caption.includes("bca")) return true;
+            if (accName.includes("mandiri") && caption.includes("mandiri")) return true;
+            if (accName.includes("gopay") && caption.includes("gopay")) return true;
+            if (accName.includes("ovo") && caption.includes("ovo")) return true;
+            if (accName.includes("dana") && caption.includes("dana")) return true;
+            if (accName.includes("jago") && caption.includes("jago")) return true;
+            if (accName.includes("permata") && caption.includes("permata")) return true;
+            if (accName.includes("spay") || accName.includes("shopee")) {
+              if (caption.includes("spay") || caption.includes("shopee") || caption.includes("shopeepay")) return true;
+            }
+            return false;
+          });
+        }
+      }
+
+      // JIKA REKENING TERCOCOKAN DI CAPTION → LAKUKAN PENYIMPANAN OTOMATIS INSTAN (ZERO CLICK)
+      if (matchedAcc) {
+        const amount = totalVal;
+        const newBalance = Number(matchedAcc.balance) - amount;
+
+        // Validasi saldo rekening terkait (kecuali struk nominal Rp 0)
+        if (amount > 0 && newBalance < 0) {
+          await sendText(chatId, `⚠️ *Pencatatan otomatis via "${update.message.caption}" dibatalkan karena saldo ${matchedAcc.name} tidak cukup!*\nSaldo saat ini: Rp ${Number(matchedAcc.balance).toLocaleString("id-ID")}, dibutuhkan: Rp ${amount.toLocaleString("id-ID")}.\n\n_Sistem mengalihkan ke pilihan rekening manual di bawah ini:_`);
+          matchedAcc = null; // Menyetel ke null agar jatuh ke workflow fallback di bawah
+        } else {
+          // 1. Simpan transaksi pengeluaran langsung
+          await env.DB.prepare(`
+            INSERT INTO transactions (id, type, amount, date, account_id, category_id, note, store, source)
+            VALUES (?, 'expense', ?, ?, ?, 'c12', ?, ?, 'telegram')
+          `).bind("tx_" + Math.random().toString(36).substring(2, 11), amount, dateStr, matchedAcc.id, notes, storeName).run();
+
+          // 2. Potong saldo rekening di database
+          await env.DB.prepare("UPDATE accounts SET balance = balance - ? WHERE id = ?").bind(amount, matchedAcc.id).run();
+
+          // 3. Susun rincian sukses otomatis
+          let rincianSuccess = `✅ *TRANSAKSI BERHASIL DICATAT OTOMATIS!*\n`;
+          rincianSuccess += `_(Dideteksi otomatis menggunakan rekening: *${matchedAcc.name}*)_\n\n`;
+          rincianSuccess += `🏪 *Merchant:* ${storeName}\n`;
+          rincianSuccess += `💵 *Total Belanja:* Rp ${amount.toLocaleString("id-ID")}\n`;
+          rincianSuccess += `💳 *Metode:* ${matchedAcc.name}\n`;
+          rincianSuccess += `💰 *Sisa Saldo:* Rp ${newBalance.toLocaleString("id-ID")}\n`;
+          rincianSuccess += `📅 *Tanggal:* ${dateStr}\n`;
+          
+          if (parsed.items && parsed.items.length > 0) {
+            rincianSuccess += `\n📦 *Daftar Item:*\n`;
+            parsed.items.forEach((it, i) => {
+              rincianSuccess += `${i + 1}. _${it.name}_ (x${it.qty || 1}) - Rp ${(it.total_price || 0).toLocaleString("id-ID")}\n`;
+            });
+          }
+          rincianSuccess += `\n_Catatan transaksi berhasil disinkronkan ke aplikasi Laksa Anda._`;
+          
+          await sendText(chatId, rincianSuccess);
+          return; // Keluar dari fungsi, alur sukses tanpa perlu menampilkan tombol pilihan lagi!
+        }
+      }
+
+      // ── WORKFLOW FALLBACK: TAMPILKAN TOMBOL PILIHAN REKENING SECARA INTERAKTIF ──
       // Buat pending scan ID kustom
       const pendingId = "pend_" + Math.random().toString(36).substring(2, 11);
 
@@ -171,13 +250,6 @@ async function handleTelegramUpdate(update, env) {
         INSERT INTO pending_scans (id, user_id, store, amount, date, note)
         VALUES (?, ?, ?, ?, ?, ?)
       `).bind(pendingId, tgId, storeName, totalVal, dateStr, notes).run();
-
-      // Ambil daftar rekening pengguna untuk dijadikan tombol
-      const accounts = await env.DB.prepare("SELECT id, name, balance FROM accounts WHERE user_id = ?").bind(tgId).all();
-      if (!accounts.results || accounts.results.length === 0) {
-        await sendText(chatId, "⚠️ *Rekening belum diset.*\nSilakan buat minimal 1 rekening terlebih dahulu di web aplikasi Laksa Anda.");
-        return;
-      }
 
       // Format rincian struk belanja
       let rincian = `🛒 *RINCIAN STRUK BELANJA*\n\n`;
@@ -242,7 +314,6 @@ async function handleTelegramUpdate(update, env) {
 
         // Validasi saldo (kecuali nominal Rp 0)
         if (amount > 0 && newBalance < 0) {
-          // Tetap tampilkan tombol agar bisa pilih rekening lain
           const accounts = await env.DB.prepare("SELECT id, name, balance FROM accounts WHERE user_id = ?").bind(tgId).all();
           const inlineKeyboard = accounts.results.map(acc => [
             {
@@ -257,16 +328,15 @@ async function handleTelegramUpdate(update, env) {
         }
 
         // Jalankan transaksi di database SQLite D1
-        // 1. Simpan ke tabel transactions
         await env.DB.prepare(`
           INSERT INTO transactions (id, type, amount, date, account_id, category_id, note, store, source)
           VALUES (?, 'expense', ?, ?, ?, 'c12', ?, ?, 'telegram')
         `).bind("tx_" + Math.random().toString(36).substring(2, 11), amount, draft.date, accountId, draft.note, draft.store).run();
 
-        // 2. Potong saldo rekening
+        // Potong saldo rekening
         await env.DB.prepare("UPDATE accounts SET balance = balance - ? WHERE id = ?").bind(amount, accountId).run();
 
-        // 3. Hapus draf pending scan
+        // Hapus draf pending scan
         await env.DB.prepare("DELETE FROM pending_scans WHERE id = ?").bind(pendingId).run();
 
         // Kirim konfirmasi sukses
@@ -342,7 +412,6 @@ PENTING:
   const result = await response.json();
   const rawText = result.choices[0].message.content.trim();
   
-  // Parse hasil JSON
   try {
     const match = rawText.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("JSON not found in LLM response");
