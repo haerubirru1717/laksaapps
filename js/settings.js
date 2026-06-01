@@ -26,8 +26,13 @@ function updateProfilePreview() {
   const initials = name.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
   
   const savedAvatar = localStorage.getItem('laksa_avatar');
-  if (savedAvatar) {
-    circleEl.innerHTML = `<img src="${savedAvatar}" alt="Foto profil" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;" />`;
+  if (savedAvatar && /^data:image\/(jpeg|png|gif|webp);base64,/.test(savedAvatar)) {
+    const img = document.createElement('img');
+    img.src = savedAvatar;
+    img.alt = 'Foto profil';
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block';
+    circleEl.textContent = '';
+    circleEl.appendChild(img);
   } else {
     circleEl.textContent = initials;
   }

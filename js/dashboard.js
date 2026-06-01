@@ -123,8 +123,13 @@ function renderDashAvatar() {
   const grad = `linear-gradient(135deg,hsl(${hue},65%,38%),hsl(${(hue + 40) % 360},70%,55%))`;
   const inner = avatarEl.querySelector('.dash-avatar-inner');
   if (!inner) return;
-  if (saved) {
-    inner.innerHTML = `<img src="${saved}" alt="Foto profil"/>`;
+  if (saved && /^data:image\/(jpeg|png|gif|webp);base64,/.test(saved)) {
+    const img = document.createElement('img');
+    img.src = saved;
+    img.alt = 'Foto profil';
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;display:block';
+    inner.textContent = '';
+    inner.appendChild(img);
   } else {
     inner.innerHTML = `<div class="dash-avatar-initials" id="dashAvatarInitials" style="background:${grad}">${initial}</div>`;
   }

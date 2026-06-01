@@ -43,20 +43,32 @@ const PENDING = new Map(); // chatId → { parsed, rawText, cat }
 // ─────────────────────────────────────────────────────
 // ENTRY POINT
 // ─────────────────────────────────────────────────────
+function verifyApiKey(request, env) {
+  const key = request.headers.get("X-API-Key") || request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
+  const expected = env.API_SECRET_KEY;
+  if (!expected) return true;
+  return key === expected;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
+    if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }), request);
     try {
+      // Telegram webhook — verified by Telegram's own token, not our API key
       if (request.method === "POST" && (url.pathname === "/webhook" || url.pathname === "/telegram-webhook")) {
         const body = await request.json();
         await handleTelegram(body, env);
         return new Response("OK");
       }
-      return cors(await routeAPI(request, url, env));
+      // All other routes require API key when configured
+      if (!verifyApiKey(request, env)) {
+        return cors(jsonRes({ error: "Unauthorized" }, 401), request);
+      }
+      return cors(await routeAPI(request, url, env), request);
     } catch (e) {
       console.error("Worker error:", e.message, e.stack);
-      return cors(jsonRes({ error: e.message }, 500));
+      return cors(jsonRes({ error: "Internal server error" }, 500), request);
     }
   }
 };
@@ -70,13 +82,18 @@ async function routeAPI(req, url, env) {
   const uid  = url.searchParams.get("user_id");
 
   if (path === "/" && m === "GET") return jsonRes({ status: "ok", version: "3.0.0" });
-  if (path === "/setup")           return setupDatabase(env);
-
-  // Web AI proxy (tidak perlu user_id)
-  if (path === "/ai-chat"      && m === "POST") return handleAiChat(uid, await req.json(), env);
-  if (path === "/scan-receipt" && m === "POST") return handleScanReceipt(uid, await req.json(), env);
+  if (path === "/setup") {
+    if (!env.SETUP_TOKEN || url.searchParams.get("token") !== env.SETUP_TOKEN) {
+      return jsonRes({ error: "Forbidden: valid setup token required" }, 403);
+    }
+    return setupDatabase(env);
+  }
 
   if (!uid) return jsonRes({ error: "user_id diperlukan" }, 400);
+
+  // Web AI proxy — requires user_id like all other endpoints
+  if (path === "/ai-chat"      && m === "POST") return handleAiChat(uid, await req.json(), env);
+  if (path === "/scan-receipt" && m === "POST") return handleScanReceipt(uid, await req.json(), env);
 
   // accounts
   if (path === "/accounts") {
@@ -191,7 +208,7 @@ async function handleTelegram(body, env) {
   } catch (e) {
     console.error("handleTelegram error:", e.message, e.stack);
     if (chatId) {
-      await tgSend(chatId, "❌ Terjadi error: " + e.message + "\n\nCoba lagi atau ketik /menu.", env).catch(() => {});
+      await tgSend(chatId, "❌ Terjadi error. Coba lagi atau ketik /menu.", env).catch(() => {});
     }
   }
 }
@@ -1582,17 +1599,25 @@ async function deleteBill(uid, id, env) {
 // ─────────────────────────────────────────────────────
 // HELPERS & CORE UTILITIES
 // ─────────────────────────────────────────────────────
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
+const ALLOWED_ORIGINS = [
+  "https://laksaapps.pages.dev",
+  "https://haerubirru17.github.io",
+];
 
-function cors(response) {
+function getAllowedOrigin(request) {
+  const origin = request.headers.get("Origin") || "";
+  if (ALLOWED_ORIGINS.includes(origin)) return origin;
+  if (origin.endsWith(".laksaapps.pages.dev")) return origin;
+  if (origin === "http://localhost:5500" || origin === "http://127.0.0.1:5500") return origin;
+  return ALLOWED_ORIGINS[0];
+}
+
+function cors(response, request) {
   const headers = new Headers(response.headers);
-  for (const [k, v] of Object.entries(corsHeaders)) {
-    headers.set(k, v);
-  }
+  headers.set("Access-Control-Allow-Origin", getAllowedOrigin(request));
+  headers.set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
+  headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key");
+  headers.set("Vary", "Origin");
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
