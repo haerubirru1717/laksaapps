@@ -1792,11 +1792,20 @@ async function tgSend(chatId, text, env, keyboard = null) {
   if (keyboard) {
     payload.reply_markup = { inline_keyboard: keyboard };
   }
-  await fetch(`${TG(TOKEN)}/sendMessage`, {
+  const res = await fetch(`${TG(TOKEN)}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
+  // Retry without Markdown if Telegram rejects formatting
+  if (!res.ok) {
+    delete payload.parse_mode;
+    await fetch(`${TG(TOKEN)}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  }
 }
 
 async function tgSendForceReply(chatId, text, env) {
@@ -1824,11 +1833,20 @@ async function editTgMessage(chatId, messageId, text, env, keyboard = null) {
   if (keyboard) {
     payload.reply_markup = { inline_keyboard: keyboard };
   }
-  await fetch(`${TG(TOKEN)}/editMessageText`, {
+  const res = await fetch(`${TG(TOKEN)}/editMessageText`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
+  // Retry without Markdown if Telegram rejects formatting
+  if (!res.ok) {
+    delete payload.parse_mode;
+    await fetch(`${TG(TOKEN)}/editMessageText`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+  }
 }
 
 // ─────────────────────────────────────────────────────
