@@ -466,37 +466,76 @@
     }
 
     .bnav-item {
-      display: flex;
-      flex-direction: column;
+      display: inline-flex;
+      flex-direction: row;
       align-items: center;
-      gap: .18rem;
-      padding: .35rem .55rem;
+      justify-content: center;
+      padding: .45rem .65rem;
       border: none;
       background: none;
-      color: rgba(100,116,139,.65);
+      color: rgba(100, 116, 139, 0.65);
       font-family: 'Plus Jakarta Sans', 'Inter', inherit;
-      font-size: .6rem;
-      font-weight: 600;
+      font-size: .68rem;
+      font-weight: 700;
       cursor: pointer;
-      transition: color .18s;
-      border-radius: 12px;
-      min-width: 48px;
-      position: relative
+      border-radius: 14px;
+      position: relative;
+      z-index: 1;
+      transition: all .28s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+      gap: 0;
+      min-width: 44px;
+      height: 38px;
+      box-sizing: border-box;
     }
 
-
-
     .bnav-item.active {
-      color: var(--accent)
+      color: var(--accent);
+      padding: .45rem .85rem;
+    }
+
+    .bnav-item span {
+      max-width: 0;
+      opacity: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      margin-left: 0;
+      font-weight: 700;
+      transition: max-width .28s cubic-bezier(0.4, 0, 0.2, 1), opacity .2s ease, margin-left .28s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .bnav-item.active span {
+      max-width: 85px;
+      opacity: 1;
+      margin-left: 6px;
     }
 
     .bnav-item svg {
-      transition: transform .2s cubic-bezier(.34,1.56,.64,1)
+      flex-shrink: 0;
+      transition: transform .28s cubic-bezier(.34, 1.56, .64, 1);
     }
 
     .bnav-item.active svg {
-      transform: scale(1.15);
-      filter: drop-shadow(0 0 5px rgba(37,99,235,.35))
+      transform: scale(1.05);
+      filter: drop-shadow(0 0 5px rgba(37,99,235,.2));
+    }
+
+    .bnav-pill {
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      z-index: -1;
+      opacity: 0;
+      transform: scale(0.85);
+      transition: all .28s cubic-bezier(0.4, 0, 0.2, 1);
+      background: rgba(37, 99, 235, 0.08);
+      border: 1px solid rgba(37, 99, 235, 0.15);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.06);
+    }
+
+    .bnav-item.active .bnav-pill {
+      opacity: 1;
+      transform: scale(1);
     }
 
     .bnav-add {
