@@ -75,7 +75,7 @@ const getSet = () => {
 const CLOUD_URL = 'https://laksana.haerubirru17.workers.dev';
 
 // In-memory cache — di-refresh setiap load halaman
-let _cache = { tx: null, accs: null, cats: null, buds: null, goals: null, bills: null, loading: false };
+let _cache = { tx: null, accs: null, cats: null, buds: null, goals: null, bills: null, piutang: null, loading: false };
 
 function getProfile() { try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || null; } catch { return null; } }
 function getUserId() { return getProfile()?.tgId || null; }
@@ -140,6 +140,14 @@ async function fetchBills() {
 }
 function getBills() { return _cache.bills || []; }
 
+// ── Piutang (D1) ──
+async function fetchPiutang() {
+  const data = await api('GET', '/piutang');
+  _cache.piutang = Array.isArray(data) ? data : [];
+  return _cache.piutang;
+}
+function getPiutang() { return _cache.piutang || []; }
+
 // ── Load all ──
 async function loadAll(month) {
   if (_cache.loading) return;
@@ -148,7 +156,7 @@ async function loadAll(month) {
   try {
     const uid = getUserId();
     if (!uid) return;
-    await Promise.all([fetchTx(month), fetchAccs(), fetchCats(), fetchBuds(), fetchGoals(), fetchBills()]);
+    await Promise.all([fetchTx(month), fetchAccs(), fetchCats(), fetchBuds(), fetchGoals(), fetchBills(), fetchPiutang()]);
   } catch (e) {
     console.error('loadAll error:', e);
     toast('Gagal memuat data: ' + e.message, 'err');
@@ -252,6 +260,7 @@ function go(page) {
     else if (page === 'budget') { go('keuangan'); setKeuTab('budget', null); return; }
     else if (page === 'goals') { go('keuangan'); setKeuTab('goals', null); return; }
     else if (page === 'bills') { go('keuangan'); setKeuTab('bills', null); return; }
+    else if (page === 'piutang') { go('keuangan'); setKeuTab('piutang', null); return; }
     else if (page === 'reports') renderReports();
     else if (page === 'settings') renderSettings();
   });
@@ -266,25 +275,31 @@ function setKeuTab(tab, btn) {
     if (tab === 'budget' && tabs[0]) tabs[0].classList.add('active');
     else if (tab === 'goals' && tabs[1]) tabs[1].classList.add('active');
     else if (tab === 'bills' && tabs[2]) tabs[2].classList.add('active');
+    else if (tab === 'piutang' && tabs[3]) tabs[3].classList.add('active');
   }
   el('keuPanelBudget').style.display = tab === 'budget' ? '' : 'none';
   el('keuPanelGoals').style.display = tab === 'goals' ? '' : 'none';
   el('keuPanelBills').style.display = tab === 'bills' ? '' : 'none';
+  const ptgPanel = el('keuPanelPiutang'); if (ptgPanel) ptgPanel.style.display = tab === 'piutang' ? '' : 'none';
   if (tab === 'budget') renderBudg();
   else if (tab === 'goals') renderGoals();
+  else if (tab === 'piutang') { if (typeof renderPiutang === 'function') renderPiutang(); }
   else renderBills();
 }
 function renderKeuangan() {
   el('keuPanelBudget').style.display = keuActiveTab === 'budget' ? '' : 'none';
   el('keuPanelGoals').style.display = keuActiveTab === 'goals' ? '' : 'none';
   el('keuPanelBills').style.display = keuActiveTab === 'bills' ? '' : 'none';
+  const ptgPanel = el('keuPanelPiutang'); if (ptgPanel) ptgPanel.style.display = keuActiveTab === 'piutang' ? '' : 'none';
   document.querySelectorAll('.keu-tab').forEach((b, i) => {
     b.classList.toggle('active',
-      (i === 0 && keuActiveTab === 'budget') || (i === 1 && keuActiveTab === 'goals') || (i === 2 && keuActiveTab === 'bills')
+      (i === 0 && keuActiveTab === 'budget') || (i === 1 && keuActiveTab === 'goals') ||
+      (i === 2 && keuActiveTab === 'bills') || (i === 3 && keuActiveTab === 'piutang')
     );
   });
   if (keuActiveTab === 'budget') renderBudg();
   else if (keuActiveTab === 'goals') renderGoals();
+  else if (keuActiveTab === 'piutang') { if (typeof renderPiutang === 'function') renderPiutang(); }
   else renderBills();
 }
 function refresh() { const p = curPage; curPage = ''; go(p); }

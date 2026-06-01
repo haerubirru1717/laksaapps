@@ -195,6 +195,10 @@
             </svg></span>
           Tambah Tagihan
         </button>
+        <button class="dco" onclick="closeDeskCompose();go('keuangan');setKeuTab('piutang',null);openModal('addPiutang')">
+          <span class="dco-ico" style="background:rgba(245,158,11,.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+          Tambah Piutang
+        </button>
         <button class="dco" onclick="closeDeskCompose();go('receipt')">
           <span class="dco-ico" style="background:rgba(37,99,235,.1)"><svg width="14" height="14" viewBox="0 0 24 24"
               fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round">
@@ -327,6 +331,10 @@
                 <line x1="2" y1="10" x2="22" y2="10" />
               </svg></div>
             Tambah Tagihan
+          </button>
+          <button class="fab-opt" onclick="closeFab();go('keuangan');setKeuTab('piutang',null);openModal('addPiutang')">
+            <div class="fo-ico" style="background:rgba(245,158,11,.1)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+            Tambah Piutang
           </button>
           <button class="fab-opt" onclick="closeFab();openModal('addAccount')">
             <div class="fo-ico" style="background:rgba(99,102,241,.1)"><svg width="15" height="15" viewBox="0 0 24 24"
@@ -772,6 +780,10 @@
               </svg>
               Tagihan
             </button>
+            <button class="keu-tab" onclick="setKeuTab('piutang',this)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Piutang
+            </button>
           </div>
         </div>
         <div id="keuPanelBudget">
@@ -859,6 +871,31 @@
               <line x1="2" y1="10" x2="22" y2="10" />
             </svg>
             <p>Belum ada tagihan</p>
+          </div>
+        </div>
+        <!-- PIUTANG PANEL -->
+        <div id="keuPanelPiutang" style="display:none">
+          <div class="keu-summary-strip" id="piutangSummaryStrip" style="display:none">
+            <div class="keu-summary-card">
+              <div class="keu-summary-label">Total Dipinjamkan</div>
+              <div class="keu-summary-value" id="piutangTotalAmt">Rp 0</div>
+            </div>
+            <div class="keu-summary-card">
+              <div class="keu-summary-label">Telah Dikembalikan</div>
+              <div class="keu-summary-value green" id="piutangTotalReturned">Rp 0</div>
+            </div>
+            <div class="keu-summary-card">
+              <div class="keu-summary-label">Sisa Piutang</div>
+              <div class="keu-summary-value amber" id="piutangTotalSisa">Rp 0</div>
+            </div>
+          </div>
+          <div class="keu-card-grid" id="piutangGrid"></div>
+          <div class="empty" id="piutangEmpty" style="display:none">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".25">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <p>Belum ada catatan piutang</p>
           </div>
         </div>
       </section>

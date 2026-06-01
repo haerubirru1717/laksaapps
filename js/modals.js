@@ -24,7 +24,8 @@ function openModal(type, data = null) {
     addGoal: () => buildGoalForm(), addToGoal: () => buildAddToGoalForm(data),
     addAccount: () => buildAccForm(), addCategory: () => buildCatForm(),
     addBill: () => buildBillForm(data), payBill: () => buildPayBillForm(data),
-    billHistory: () => buildBillHistory(data)
+    billHistory: () => buildBillHistory(data),
+    addPiutang: () => buildPiutangForm(data), returnPiutang: () => buildReturnPiutangForm(data)
   };
   const build = builders[type]; if (!build) return;
   const { t, html, onSubmit } = build();
@@ -36,7 +37,7 @@ function openModal(type, data = null) {
   if (fab) { fab.style.opacity = '0'; fab.style.pointerEvents = 'none'; fab.style.zIndex = '999'; }
   setTimeout(() => {
     const f = body.querySelector('input:not([type=hidden]),select'); if (f) f.focus();
-    ['txAmt', 'bLim', 'gTgt', 'aBal', 'agAmt', 'billAmt'].forEach(id => setupAmtInput(id));
+    ['txAmt', 'bLim', 'gTgt', 'aBal', 'agAmt', 'billAmt', 'ptgAmt', 'ptgReturned', 'ptgReturnAmt'].forEach(id => setupAmtInput(id));
     // Init bill type chips
     document.querySelectorAll('.bill-type-opt').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -447,5 +448,99 @@ function buildBillHistory(bill) {
     t: 'Riwayat Pembayaran',
     html,
     onSubmit: () => { }
+  };
+}
+
+function buildPiutangForm(piutang = null) {
+  const isEdit = !!piutang;
+  const defLendDate = piutang?.lend_date || today();
+  const defDueDate = piutang?.due_date || '';
+  const html = `<form>
+<div class="fg"><label class="flbl">Nama Peminjam *</label>
+  <input type="text" class="finp" id="ptgBorrower" placeholder="Andi, Budi, Siska…" value="${esc(piutang?.borrower_name || '')}" required/>
+</div>
+<div class="fg"><label class="flbl">Nominal Pinjaman *</label>
+  <input type="text" class="finp" id="ptgAmt" placeholder="Rp 0" value="${piutang?.amount > 0 ? piutang.amount : ''}" required/>
+</div>
+<div class="fg"><label class="flbl">Telah Dikembalikan (Opsional)</label>
+  <input type="text" class="finp" id="ptgReturned" placeholder="Rp 0" value="${piutang?.returned > 0 ? piutang.returned : ''}"/>
+</div>
+<div class="fg"><label class="flbl">Tanggal Peminjaman *</label>
+  <input type="date" class="finp" id="ptgLendDate" value="${defLendDate}" required/>
+</div>
+<div class="fg"><label class="flbl">Tanggal Jatuh Tempo (Opsional)</label>
+  <input type="date" class="finp" id="ptgDueDate" value="${defDueDate}"/>
+</div>
+<div class="fg"><label class="flbl">Catatan</label>
+  <input type="text" class="finp" id="ptgNote" placeholder="Pinjam buat beli tiket, uang jajan, dll" value="${esc(piutang?.note || '')}"/>
+</div>
+<div class="mfoot">
+  <button type="button" class="btn2" onclick="closeModal()">Batal</button>
+  <button type="submit" class="btn">${isEdit ? 'Simpan' : 'Tambah'}</button>
+</div>
+  </form>`;
+  return {
+    t: isEdit ? 'Edit Piutang' : 'Tambah Piutang',
+    html,
+    onSubmit: () => {
+      const payload = {
+        borrower_name: el('ptgBorrower').value.trim(),
+        amount: getRawAmt('ptgAmt') || 0,
+        returned: getRawAmt('ptgReturned') || 0,
+        lend_date: el('ptgLendDate').value || today(),
+        due_date: el('ptgDueDate').value || null,
+        note: el('ptgNote').value.trim() || null,
+        status: getRawAmt('ptgReturned') >= getRawAmt('ptgAmt') ? 'paid' : 'active'
+      };
+      if (!payload.borrower_name) { toast('Nama peminjam tidak boleh kosong', 'err'); return; }
+      if (payload.amount <= 0) { toast('Nominal pinjaman harus lebih dari 0', 'err'); return; }
+      if (isEdit) savePiutang({ ...payload, id: piutang.id }, true);
+      else savePiutang(payload, false);
+    }
+  };
+}
+
+function buildReturnPiutangForm(piutang) {
+  if (!piutang) return { t: '', html: '', onSubmit: () => {} };
+  const sisa = Math.max(0, piutang.amount - piutang.returned);
+  const html = `<form>
+<div style="padding:.65rem .9rem;border-radius:12px;background:var(--gs-2);border:1.5px solid var(--gs-border);margin-bottom:1rem;text-align:left;">
+  <div style="font-size:.76rem;color:var(--ink3);">Peminjam</div>
+  <div style="font-size:.88rem;font-weight:700;color:var(--ink);margin-top:.15rem">${esc(piutang.borrower_name)}</div>
+  <div style="display:flex;justify-content:space-between;margin-top:.45rem;font-size:.78rem;color:var(--ink2);">
+    <span>Total Pinjaman: <strong>${fCur(piutang.amount)}</strong></span>
+    <span>Sisa Piutang: <strong style="color:var(--gold)">${fCur(sisa)}</strong></span>
+  </div>
+</div>
+<div class="fg">
+  <label class="flbl">Nominal Pengembalian *</label>
+  <input type="text" class="finp" id="ptgReturnAmt" placeholder="${sisa}" value="${sisa > 0 ? sisa : ''}" required/>
+</div>
+<div class="fg" style="margin-bottom:.8rem">
+  <label style="display:flex;align-items:center;gap:.55rem;cursor:pointer">
+    <input type="checkbox" id="ptgCreateTx" checked style="width:16px;height:16px;accent-color:var(--accent)"/>
+    <span style="font-size:.83rem;font-weight:500;color:var(--ink)">Catat sebagai transaksi pemasukan</span>
+  </label>
+</div>
+<div id="ptgTxFields">
+  <div class="fg"><label class="flbl">Rekening Tujuan</label>
+    <select class="finp" id="ptgPayAcc">${getAccs().map(a => `<option value="${a.id}">${esc(a.name)} — ${fCur(a.balance)}</option>`).join('')}</select>
+  </div>
+</div>
+<div class="mfoot">
+  <button type="button" class="btn2" onclick="closeModal()">Batal</button>
+  <button type="submit" class="btn" style="background:linear-gradient(135deg,#22c578,#10b981)">Simpan</button>
+</div>
+  </form>`;
+  return {
+    t: 'Cicil / Bayar Piutang',
+    html,
+    onSubmit: () => {
+      const returnAmt = getRawAmt('ptgReturnAmt') || 0;
+      if (returnAmt <= 0) { toast('Nominal harus lebih dari 0', 'err'); return; }
+      const createTx = el('ptgCreateTx').checked;
+      const accId = el('ptgPayAcc')?.value || null;
+      payReturnPiutang(piutang.id, returnAmt, createTx, accId);
+    }
   };
 }

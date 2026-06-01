@@ -582,3 +582,188 @@ async function payBill(billId, createTx, accId, payDate) {
 }
 
 // Widget di Dashboard — hanya tampil jika ada tagihan relevan
+
+// ══════════════════════════════════════
+// PIUTANG (Receivables / Lending)
+// ══════════════════════════════════════
+
+function renderPiutang() {
+  const list = getPiutang();
+  const grid = el('piutangGrid');
+  const emp  = el('piutangEmpty');
+  const strip = el('piutangSummaryStrip');
+  if (!grid) return;
+
+  if (!list.length) {
+    grid.innerHTML = '';
+    if (strip) strip.style.display = 'none';
+    if (emp) emp.style.display = 'flex';
+    return;
+  }
+  if (emp) emp.style.display = 'none';
+  if (strip) strip.style.display = 'grid';
+
+  // Summary calculations
+  const totalAmt      = list.reduce((s, p) => s + (p.amount   || 0), 0);
+  const totalReturned = list.reduce((s, p) => s + (p.returned || 0), 0);
+  const totalSisa     = Math.max(0, totalAmt - totalReturned);
+
+  if (el('piutangTotalAmt'))      el('piutangTotalAmt').textContent      = fCur(totalAmt);
+  if (el('piutangTotalReturned')) el('piutangTotalReturned').textContent = fCur(totalReturned);
+  if (el('piutangTotalSisa'))     el('piutangTotalSisa').textContent     = fCur(totalSisa);
+
+  const today_ = new Date(); today_.setHours(0,0,0,0);
+
+  // Sort: active first (overdue → upcoming), then paid
+  const sorted = [...list].sort((a, b) => {
+    if (a.status === b.status) {
+      // Both active: overdue first
+      if (a.status === 'active' && a.due_date && b.due_date)
+        return new Date(a.due_date) - new Date(b.due_date);
+      return 0;
+    }
+    return a.status === 'paid' ? 1 : -1;
+  });
+
+  grid.innerHTML = sorted.map(p => {
+    const isPaid  = p.status === 'paid';
+    const sisa    = Math.max(0, (p.amount || 0) - (p.returned || 0));
+    const rawPct  = p.amount > 0 ? Math.min(((p.returned || 0) / p.amount) * 100, 100) : 0;
+    const pct     = rawPct.toFixed(0);
+
+    // Due status
+    let dueCls = 'upcoming', dueLabel = '';
+    if (p.due_date) {
+      const due = new Date(p.due_date + 'T00:00:00');
+      const diff = Math.ceil((due - today_) / 86400000);
+      if (diff < 0)      { dueCls = 'overdue';  dueLabel = `Lewat ${Math.abs(diff)} hari`; }
+      else if (diff === 0){ dueCls = 'overdue';  dueLabel = 'Hari ini!'; }
+      else if (diff <= 3) { dueCls = 'overdue';  dueLabel = `${diff} hari lagi`; }
+      else if (diff <= 7) { dueCls = 'due-soon'; dueLabel = `${diff} hari lagi`; }
+      else                { dueCls = 'upcoming'; dueLabel = `${diff} hari lagi`; }
+    }
+
+    const levelCls = isPaid ? 'ok' : rawPct >= 60 ? 'ok' : rawPct >= 30 ? 'warn' : 'bad';
+    const progressBar = `<div class="ptrack" style="margin:6px 0 2px"><div class="pfill ${levelCls}" style="width:${rawPct}%"></div></div>`;
+
+    const pJ = JSON.stringify(p).replace(/"/g, '&quot;');
+
+    const actionBtns = isPaid
+      ? `<div style="display:flex;gap:6px">
+          <button class="bill-btn-edit-new" onclick='openModal("addPiutang",${pJ})' title="Edit">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="bill-btn-del-new" onclick="delPiutang('${p.id}')" title="Hapus">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 3.5h10M5.5 3.5V2.5h3v1M5 3.5l.5 8M9 3.5l-.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>`
+      : `<div style="display:flex;gap:6px">
+          <button class="btn-add-glass" style="font-size:.72rem;padding:.3rem .65rem" onclick='openModal("returnPiutang",${pJ})' title="Bayar/Cicil">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>
+            Bayar
+          </button>
+          <button class="bill-btn-edit-new" onclick='openModal("addPiutang",${pJ})' title="Edit">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="bill-btn-del-new" onclick="delPiutang('${p.id}')" title="Hapus">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 3.5h10M5.5 3.5V2.5h3v1M5 3.5l.5 8M9 3.5l-.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>`;
+
+    const dueBadge = p.due_date && !isPaid
+      ? `<div class="bill-dot ${dueCls}" style="display:inline-block;margin-right:4px"></div><span style="font-size:.72rem;color:var(--ink3)">${fDate(p.due_date)} · ${dueLabel}</span>`
+      : p.due_date
+        ? `<span style="font-size:.72rem;color:var(--ink3)">Lunas ${fDate(p.lend_date)}</span>`
+        : `<span style="font-size:.72rem;color:var(--ink3)">Dipinjam ${fDate(p.lend_date)}</span>`;
+
+    const noteLine = p.note ? `<div style="font-size:.72rem;color:var(--ink3);margin-top:2px;font-style:italic">${esc(p.note)}</div>` : '';
+
+    const statusBadge = isPaid
+      ? `<span class="bill-badge paid">Lunas</span>`
+      : sisa > 0
+        ? `<span class="bill-badge ${dueCls === 'overdue' ? 'overdue' : 'upcoming'}" style="font-size:.7rem">Sisa ${fCur(sisa)}</span>`
+        : `<span class="bill-badge paid">Terlunasi</span>`;
+
+    return `<div class="card-wrap">
+  <div class="bill-card ${isPaid ? 'paid' : dueCls}">
+    <div class="card-top">
+      <div class="card-left">
+        <div>
+          <div class="bill-name">${esc(p.borrower_name)}</div>
+          <div class="bill-meta">${dueBadge}</div>
+          ${noteLine}
+        </div>
+      </div>
+      ${actionBtns}
+    </div>
+    <div class="bill-divider"></div>
+    <div class="card-bottom" style="flex-direction:column;gap:4px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        ${statusBadge}
+        <span class="bill-amount">${fCur(p.amount)}</span>
+      </div>
+      ${progressBar}
+      <div style="display:flex;justify-content:space-between;font-size:.72rem;color:var(--ink3)">
+        <span>Dikembalikan: <strong style="color:var(--income)">${fCur(p.returned||0)}</strong></span>
+        <span>${pct}%</span>
+      </div>
+    </div>
+  </div>
+</div>`;
+  }).join('');
+}
+
+async function savePiutang(data, isEdit = false) {
+  try {
+    if (isEdit) {
+      await api('PATCH', `/piutang/${data.id}`, data);
+    } else {
+      await api('POST', '/piutang', data);
+    }
+    await fetchPiutang();
+    closeModal();
+    toast(isEdit ? 'Piutang diperbarui!' : 'Piutang dicatat!', 'ok');
+    renderPiutang();
+  } catch (e) { toast('Gagal: ' + e.message, 'err'); }
+}
+
+async function payReturnPiutang(id, returnAmt, createTx, accId) {
+  try {
+    const ptg = getPiutang().find(p => p.id === id);
+    if (!ptg) return;
+    const newReturned = (ptg.returned || 0) + returnAmt;
+    const newStatus   = newReturned >= ptg.amount ? 'paid' : 'active';
+    await api('PATCH', `/piutang/${id}`, { returned: newReturned, status: newStatus });
+
+    // Optionally record income transaction
+    if (createTx && accId) {
+      const cats   = getCats();
+      const incCat = cats.find(c => c.type === 'income' || c.type === 'both') || cats[0];
+      await api('POST', '/transactions', {
+        type: 'income',
+        amount: returnAmt,
+        date: today(),
+        account_id: accId,
+        category_id: incCat?.id || null,
+        note: `Pelunasan Piutang: ${ptg.borrower_name}`,
+        source: 'website'
+      });
+      await Promise.all([fetchAccs(), fetchTx(thisMon())]);
+      if (curPage === 'dashboard') renderDash();
+    }
+    await fetchPiutang();
+    closeModal();
+    toast(newStatus === 'paid' ? `Piutang ${esc(ptg.borrower_name)} LUNAS! 🎉` : 'Cicilan dicatat!', 'ok');
+    renderPiutang();
+  } catch (e) { toast('Gagal: ' + e.message, 'err'); }
+}
+
+async function delPiutang(id) {
+  if (!confirm('Hapus catatan piutang ini?')) return;
+  try {
+    await api('DELETE', `/piutang/${id}`);
+    await fetchPiutang();
+    toast('Piutang dihapus.', 'info');
+    renderPiutang();
+  } catch (e) { toast('Gagal: ' + e.message, 'err'); }
+}
