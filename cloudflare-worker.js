@@ -160,6 +160,13 @@ async function routeAPI(req, url, env) {
     if (m === "DELETE") return deleteBill(uid, billM[1], env);
   }
 
+  // transaction-items
+  if (path === "/transaction-items" && m === "GET") {
+    const txId = url.searchParams.get("transaction_id");
+    if (!txId) return jsonRes({ error: "transaction_id diperlukan" }, 400);
+    return getTransactionItems(uid, txId, env);
+  }
+
   // piutang
   if (path === "/piutang") {
     if (m === "GET")  return getPiutang(uid, env);
@@ -237,6 +244,7 @@ async function handleCallback(cb, env) {
   if (data === "saldo")   { await sendSaldo(chatId, userId, env); return; }
   if (data === "riwayat") { await sendRiwayat(chatId, userId, env); return; }
   if (data === "tagihan") { await sendTagihan(chatId, userId, env); return; }
+  if (data === "myid")    { await sendMyId(chatId, userId, cb.from.first_name, env); return; }
 
   // Pilih rekening (fallback keyboard)
   if (data.startsWith("acc:")) { await handleAccPick(chatId, userId, data.slice(4), env); return; }
@@ -544,6 +552,7 @@ async function handlePhoto(msg, chatId, userId, env) {
         VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, '[foto struk]', 'telegram')
       `).bind(id, userId, date, parsed.amount, parsed.note || "", parsed.store || null, matchedAcc.id, cat?.id || null).run();
 
+      await saveTransactionItems(id, result.items, env);
       await adjustBalance(matchedAcc.id, "expense", parsed.amount, +1, env);
 
       let successMsg = `✅ *Tersimpan Otomatis!*\n`;
@@ -580,8 +589,8 @@ async function handlePhoto(msg, chatId, userId, env) {
     }
     const rincianMsgId = await tgSend(chatId, rincian, env);
 
-    // Store pending scan — encode rincian message_id in note for cleanup
-    const noteWithMeta = JSON.stringify({ note: result.note || "Scan Struk", rincianMsgId });
+    // Store pending scan — encode rincian message_id + items in note for cleanup & save
+    const noteWithMeta = JSON.stringify({ note: result.note || "Scan Struk", rincianMsgId, items: result.items || [] });
     await env.DB.prepare(`
       INSERT INTO pending_scans (id, user_id, store, amount, date, note)
       VALUES (?, ?, ?, ?, ?, ?)
@@ -599,8 +608,8 @@ async function handlePhoto(msg, chatId, userId, env) {
 }
 
 function parseDraftNote(raw) {
-  try { const o = JSON.parse(raw); return { note: o.note || "Scan Struk", rincianMsgId: o.rincianMsgId || null }; }
-  catch { return { note: raw || "Scan Struk", rincianMsgId: null }; }
+  try { const o = JSON.parse(raw); return { note: o.note || "Scan Struk", rincianMsgId: o.rincianMsgId || null, items: o.items || [] }; }
+  catch { return { note: raw || "Scan Struk", rincianMsgId: null, items: [] }; }
 }
 
 async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId, accountId, env) {
@@ -611,7 +620,7 @@ async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId
       return;
     }
 
-    const { note: draftNote, rincianMsgId } = parseDraftNote(draft.note);
+    const { note: draftNote, rincianMsgId, items } = parseDraftNote(draft.note);
     const account = await env.DB.prepare("SELECT name, balance FROM accounts WHERE id = ? AND user_id = ?").bind(accountId, userId).first();
     if (!account) throw new Error("Rekening tidak ditemukan.");
 
@@ -630,6 +639,7 @@ async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId
       VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, '[foto struk]', 'telegram')
     `).bind(txId, userId, draft.date, amount, draftNote, draft.store, accountId, cat?.id || null).run();
 
+    await saveTransactionItems(txId, items, env);
     await adjustBalance(accountId, "expense", amount, +1, env);
     await env.DB.prepare("DELETE FROM pending_scans WHERE id = ?").bind(pendingId).run();
 
@@ -755,6 +765,7 @@ async function deleteTx(chatId, userId, txId, env) {
   const tx = await env.DB.prepare(`SELECT * FROM transactions WHERE id = ? AND user_id = ?`).bind(txId, userId).first();
   if (!tx) { await tgSend(chatId, "❌ Transaksi tidak ditemukan.", env); return; }
   await adjustBalance(tx.account_id, tx.type, tx.amount, -1, env);
+  await env.DB.prepare("DELETE FROM transaction_items WHERE transaction_id = ?").bind(txId).run().catch(() => {});
   await env.DB.prepare(`DELETE FROM transactions WHERE id = ?`).bind(txId).run();
   await tgSend(chatId, "🗑️ *Transaksi dihapus.*", env, [[{ text: "🏠 Menu", callback_data: "menu" }]]);
 }
@@ -768,19 +779,14 @@ async function sendMenu(chatId, env) {
     `Ketik langsung untuk mencatat:\n` +
     `_beli bakso 15rb pakai mandiri_\n` +
     `_gaji masuk 5jt ke bca_\n\n` +
-    `Atau kirim foto struk 📸\n\n` +
-    `*Perintah:*\n` +
-    `/saldo — lihat saldo rekening\n` +
-    `/riwayat — 10 transaksi terakhir\n` +
-    `/tagihan — tagihan aktif\n` +
-    `/myid — Telegram ID kamu\n` +
-    `/batal — batalkan aksi`,
+    `Atau kirim foto struk 📸`,
     env,
     [[
-      { text: "💳 Saldo",    callback_data: "saldo"   },
+      { text: "💰 Saldo",    callback_data: "saldo"   },
       { text: "📋 Riwayat", callback_data: "riwayat" },
     ],[
-      { text: "🗓️ Tagihan", callback_data: "tagihan" },
+      { text: "📑 Tagihan", callback_data: "tagihan" },
+      { text: "ℹ️ Info Akun", callback_data: "myid" },
     ]]
   );
 }
@@ -898,7 +904,7 @@ async function sendTagihan(chatId, userId, env) {
 async function sendMyId(chatId, userId, firstName, env) {
   await tgSend(chatId,
     `🪪 *Telegram ID kamu:*\n\n\`${userId}\`\n\nHai ${firstName || ""}! Salin angka ini ke halaman setup website Laksa. 🔒`,
-    env
+    env, [[{ text: "🏠 Menu", callback_data: "menu" }]]
   );
 }
 
@@ -1386,7 +1392,17 @@ async function setupDatabase(env) {
       )
     `).run();
 
-    return jsonRes({ status: "success", message: "Database tables created successfully (accounts, categories, transactions, budgets, goals, bills, pending_scans, piutang, pending_texts, processed_updates)" });
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS transaction_items (
+        id TEXT PRIMARY KEY,
+        transaction_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        qty INTEGER DEFAULT 1,
+        price REAL DEFAULT 0
+      )
+    `).run();
+
+    return jsonRes({ status: "success", message: "Database tables created successfully (accounts, categories, transactions, transaction_items, budgets, goals, bills, pending_scans, piutang, pending_texts, processed_updates)" });
   } catch (e) {
     return jsonRes({ error: e.message }, 500);
   }
@@ -1453,6 +1469,22 @@ async function loadPendingText(chatId, env) {
 
 async function clearPendingText(chatId, env) {
   await env.DB.prepare("DELETE FROM pending_texts WHERE chat_id = ?").bind(String(chatId)).run();
+}
+
+async function saveTransactionItems(txId, items, env) {
+  if (!items || !items.length) return;
+  for (const item of items) {
+    await env.DB.prepare(
+      "INSERT INTO transaction_items (id, transaction_id, name, qty, price) VALUES (?, ?, ?, ?, ?)"
+    ).bind(randomId(), txId, item.name || "", item.qty || 1, item.total_price || 0).run();
+  }
+}
+
+async function getTransactionItems(uid, txId, env) {
+  const tx = await env.DB.prepare("SELECT id FROM transactions WHERE id = ? AND user_id = ?").bind(txId, uid).first();
+  if (!tx) return jsonRes({ error: "Transaksi tidak ditemukan" }, 404);
+  const { results } = await env.DB.prepare("SELECT * FROM transaction_items WHERE transaction_id = ?").bind(txId).all();
+  return jsonRes(results || []);
 }
 
 async function getTxFull(id, env) {
@@ -1583,6 +1615,7 @@ async function deleteTransaction(uid, id, env) {
   const tx = await env.DB.prepare("SELECT * FROM transactions WHERE id = ? AND user_id = ?").bind(id, uid).first();
   if (tx) {
     await adjustBalance(tx.account_id, tx.type, tx.amount, -1, env);
+    await env.DB.prepare("DELETE FROM transaction_items WHERE transaction_id = ?").bind(id).run().catch(() => {});
     await env.DB.prepare("DELETE FROM transactions WHERE id = ? AND user_id = ?").bind(id, uid).run();
   }
   return jsonRes({ status: "deleted" });
