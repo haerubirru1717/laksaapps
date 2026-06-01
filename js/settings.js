@@ -41,7 +41,20 @@ function saveS() {
   const activeTheme = document.documentElement.getAttribute('data-theme') || 'glass';
   s.theme = activeTheme;
   sv(K.set, s);
+  
+  // Sync to laksa_profile
+  const p = getProfile();
+  if (p) {
+    p.name = s.name;
+    p.theme = s.theme;
+    saveProfile(p);
+  }
+  
   updateProfilePreview();
+  if (typeof updateProfileUI === 'function') updateProfileUI();
+  if (typeof updateSidebarProfile === 'function') updateSidebarProfile();
+  if (typeof renderDashTopbar === 'function') renderDashTopbar();
+  
   toast('Disimpan!', 'ok');
 }
 

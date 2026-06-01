@@ -54,7 +54,22 @@ const CH = {};
 const ld = (k, fb) => { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch { return fb; } };
 const sv = (k, d) => { try { localStorage.setItem(k, JSON.stringify(d)); return true; } catch { return false; } };
 const getRec = () => ld(K.rec, []);
-const getSet = () => ld(K.set, { name: 'Pengguna', currency: 'Rp', theme: 'glass' });
+const getSet = () => {
+  const s = ld(K.set, null);
+  const p = getProfile();
+  const defaultName = p?.name || 'Pengguna';
+  const defaultTheme = p?.theme || 'glass';
+  if (!s) {
+    return { name: defaultName, currency: 'Rp', theme: defaultTheme };
+  }
+  if (!s.name || s.name === 'Pengguna') {
+    s.name = defaultName;
+  }
+  if (!s.theme) {
+    s.theme = defaultTheme;
+  }
+  return s;
+};
 
 // ── API LAYER — D1 sebagai master ──
 const CLOUD_URL = 'https://laksana.haerubirru17.workers.dev';
@@ -339,6 +354,10 @@ async function saveSetupProfile() {
   if (!tgId) { toast('Telegram ID tidak boleh kosong.', 'err'); return; }
   const p = { name, tgId, theme: setupThemeChoice || 'glass' };
   saveProfile(p);
+  const s = getSet();
+  s.name = name;
+  s.theme = p.theme;
+  sv(K.set, s);
   hideSetupPage();
   applyTheme(p.theme, null, false);
   updateProfileUI();
