@@ -23,7 +23,8 @@ function openModal(type, data = null) {
     addTransaction: () => buildTxForm(data), addBudget: () => buildBudForm(),
     addGoal: () => buildGoalForm(), addToGoal: () => buildAddToGoalForm(data),
     addAccount: () => buildAccForm(), addCategory: () => buildCatForm(),
-    addBill: () => buildBillForm(data), payBill: () => buildPayBillForm(data)
+    addBill: () => buildBillForm(data), payBill: () => buildPayBillForm(data),
+    billHistory: () => buildBillHistory(data)
   };
   const build = builders[type]; if (!build) return;
   const { t, html, onSubmit } = build();
@@ -393,4 +394,58 @@ function getRawAmt(inputId) {
   const inp = el(inputId); if (!inp) return NaN;
   const raw = inp.getAttribute('data-raw') || inp.value.replace(/\./g, '').replace(/[^0-9]/g, '');
   return parseFloat(raw) || 0;
+}
+
+function buildBillHistory(bill) {
+  if (!bill) return { t: '', html: '', onSubmit: () => { } };
+  const txs = getTx().filter(t => t.type === 'expense' && t.note && t.note.includes(`Bayar ${bill.name}`));
+  const sorted = [...txs].sort((a, b) => b.date.localeCompare(a.date));
+  
+  let listHtml = '';
+  if (!sorted.length) {
+    listHtml = `<div class="empty" style="padding:2.5rem 1.5rem;text-align:center;">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".25" style="margin-bottom:.5rem;display:inline-block;">
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+      </svg>
+      <p style="font-size:.78rem;color:var(--ink3);margin-top:.2rem;">Belum ada riwayat pembayaran yang tercatat untuk tagihan ini.</p>
+    </div>`;
+  } else {
+    listHtml = `<div style="max-height:280px;overflow-y:auto;padding-right:4px;display:flex;flex-direction:column;gap:.6rem;">` + sorted.map(t => {
+      const acc = getAccs().find(a => a.id === t.account_id);
+      const accName = acc ? acc.name : 'Rekening';
+      const bk = acc ? detBank(acc.name) : null;
+      const dotColor = (bk && bk.color) ? bk.color : '#a78bfa';
+      
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem .85rem;border-radius:12px;background:var(--gs-2);border:1.5px solid var(--gs-border);">
+        <div style="text-align:left;">
+          <div style="font-size:.82rem;font-weight:700;color:var(--ink);">${fDate(t.date)}</div>
+          <div style="font-size:.72rem;color:var(--ink3);display:flex;align-items:center;gap:.3rem;margin-top:.15rem;">
+            <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${dotColor}"></span>
+            ${esc(accName)}
+          </div>
+        </div>
+        <div style="font-size:.9rem;font-weight:800;color:var(--expense);">${fCur(t.amount)}</div>
+      </div>`;
+    }).join('') + `</div>`;
+  }
+
+  const html = `<div>
+    <div style="padding:.65rem .9rem;border-radius:12px;background:var(--gs-2);border:1.5px solid var(--gs-border);margin-bottom:1rem;text-align:left;">
+      <div style="font-size:.76rem;color:var(--ink3);">Jenis Tagihan</div>
+      <div style="font-size:.9rem;font-weight:700;color:var(--ink);margin-top:.15rem;">${esc(bill.name)}</div>
+    </div>
+    
+    <div style="font-size:.76rem;color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;text-align:left;">Riwayat Pembayaran</div>
+    ${listHtml}
+    
+    <div class="mfoot" style="margin-top:1.2rem;justify-content:flex-end;">
+      <button type="button" class="btn" onclick="closeModal()" style="padding:.55rem 1.4rem;font-size:.82rem;font-weight:700;">Tutup</button>
+    </div>
+  </div>`;
+
+  return {
+    t: 'Riwayat Pembayaran',
+    html,
+    onSubmit: () => { }
+  };
 }

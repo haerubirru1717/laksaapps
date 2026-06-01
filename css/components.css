@@ -3723,6 +3723,16 @@
 
 
     /* Premium bill action buttons */
+    .bill-btn-hist-new {
+      width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+      cursor:pointer; transition:all 0.18s ease; flex-shrink:0;
+      background:rgba(16,185,129,0.10); border:1px solid rgba(16,185,129,0.25); color:#34d399;
+    }
+    .bill-btn-hist-new:hover {
+      background:rgba(16,185,129,0.20);
+      border-color:rgba(16,185,129,0.50);
+      transform:translateY(-1px);
+    }
     .bill-btn-edit-new {
       width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center;
       cursor:pointer; transition:all 0.18s ease; flex-shrink:0;

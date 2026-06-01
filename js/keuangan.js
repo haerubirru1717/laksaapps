@@ -277,6 +277,7 @@ function renderBills() {
     const isPaid = b.status === 'paid';
 
     const actionBtns = `<div style="display:flex;gap:6px;align-items:center;">
+      <button class="bill-btn-hist-new" onclick="openBillHistory('${b.id}')" title="Riwayat Pembayaran"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
       <button class="bill-btn-edit-new" onclick="openEditBill('${b.id}')" title="Edit"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <button class="bill-btn-del-new" onclick="delBill('${b.id}')" title="Hapus"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 3.5h10M5.5 3.5V2.5h3v1M5 3.5l.5 8M9 3.5l-.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>`;
@@ -492,6 +493,11 @@ function openPayBill(id) {
 function openEditBill(id) {
   const bill = getBills().find(b => b.id === id);
   if (bill) openModal('addBill', bill);
+}
+
+function openBillHistory(id) {
+  const bill = getBills().find(b => b.id === id);
+  if (bill) openModal('billHistory', bill);
 }
 
 async function delBill(id) {
