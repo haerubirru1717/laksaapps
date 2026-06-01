@@ -75,14 +75,25 @@ function saveR() {
   const store = rData.store_name || 'Struk', rId = uid(), items = rData.items || [], cats = getCats();
   const fCat = n => { const f = cats.find(c => c.name.toLowerCase().includes((n || '').toLowerCase())); return f ? f.id : 'c12'; };
   if (mode === 'single') {
-    addTx({ type: 'expense', amount: rData.total || 0, date, category_id: fCat(items[0]?.category), account_id: accId, note: store + (note ? ' — ' + note : ''), receiptId: rId }, true);
+    addTx({ type: 'expense', amount: Number(rData.total) || 0, date, category_id: fCat(items[0]?.category), account_id: accId, note: store + (note ? ' — ' + note : ''), receiptId: rId }, true);
     toast('Tersimpan!', 'ok');
   } else if (mode === 'peritem') {
-    items.forEach(it => { if (it.total_price <= 0) return; addTx({ type: 'expense', amount: it.total_price, date, category_id: fCat(it.category), account_id: accId, note: it.name, receiptId: rId }, true); });
+    items.forEach(it => { 
+      const price = Number(it.total_price) || 0;
+      if (price < 0 || isNaN(price)) return; 
+      addTx({ type: 'expense', amount: price, date, category_id: fCat(it.category), account_id: accId, note: it.name, receiptId: rId }, true); 
+    });
     toast(items.length + ' transaksi tersimpan!', 'ok');
   } else {
-    const grp = {}; items.forEach(it => { const k = it.category || 'Lainnya'; grp[k] = (grp[k] || 0) + (it.total_price || 0); });
-    Object.entries(grp).forEach(([cn, t]) => { if (t <= 0) return; addTx({ type: 'expense', amount: t, date, category_id: fCat(cn), account_id: accId, note: store + ' — ' + cn, receiptId: rId }, true); });
+    const grp = {}; 
+    items.forEach(it => { 
+      const k = it.category || 'Lainnya'; 
+      grp[k] = (grp[k] || 0) + (Number(it.total_price) || 0); 
+    });
+    Object.entries(grp).forEach(([cn, t]) => { 
+      if (t < 0 || isNaN(t)) return; 
+      addTx({ type: 'expense', amount: t, date, category_id: fCat(cn), account_id: accId, note: store + ' — ' + cn, receiptId: rId }, true); 
+    });
     toast('Tersimpan per kategori!', 'ok');
   }
   const txMon = el('txMonth'); if (txMon) txMon.value = date.slice(0, 7);
@@ -131,7 +142,9 @@ async function doScan() {
 
     const parsed = await resp.json();
     if (parsed.error) throw new Error(parsed.error);
-    if (!parsed.total && !parsed.amount) throw new Error('Total tidak terdeteksi. Pastikan foto struk jelas.');
+    const hasTotal = parsed.total !== undefined && parsed.total !== null && parsed.total !== '' && !isNaN(parsed.total);
+    const hasAmount = parsed.amount !== undefined && parsed.amount !== null && parsed.amount !== '' && !isNaN(parsed.amount);
+    if (!hasTotal && !hasAmount) throw new Error('Total tidak terdeteksi. Pastikan foto struk jelas.');
 
     fill.style.width = '100%'; lbl.textContent = 'Selesai!';
 
