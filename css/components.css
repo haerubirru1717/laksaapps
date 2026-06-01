@@ -69,8 +69,8 @@
     .widget,
     .gc {
       background: var(--gs-1);
-      backdrop-filter: blur(64px) saturate(160%);
-      -webkit-backdrop-filter: blur(64px) saturate(160%);
+      backdrop-filter: blur(20px) saturate(130%);
+      -webkit-backdrop-filter: blur(20px) saturate(130%);
       border: 1.5px solid var(--gs-border);
       border-radius: var(--r);
       box-shadow: var(--shd);
