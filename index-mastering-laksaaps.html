@@ -6314,7 +6314,7 @@
     const CLOUD_URL = 'https://laksana.haerubirru17.workers.dev';
 
     // In-memory cache — di-refresh setiap load halaman
-    let _cache = { tx: null, accs: null, cats: null, buds: null, goals: null, bills: null, loading: false };
+    let _cache = { tx: null, accs: null, cats: null, buds: null, goals: null, bills: null, piutang: null, loading: false };
 
     function getProfile() { try { return JSON.parse(localStorage.getItem('laksa_profile')) || null; } catch { return null; } }
     function getUserId() { return getProfile()?.tgId || null; }
@@ -6379,6 +6379,14 @@
     }
     function getBills() { return _cache.bills || []; }
 
+    // ── Piutang (D1) ──
+    async function fetchPiutang() {
+      const data = await api('GET', '/piutang');
+      _cache.piutang = Array.isArray(data) ? data : [];
+      return _cache.piutang;
+    }
+    function getPiutang() { return _cache.piutang || []; }
+
     // ── Load all ──
     async function loadAll(month) {
       if (_cache.loading) return;
@@ -6387,7 +6395,7 @@
       try {
         const uid = getUserId();
         if (!uid) return;
-        await Promise.all([fetchTx(month), fetchAccs(), fetchCats(), fetchBuds(), fetchGoals(), fetchBills()]);
+        await Promise.all([fetchTx(month), fetchAccs(), fetchCats(), fetchBuds(), fetchGoals(), fetchBills(), fetchPiutang()]);
       } catch (e) {
         console.error('loadAll error:', e);
         toast('Gagal memuat data: ' + e.message, 'err');
@@ -7605,6 +7613,187 @@
       const moreEl = el('dashBillMore');
       if (moreEl) moreEl.style.display = urgent.length > 5 ? '' : 'none';
     }
+
+    // ── PIUTANG (Receivables / Lending) ──
+    function renderPiutang() {
+      const list = getPiutang();
+      const grid = el('piutangGrid');
+      const emp  = el('piutangEmpty');
+      const strip = el('piutangSummaryStrip');
+      if (!grid) return;
+
+      if (!list.length) {
+        grid.innerHTML = '';
+        if (strip) strip.style.display = 'none';
+        if (emp) emp.style.display = 'flex';
+        return;
+      }
+      if (emp) emp.style.display = 'none';
+      if (strip) strip.style.display = 'grid';
+
+      // Summary calculations
+      const totalAmt      = list.reduce((s, p) => s + (p.amount   || 0), 0);
+      const totalReturned = list.reduce((s, p) => s + (p.returned || 0), 0);
+      const totalSisa     = Math.max(0, totalAmt - totalReturned);
+
+      if (el('piutangTotalAmt'))      el('piutangTotalAmt').textContent      = fCur(totalAmt);
+      if (el('piutangTotalReturned')) el('piutangTotalReturned').textContent = fCur(totalReturned);
+      if (el('piutangTotalSisa'))     el('piutangTotalSisa').textContent     = fCur(totalSisa);
+
+      const today_ = new Date(); today_.setHours(0,0,0,0);
+
+      // Sort: active first (overdue → upcoming), then paid
+      const sorted = [...list].sort((a, b) => {
+        if (a.status === b.status) {
+          if (a.status === 'active' && a.due_date && b.due_date)
+            return new Date(a.due_date) - new Date(b.due_date);
+          return 0;
+        }
+        return a.status === 'paid' ? 1 : -1;
+      });
+
+      grid.innerHTML = sorted.map(p => {
+        const isPaid  = p.status === 'paid';
+        const sisa    = Math.max(0, (p.amount || 0) - (p.returned || 0));
+        const rawPct  = p.amount > 0 ? Math.min(((p.returned || 0) / p.amount) * 100, 100) : 0;
+        const pct     = rawPct.toFixed(0);
+
+        // Due status
+        let dueCls = 'upcoming', dueLabel = '';
+        if (p.due_date) {
+          const due = new Date(p.due_date + 'T00:00:00');
+          const diff = Math.ceil((due - today_) / 86400000);
+          if (diff < 0)      { dueCls = 'overdue';  dueLabel = `Lewat ${Math.abs(diff)} hari`; }
+          else if (diff === 0){ dueCls = 'overdue';  dueLabel = 'Hari ini!'; }
+          else if (diff <= 3) { dueCls = 'overdue';  dueLabel = `${diff} hari lagi`; }
+          else if (diff <= 7) { dueCls = 'due-soon'; dueLabel = `${diff} hari lagi`; }
+          else                { dueCls = 'upcoming'; dueLabel = `${diff} hari lagi`; }
+        }
+
+        const levelCls = isPaid ? 'ok' : rawPct >= 60 ? 'ok' : rawPct >= 30 ? 'warn' : 'bad';
+        const progressBar = `<div class="ptrack" style="margin:6px 0 2px"><div class="pfill ${levelCls}" style="width:${rawPct}%"></div></div>`;
+
+        const pJ = JSON.stringify(p).replace(/"/g, '&quot;');
+
+        const actionBtns = isPaid
+          ? `<div style="display:flex;gap:6px">
+              <button class="bill-btn-edit-new" onclick='openModal("addPiutang",${pJ})' title="Edit">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <button class="bill-btn-del-new" onclick="delPiutang('${p.id}')" title="Hapus">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 3.5h10M5.5 3.5V2.5h3v1M5 3.5l.5 8M9 3.5l-.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>`
+          : `<div style="display:flex;gap:6px">
+              <button class="btn-add-glass" style="font-size:.72rem;padding:.3rem .65rem" onclick='openModal("returnPiutang",${pJ})' title="Bayar/Cicil">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>
+                Bayar
+              </button>
+              <button class="bill-btn-edit-new" onclick='openModal("addPiutang",${pJ})' title="Edit">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <button class="bill-btn-del-new" onclick="delPiutang('${p.id}')" title="Hapus">
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 3.5h10M5.5 3.5V2.5h3v1M5 3.5l.5 8M9 3.5l-.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>`;
+
+        const dueBadge = p.due_date && !isPaid
+          ? `<div class="bill-dot ${dueCls}" style="display:inline-block;margin-right:4px"></div><span style="font-size:.72rem;color:var(--ink3)">${fDate(p.due_date)} · ${dueLabel}</span>`
+          : p.due_date
+            ? `<span style="font-size:.72rem;color:var(--ink3)">Lunas ${fDate(p.lend_date)}</span>`
+            : `<span style="font-size:.72rem;color:var(--ink3)">Dipinjam ${fDate(p.lend_date)}</span>`;
+
+        const noteLine = p.note ? `<div style="font-size:.72rem;color:var(--ink3);margin-top:2px;font-style:italic">${esc(p.note)}</div>` : '';
+
+        const statusBadge = isPaid
+          ? `<span class="bill-badge paid">Lunas</span>`
+          : sisa > 0
+            ? `<span class="bill-badge ${dueCls === 'overdue' ? 'overdue' : 'upcoming'}" style="font-size:.7rem">Sisa ${fCur(sisa)}</span>`
+            : `<span class="bill-badge paid">Terlunasi</span>`;
+
+        return `<div class="card-wrap">
+      <div class="bill-card ${isPaid ? 'paid' : dueCls}">
+        <div class="card-top">
+          <div class="card-left">
+            <div>
+              <div class="bill-name">${esc(p.borrower_name)}</div>
+              <div class="bill-meta">${dueBadge}</div>
+              ${noteLine}
+            </div>
+          </div>
+          ${actionBtns}
+        </div>
+        <div class="bill-divider"></div>
+        <div class="card-bottom" style="flex-direction:column;gap:4px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            ${statusBadge}
+            <span class="bill-amount">${fCur(p.amount)}</span>
+          </div>
+          ${progressBar}
+          <div style="display:flex;justify-content:space-between;font-size:.72rem;color:var(--ink3)">
+            <span>Dikembalikan: <strong style="color:var(--income)">${fCur(p.returned||0)}</strong></span>
+            <span>${pct}%</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+      }).join('');
+    }
+
+    async function savePiutang(data, isEdit = false) {
+      try {
+        if (isEdit) {
+          await api('PATCH', `/piutang/${data.id}`, data);
+        } else {
+          await api('POST', '/piutang', data);
+        }
+        await fetchPiutang();
+        closeModal();
+        toast(isEdit ? 'Piutang diperbarui!' : 'Piutang dicatat!', 'ok');
+        renderPiutang();
+      } catch (e) { toast('Gagal: ' + e.message, 'err'); }
+    }
+
+    async function payReturnPiutang(id, returnAmt, createTx, accId) {
+      try {
+        const ptg = getPiutang().find(p => p.id === id);
+        if (!ptg) return;
+        const newReturned = (ptg.returned || 0) + returnAmt;
+        const newStatus   = newReturned >= ptg.amount ? 'paid' : 'active';
+        await api('PATCH', `/piutang/${id}`, { returned: newReturned, status: newStatus });
+
+        if (createTx && accId) {
+          const cats   = getCats();
+          const incCat = cats.find(c => c.type === 'income' || c.type === 'both') || cats[0];
+          await api('POST', '/transactions', {
+            type: 'income',
+            amount: returnAmt,
+            date: today(),
+            account_id: accId,
+            category_id: incCat?.id || null,
+            note: `Pelunasan Piutang: ${ptg.borrower_name}`,
+            source: 'website'
+          });
+          await Promise.all([fetchAccs(), fetchTx(thisMon())]);
+          if (curPage === 'dashboard') renderDash();
+        }
+        await fetchPiutang();
+        closeModal();
+        toast(newStatus === 'paid' ? `Piutang ${esc(ptg.borrower_name)} LUNAS! 🎉` : 'Cicilan dicatat!', 'ok');
+        renderPiutang();
+      } catch (e) { toast('Gagal: ' + e.message, 'err'); }
+    }
+
+    async function delPiutang(id) {
+      if (!confirm('Hapus catatan piutang ini?')) return;
+      try {
+        await api('DELETE', `/piutang/${id}`);
+        await fetchPiutang();
+        toast('Piutang dihapus.', 'info');
+        renderPiutang();
+      } catch (e) { toast('Gagal: ' + e.message, 'err'); }
+    }
+
     function renderReports() {
       const sel = el('repYear');
       const years = [...new Set(getTx().map(t => t.date.slice(0, 4)))].sort((a, b) => b - a);
@@ -7958,7 +8147,8 @@
         addTransaction: () => buildTxForm(data), addBudget: () => buildBudForm(),
         addGoal: () => buildGoalForm(), addToGoal: () => buildAddToGoalForm(data),
         addAccount: () => buildAccForm(), addCategory: () => buildCatForm(),
-        addBill: () => buildBillForm(data), payBill: () => buildPayBillForm(data)
+        addBill: () => buildBillForm(data), payBill: () => buildPayBillForm(data),
+        addPiutang: () => buildPiutangForm(data), returnPiutang: () => buildReturnPiutangForm(data)
       };
       const build = builders[type]; if (!build) return;
       const { t, html, onSubmit } = build();
@@ -7970,7 +8160,7 @@
       if (fab) { fab.style.opacity = '0'; fab.style.pointerEvents = 'none'; fab.style.zIndex = '999'; }
       setTimeout(() => {
         const f = body.querySelector('input:not([type=hidden]),select'); if (f) f.focus();
-        ['txAmt', 'bLim', 'gTgt', 'aBal', 'agAmt', 'billAmt'].forEach(id => setupAmtInput(id));
+        ['txAmt', 'bLim', 'gTgt', 'aBal', 'agAmt', 'billAmt', 'ptgAmt', 'ptgReturned', 'ptgReturnAmt'].forEach(id => setupAmtInput(id));
         // Init bill type chips
         document.querySelectorAll('.bill-type-opt').forEach(btn => {
           btn.addEventListener('click', () => {
@@ -8098,6 +8288,100 @@
           const accId = el('billPayAcc')?.value || null;
           const payDate = el('billPayDate')?.value || today();
           payBill(bill.id, createTx, accId, payDate);
+        }
+      };
+    }
+
+    function buildPiutangForm(piutang = null) {
+      const isEdit = !!piutang;
+      const defLendDate = piutang?.lend_date || today();
+      const defDueDate = piutang?.due_date || '';
+      const html = `<form>
+    <div class="fg"><label class="flbl">Nama Peminjam *</label>
+      <input type="text" class="finp" id="ptgBorrower" placeholder="Andi, Budi, Siska…" value="${esc(piutang?.borrower_name || '')}" required/>
+    </div>
+    <div class="fg"><label class="flbl">Nominal Pinjaman *</label>
+      <input type="text" class="finp" id="ptgAmt" placeholder="Rp 0" value="${piutang?.amount > 0 ? piutang.amount : ''}" required/>
+    </div>
+    <div class="fg"><label class="flbl">Telah Dikembalikan (Opsional)</label>
+      <input type="text" class="finp" id="ptgReturned" placeholder="Rp 0" value="${piutang?.returned > 0 ? piutang.returned : ''}"/>
+    </div>
+    <div class="fg"><label class="flbl">Tanggal Peminjaman *</label>
+      <input type="date" class="finp" id="ptgLendDate" value="${defLendDate}" required/>
+    </div>
+    <div class="fg"><label class="flbl">Tanggal Jatuh Tempo (Opsional)</label>
+      <input type="date" class="finp" id="ptgDueDate" value="${defDueDate}"/>
+    </div>
+    <div class="fg"><label class="flbl">Catatan</label>
+      <input type="text" class="finp" id="ptgNote" placeholder="Pinjam buat beli tiket, uang jajan, dll" value="${esc(piutang?.note || '')}"/>
+    </div>
+    <div class="mfoot">
+      <button type="button" class="btn2" onclick="closeModal()">Batal</button>
+      <button type="submit" class="btn">${isEdit ? 'Simpan' : 'Tambah'}</button>
+    </div>
+      </form>`;
+      return {
+        t: isEdit ? 'Edit Piutang' : 'Tambah Piutang',
+        html,
+        onSubmit: () => {
+          const payload = {
+            borrower_name: el('ptgBorrower').value.trim(),
+            amount: getRawAmt('ptgAmt') || 0,
+            returned: getRawAmt('ptgReturned') || 0,
+            lend_date: el('ptgLendDate').value || today(),
+            due_date: el('ptgDueDate').value || null,
+            note: el('ptgNote').value.trim() || null,
+            status: getRawAmt('ptgReturned') >= getRawAmt('ptgAmt') ? 'paid' : 'active'
+          };
+          if (!payload.borrower_name) { toast('Nama peminjam tidak boleh kosong', 'err'); return; }
+          if (payload.amount <= 0) { toast('Nominal pinjaman harus lebih dari 0', 'err'); return; }
+          if (isEdit) savePiutang({ ...payload, id: piutang.id }, true);
+          else savePiutang(payload, false);
+        }
+      };
+    }
+
+    function buildReturnPiutangForm(piutang) {
+      if (!piutang) return { t: '', html: '', onSubmit: () => {} };
+      const sisa = Math.max(0, piutang.amount - piutang.returned);
+      const html = `<form>
+    <div style="padding:.65rem .9rem;border-radius:12px;background:var(--gs-2);border:1.5px solid var(--gs-border);margin-bottom:1rem;text-align:left;">
+      <div style="font-size:.76rem;color:var(--ink3);">Peminjam</div>
+      <div style="font-size:.88rem;font-weight:700;color:var(--ink);margin-top:.15rem">${esc(piutang.borrower_name)}</div>
+      <div style="display:flex;justify-content:space-between;margin-top:.45rem;font-size:.78rem;color:var(--ink2);">
+        <span>Total Pinjaman: <strong>${fCur(piutang.amount)}</strong></span>
+        <span>Sisa Piutang: <strong style="color:var(--gold)">${fCur(sisa)}</strong></span>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="flbl">Nominal Pengembalian *</label>
+      <input type="text" class="finp" id="ptgReturnAmt" placeholder="${sisa}" value="${sisa > 0 ? sisa : ''}" required/>
+    </div>
+    <div class="fg" style="margin-bottom:.8rem">
+      <label style="display:flex;align-items:center;gap:.55rem;cursor:pointer">
+        <input type="checkbox" id="ptgCreateTx" checked style="width:16px;height:16px;accent-color:var(--accent)"/>
+        <span style="font-size:.83rem;font-weight:500;color:var(--ink)">Catat sebagai transaksi pemasukan</span>
+      </label>
+    </div>
+    <div id="ptgTxFields">
+      <div class="fg"><label class="flbl">Rekening Tujuan</label>
+        <select class="finp" id="ptgPayAcc">${getAccs().map(a => `<option value="${a.id}">${esc(a.name)} — ${fCur(a.balance)}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button type="button" class="btn2" onclick="closeModal()">Batal</button>
+      <button type="submit" class="btn" style="background:linear-gradient(135deg,#22c578,#10b981)">Simpan</button>
+    </div>
+      </form>`;
+      return {
+        t: 'Cicil / Bayar Piutang',
+        html,
+        onSubmit: () => {
+          const returnAmt = getRawAmt('ptgReturnAmt') || 0;
+          if (returnAmt <= 0) { toast('Nominal harus lebih dari 0', 'err'); return; }
+          const createTx = el('ptgCreateTx').checked;
+          const accId = el('ptgPayAcc')?.value || null;
+          payReturnPiutang(piutang.id, returnAmt, createTx, accId);
         }
       };
     }
