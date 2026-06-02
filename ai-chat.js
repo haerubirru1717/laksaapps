@@ -4,102 +4,38 @@
 // ==========================================
 
 const AI_STYLE = `<style>
-    /* ── AI CHAT BUBBLE ── */
+    /* ── AI CHAT BUBBLE (hidden — replaced by inline .ai-page-btn) ── */
     .ai-fab {
-      position: fixed;
-      bottom: 5.5rem;
-      right: 1.2rem;
-      z-index: 9001;
-      width: 52px;
-      height: 52px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #6366f1, #2563eb);
-      border: 2px solid rgba(255, 255, 255, .35);
-      box-shadow: 0 8px 28px rgba(99, 102, 241, .45), 0 2px 8px rgba(0, 0, 0, .12);
+      display: none !important;
+    }
+
+    /* ── AI PAGE BUTTON (inline, top-right of page header) ── */
+    .ai-page-btn {
       display: flex;
       align-items: center;
-      justify-content: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba(99,102,241,.15), rgba(37,99,235,.1));
+      border: 1px solid rgba(99,102,241,.25);
+      color: #818cf8;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: .68rem;
+      font-weight: 600;
       cursor: pointer;
-      transition: transform .25s, box-shadow .25s, background .2s, opacity .2s;
+      transition: background .2s, transform .15s;
+      white-space: nowrap;
       flex-shrink: 0;
-      overflow: hidden
     }
-
-    .ai-fab:hover {
-      transform: scale(1.08);
-      box-shadow: 0 12px 36px rgba(99, 102, 241, .55)
+    .ai-page-btn:hover {
+      background: linear-gradient(135deg, rgba(99,102,241,.25), rgba(37,99,235,.18));
+      transform: scale(1.03);
     }
-
-    .ai-fab:active {
-      transform: scale(.94)
+    .ai-page-btn:active {
+      transform: scale(.97);
     }
-
-    .ai-fab.open {
-      opacity: 0;
-      pointer-events: none;
-      transform: scale(.8)
-    }
-
-    .ai-fab-pulse {
-      position: absolute;
-      inset: -4px;
-      border-radius: 50%;
-      border: 2px solid rgba(99, 102, 241, .4);
-      animation: aipulse 2.4s ease-in-out infinite;
-      pointer-events: none
-    }
-
-    .ai-fab.open .ai-fab-pulse {
-      display: none
-    }
-
-    .ai-fab-ico {
-      position: absolute;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: opacity .2s, transform .25s
-    }
-
-    .ai-fab-ico-open {
-      opacity: 1;
-      transform: rotate(0deg) scale(1)
-    }
-
-    .ai-fab-ico-close {
-      opacity: 0;
-      transform: rotate(-90deg) scale(.6)
-    }
-
-    .ai-fab.open .ai-fab-ico-open {
-      opacity: 0;
-      transform: rotate(90deg) scale(.6)
-    }
-
-    .ai-fab.open .ai-fab-ico-close {
-      opacity: 1;
-      transform: rotate(0deg) scale(1)
-    }
-
-    @keyframes aipulse {
-
-      0%,
-      100% {
-        transform: scale(1);
-        opacity: .7
-      }
-
-      50% {
-        transform: scale(1.18);
-        opacity: 0
-      }
-    }
-
-    @media(min-width:769px) {
-      .ai-fab {
-        bottom: 1.8rem;
-        right: 1.8rem
-      }
+    .ai-page-btn svg {
+      flex-shrink: 0;
     }
 
     /* ── AI CHAT SCRIM & PANEL — Frosted Premium ── */

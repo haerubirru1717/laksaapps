@@ -313,11 +313,38 @@
       box-shadow: 3px 3px 0px #0f172a !important;
       border-radius: 50% !important;
     }
-    html[data-theme="education"] .fab-opt {
+    html[data-theme="education"] .fab-sheet {
+      background: #faf8f5 !important;
+      border-top: 3px solid #0f172a !important;
+      box-shadow: 0 -5px 0px rgba(15,23,42,.05) !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    html[data-theme="education"] .fab-sheet-handle {
+      background: #0f172a !important;
+    }
+    html[data-theme="education"] .fab-sheet-title {
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .fab-sheet-item {
+      background: #ffffff !important;
       border: 2px solid #0f172a !important;
       box-shadow: 3px 3px 0px #0f172a !important;
-      background: #ffffff !important;
-      border-radius: 12px !important;
+      border-radius: 14px !important;
+    }
+    html[data-theme="education"] .fab-sheet-item span {
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .fab-sheet-item:active {
+      transform: translate(1.5px, 1.5px) !important;
+      box-shadow: 1.5px 1.5px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .ai-page-btn {
+      background: #d1fae5 !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      color: #0f172a !important;
+      border-radius: 999px !important;
     }
 
     /* ── EDUCATION: Hero Card (.nw-card) Block Styling ── */
