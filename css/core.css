@@ -339,12 +339,13 @@
       transform: translate(1.5px, 1.5px) !important;
       box-shadow: 1.5px 1.5px 0px #0f172a !important;
     }
-    html[data-theme="education"] .ai-page-btn {
-      background: #d1fae5 !important;
+    html[data-theme="education"] .ai-orb-core {
+      background: #10b981 !important;
       border: 2px solid #0f172a !important;
       box-shadow: 3px 3px 0px #0f172a !important;
-      color: #0f172a !important;
-      border-radius: 999px !important;
+    }
+    html[data-theme="education"] .ai-orb-text text {
+      fill: #0f172a !important;
     }
 
     /* ── EDUCATION: Hero Card (.nw-card) Block Styling ── */
@@ -641,16 +642,7 @@
         box-shadow: -5px -5px 0px #0f172a !important;
       }
     }
-    html[data-theme="education"] .ai-fab {
-      background: #10b981 !important;
-      border: 2.5px solid #0f172a !important;
-      box-shadow: 4px 4px 0px #0f172a !important;
-      transition: all 0.15s ease !important;
-    }
-    html[data-theme="education"] .ai-fab:hover {
-      transform: translate(-1.5px, -1.5px) !important;
-      box-shadow: 5.5px 5.5px 0px #0f172a !important;
-    }
+    /* .ai-fab removed — replaced by inline .ai-orb in page headers */
     html[data-theme="education"] .ai-hdr {
       border-bottom: 2.5px solid #0f172a !important;
       background: #ffffff !important;

@@ -480,10 +480,12 @@
             <h1 class="ptitle">Transaksi</h1>
             <p class="psub" id="txSub">Semua catatan</p>
           </div>
-          <button class="ai-page-btn" onclick="toggleAiChat()">
-            <svg width="16" height="16" viewBox="0 0 72 72" fill="none"><g style="transform-origin:36px 36px"><ellipse cx="36" cy="36" rx="22" ry="9" stroke="currentColor" stroke-width="3" transform="rotate(-30 36 36)"/><ellipse cx="36" cy="36" rx="22" ry="9" stroke="currentColor" stroke-width="3" transform="rotate(30 36 36)"/><ellipse cx="36" cy="36" rx="22" ry="9" stroke="currentColor" stroke-width="3" transform="rotate(90 36 36)"/></g><circle cx="36" cy="36" r="4" fill="currentColor"/></svg>
-            <span>AI Financial Agent</span>
-          </button>
+          <div class="ai-orb" onclick="toggleAiChat()">
+            <div class="ai-orb-core">
+              <svg width="18" height="18" viewBox="0 0 72 72" fill="none"><g style="transform-origin:36px 36px;animation:spinOrbit 12s linear infinite"><ellipse cx="36" cy="36" rx="22" ry="9" stroke="white" stroke-width="2.5" transform="rotate(-30 36 36)"/></g><g style="transform-origin:36px 36px;animation:spinOrbitRev 15s linear infinite"><ellipse cx="36" cy="36" rx="22" ry="9" stroke="white" stroke-width="2" transform="rotate(30 36 36)" opacity=".65"/></g><circle cx="36" cy="36" r="4" fill="white"/></svg>
+            </div>
+            <svg class="ai-orb-text" viewBox="0 0 100 100"><defs><path id="orbPath" d="M50,50 m-38,0 a38,38 0 1,1 76,0 a38,38 0 1,1 -76,0"/></defs><text><textPath href="#orbPath">AI Financial Agent • Laksa •&#160;</textPath></text></svg>
+          </div>
         </div>
         <div class="fbar">
           <div class="fsrch"><svg class="fsrch-ico" width="13" height="13" viewBox="0 0 24 24" fill="none"
@@ -696,10 +698,12 @@
             <h1 class="ptitle">Keuangan</h1>
             <p class="psub">Anggaran, Target &amp; Tagihan</p>
           </div>
-          <button class="ai-page-btn" onclick="toggleAiChat()">
-            <svg width="16" height="16" viewBox="0 0 72 72" fill="none"><g style="transform-origin:36px 36px"><ellipse cx="36" cy="36" rx="22" ry="9" stroke="currentColor" stroke-width="3" transform="rotate(-30 36 36)"/><ellipse cx="36" cy="36" rx="22" ry="9" stroke="currentColor" stroke-width="3" transform="rotate(30 36 36)"/><ellipse cx="36" cy="36" rx="22" ry="9" stroke="currentColor" stroke-width="3" transform="rotate(90 36 36)"/></g><circle cx="36" cy="36" r="4" fill="currentColor"/></svg>
-            <span>AI Financial Agent</span>
-          </button>
+          <div class="ai-orb" onclick="toggleAiChat()">
+            <div class="ai-orb-core">
+              <svg width="18" height="18" viewBox="0 0 72 72" fill="none"><g style="transform-origin:36px 36px;animation:spinOrbit 12s linear infinite"><ellipse cx="36" cy="36" rx="22" ry="9" stroke="white" stroke-width="2.5" transform="rotate(-30 36 36)"/></g><g style="transform-origin:36px 36px;animation:spinOrbitRev 15s linear infinite"><ellipse cx="36" cy="36" rx="22" ry="9" stroke="white" stroke-width="2" transform="rotate(30 36 36)" opacity=".65"/></g><circle cx="36" cy="36" r="4" fill="white"/></svg>
+            </div>
+            <svg class="ai-orb-text" viewBox="0 0 100 100"><defs><path id="orbPath2" d="M50,50 m-38,0 a38,38 0 1,1 76,0 a38,38 0 1,1 -76,0"/></defs><text><textPath href="#orbPath2">AI Financial Agent • Laksa •&#160;</textPath></text></svg>
+          </div>
         </div>
         <div class="keu-seg-wrap">
           <div class="keu-seg" id="keuSeg">
@@ -855,10 +859,12 @@
             <p class="psub">Analisis keuangan mendalam</p>
           </div>
           <div style="display:flex;align-items:center;gap:.5rem">
-            <button class="ai-page-btn" onclick="toggleAiChat()">
-              <svg width="16" height="16" viewBox="0 0 72 72" fill="none"><g style="transform-origin:36px 36px"><ellipse cx="36" cy="36" rx="22" ry="9" stroke="currentColor" stroke-width="3" transform="rotate(-30 36 36)"/><ellipse cx="36" cy="36" rx="22" ry="9" stroke="currentColor" stroke-width="3" transform="rotate(30 36 36)"/><ellipse cx="36" cy="36" rx="22" ry="9" stroke="currentColor" stroke-width="3" transform="rotate(90 36 36)"/></g><circle cx="36" cy="36" r="4" fill="currentColor"/></svg>
-              <span>AI Financial Agent</span>
-            </button>
+            <div class="ai-orb" onclick="toggleAiChat()">
+              <div class="ai-orb-core">
+                <svg width="18" height="18" viewBox="0 0 72 72" fill="none"><g style="transform-origin:36px 36px;animation:spinOrbit 12s linear infinite"><ellipse cx="36" cy="36" rx="22" ry="9" stroke="white" stroke-width="2.5" transform="rotate(-30 36 36)"/></g><g style="transform-origin:36px 36px;animation:spinOrbitRev 15s linear infinite"><ellipse cx="36" cy="36" rx="22" ry="9" stroke="white" stroke-width="2" transform="rotate(30 36 36)" opacity=".65"/></g><circle cx="36" cy="36" r="4" fill="white"/></svg>
+              </div>
+              <svg class="ai-orb-text" viewBox="0 0 100 100"><defs><path id="orbPath3" d="M50,50 m-38,0 a38,38 0 1,1 76,0 a38,38 0 1,1 -76,0"/></defs><text><textPath href="#orbPath3">AI Financial Agent • Laksa •&#160;</textPath></text></svg>
+            </div>
             <select class="fsel" id="repYear" onchange="renderReports()"></select>
           </div>
         </div>
