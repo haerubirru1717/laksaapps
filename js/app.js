@@ -330,25 +330,19 @@ function toast(msg, type = 'info', dur = 3000) {
   setTimeout(() => { t.style.animation = 'toastOut .28s ease forwards'; setTimeout(() => t.parentNode && t.parentNode.removeChild(t), 290); }, dur);
 }
 
-// ── FAB SPEED DIAL ──
-
-// ── FAB ──
+// ── FAB BOTTOM SHEET ──
 function toggleFab() {
-  const menu = el('fabMenu'), btn = el('fabBtn');
+  const menu = el('fabMenu'), btn = el('fabBtn'), bg = el('fabBackdrop');
   if (!menu || !btn) return;
   const isOpen = menu.classList.contains('open');
-  if (isOpen) { closeFab(); } else { menu.classList.add('open'); btn.classList.add('open'); }
+  if (isOpen) { closeFab(); } else { menu.classList.add('open'); btn.classList.add('open'); if (bg) bg.classList.add('open'); }
 }
 function closeFab() {
-  const menu = el('fabMenu'), btn = el('fabBtn');
+  const menu = el('fabMenu'), btn = el('fabBtn'), bg = el('fabBackdrop');
   if (menu) menu.classList.remove('open');
   if (btn) btn.classList.remove('open');
+  if (bg) bg.classList.remove('open');
 }
-// Close fab when tapping outside
-document.addEventListener('click', e => {
-  const fw = document.querySelector('.fab-wrap');
-  if (fw && !fw.contains(e.target)) closeFab();
-});
 
 // ── ACCOUNT DETAIL BOTTOM SHEET ──
 let accSheetId = null, accSheetTab = 'all', accSheetMon = thisMon();

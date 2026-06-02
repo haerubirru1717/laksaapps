@@ -1934,60 +1934,89 @@
       color: var(--expense)
     }
 
-    /* ── FAB MENU — frosted glass ── */
-    .fab-menu {
-      position: absolute;
-      bottom: calc(100% + 14px);
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      align-items: center;
+    /* ── FAB BOTTOM SHEET ── */
+    .fab-sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.5);
+      z-index: 998;
       opacity: 0;
       pointer-events: none;
-      transition: opacity .2s, transform .2s;
-      transform: translateX(-50%) translateY(8px)
+      transition: opacity .25s ease;
     }
-
-    .fab-menu.open {
+    .fab-sheet-backdrop.open {
       opacity: 1;
       pointer-events: auto;
-      transform: translateX(-50%) translateY(0)
     }
-
-    .fab-opt {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--gs-8);
-      backdrop-filter: blur(28px);
-      -webkit-backdrop-filter: blur(28px);
-      border: 1.5px solid var(--gs-border-hi);
-      border-radius: 14px;
-      padding: 8px 16px;
-      font-size: .78rem;
-      font-weight: 600;
+    .fab-sheet {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 999;
+      background: var(--gs-8, rgba(20,25,40,.95));
+      backdrop-filter: blur(32px);
+      -webkit-backdrop-filter: blur(32px);
+      border-top: 1px solid var(--gs-border-hi, rgba(255,255,255,.1));
+      border-radius: 20px 20px 0 0;
+      padding: 12px 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
+      transform: translateY(100%);
+      transition: transform .3s cubic-bezier(.4,0,.2,1);
+    }
+    .fab-sheet.open {
+      transform: translateY(0);
+    }
+    .fab-sheet-handle {
+      width: 36px;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--ink3, rgba(255,255,255,.25));
+      margin: 0 auto 10px;
+    }
+    .fab-sheet-title {
+      font-size: .82rem;
+      font-weight: 700;
       color: var(--ink);
-      white-space: nowrap;
+      margin: 0 0 14px;
+      text-align: center;
+      letter-spacing: .02em;
+    }
+    .fab-sheet-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .fab-sheet-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 12px 4px;
+      background: transparent;
+      border: none;
+      border-radius: 14px;
       cursor: pointer;
-      box-shadow: 0 4px 20px rgba(37, 99, 235, .1), 0 1px 4px rgba(0, 0, 0, .04);
-      transition: transform .15s, background .15s, border-color .15s
+      transition: background .15s;
+      color: var(--ink);
     }
-
-    .fab-opt:hover {
-      background: var(--gs-4);
-      border-color: var(--gs-border-hi);
-      transform: scale(1.02)
+    .fab-sheet-item:hover,
+    .fab-sheet-item:active {
+      background: var(--gs-4, rgba(255,255,255,.06));
     }
-
-    .fab-opt .fo-ico {
-      width: 28px;
-      height: 28px;
-      border-radius: 9px;
+    .fab-sheet-item .fo-ico {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
       display: flex;
       align-items: center;
-      justify-content: center
+      justify-content: center;
+    }
+    .fab-sheet-item span {
+      font-size: .68rem;
+      font-weight: 600;
+      text-align: center;
+      line-height: 1.2;
+      color: var(--ink2, rgba(255,255,255,.7));
     }
 
     /* ── FILTER BAR — frosted sticky ── */

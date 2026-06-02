@@ -504,6 +504,7 @@
       color: var(--accent);
       background: rgba(37, 99, 235, 0.1);
       padding: 10px 16px;
+      flex-shrink: 0;
     }
 
     .bnav-item svg {
@@ -531,7 +532,7 @@
     }
 
     .bnav-item.active span {
-      max-width: 110px;
+      max-width: 5em;
       opacity: 1;
       margin-left: 6px;
     }

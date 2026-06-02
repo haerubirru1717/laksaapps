@@ -315,61 +315,6 @@
       </button>
     </div>
     <div class="fab-wrap">
-      <div class="fab-menu" id="fabMenu">
-        <button class="fab-opt" onclick="closeFab();go('receipt')">
-          <div class="fo-ico" style="background:rgba(37,99,235,.1)"><svg width="15" height="15" viewBox="0 0 24 24"
-              fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
-              <circle cx="12" cy="13" r="4" />
-            </svg></div>
-          Scan Struk
-        </button>
-        <button class="fab-opt" onclick="closeFab();openModal('addTransaction')">
-          <div class="fo-ico" style="background:rgba(16,185,129,.1)"><svg width="15" height="15" viewBox="0 0 24 24"
-              fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg></div>
-          Catat Manual
-        </button>
-        <button class="fab-opt" onclick="closeFab();go('keuangan');setKeuTab('budget',null);openModal('addBudget')">
-          <div class="fo-ico" style="background:rgba(245,158,11,.1)"><svg width="15" height="15" viewBox="0 0 24 24"
-              fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 6v6l4 2" />
-            </svg></div>
-          Buat Anggaran
-        </button>
-        <button class="fab-opt" onclick="closeFab();go('keuangan');setKeuTab('goals',null);openModal('addGoal')">
-          <div class="fo-ico" style="background:rgba(139,92,246,.1)"><svg width="15" height="15" viewBox="0 0 24 24"
-              fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <circle cx="12" cy="12" r="6" />
-              <circle cx="12" cy="12" r="2" />
-            </svg></div>
-          Tambah Target
-        </button>
-        <button class="fab-opt" onclick="closeFab();go('keuangan');setKeuTab('bills',null);openModal('addBill')">
-          <div class="fo-ico" style="background:rgba(239,68,68,.1)"><svg width="15" height="15" viewBox="0 0 24 24"
-              fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="5" width="20" height="14" rx="2" />
-              <line x1="2" y1="10" x2="22" y2="10" />
-            </svg></div>
-          Tambah Tagihan
-        </button>
-        <button class="fab-opt" onclick="closeFab();go('keuangan');setKeuTab('piutang',null);openModal('addPiutang')">
-          <div class="fo-ico" style="background:rgba(245,158,11,.1)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-          Tambah Piutang
-        </button>
-        <button class="fab-opt" onclick="closeFab();openModal('addAccount')">
-          <div class="fo-ico" style="background:rgba(99,102,241,.1)"><svg width="15" height="15" viewBox="0 0 24 24"
-              fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="5" width="20" height="14" rx="2" />
-              <line x1="2" y1="10" x2="22" y2="10" />
-            </svg></div>
-          Tambah Rekening
-        </button>
-      </div>
       <button class="bnav-add" id="fabBtn" onclick="toggleFab()">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
           <line x1="12" y1="5" x2="12" y2="19" />
@@ -1201,6 +1146,43 @@
 
   <!-- Laksa AI Plugin -->
   <script src="ai-chat.js?v=1.2.6"></script>
+
+  <!-- FAB Bottom Sheet -->
+  <div class="fab-sheet-backdrop" id="fabBackdrop" onclick="closeFab()"></div>
+  <div class="fab-sheet" id="fabMenu">
+    <div class="fab-sheet-handle"></div>
+    <h3 class="fab-sheet-title">Tambah Baru</h3>
+    <div class="fab-sheet-grid">
+      <button class="fab-sheet-item" onclick="closeFab();go('receipt')">
+        <div class="fo-ico" style="background:rgba(37,99,235,.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+        <span>Scan Struk</span>
+      </button>
+      <button class="fab-sheet-item" onclick="closeFab();openModal('addTransaction')">
+        <div class="fo-ico" style="background:rgba(16,185,129,.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+        <span>Catat Manual</span>
+      </button>
+      <button class="fab-sheet-item" onclick="closeFab();go('keuangan');setKeuTab('budget',null);openModal('addBudget')">
+        <div class="fo-ico" style="background:rgba(245,158,11,.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+        <span>Anggaran</span>
+      </button>
+      <button class="fab-sheet-item" onclick="closeFab();go('keuangan');setKeuTab('goals',null);openModal('addGoal')">
+        <div class="fo-ico" style="background:rgba(139,92,246,.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+        <span>Target</span>
+      </button>
+      <button class="fab-sheet-item" onclick="closeFab();go('keuangan');setKeuTab('bills',null);openModal('addBill')">
+        <div class="fo-ico" style="background:rgba(239,68,68,.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
+        <span>Tagihan</span>
+      </button>
+      <button class="fab-sheet-item" onclick="closeFab();go('keuangan');setKeuTab('piutang',null);openModal('addPiutang')">
+        <div class="fo-ico" style="background:rgba(245,158,11,.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <span>Piutang</span>
+      </button>
+      <button class="fab-sheet-item" onclick="closeFab();openModal('addAccount')">
+        <div class="fo-ico" style="background:rgba(99,102,241,.15)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
+        <span>Rekening</span>
+      </button>
+    </div>
+  </div>
 </body>
 
 </html>

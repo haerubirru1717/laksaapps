@@ -82,12 +82,13 @@ async function renderReports() {
       </div>`;
   }
 
-  // Detail table (hidden by default)
+  // Detail table (hidden by default, skip months with zero data)
   el('mRepBody').innerHTML = MFULL.map((m, i) => {
     const mk = cur + '-' + String(i + 1).padStart(2, '0');
     const mTx = txs.filter(t => mKey(t.date) === mk);
     const mi = mTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const me = mTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    if (mi === 0 && me === 0) return '';
     const d = mi - me; const r = mi > 0 ? ((d / mi) * 100).toFixed(1) : '0.0';
     return `<tr><td>${m}</td><td class="t-inc">${fCur(mi)}</td><td class="t-exp">${fCur(me)}</td><td class="${d >= 0 ? 't-inc' : 't-exp'}">${fCur(d, true)}</td><td>${r}%</td></tr>`;
   }).join('');
