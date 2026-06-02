@@ -100,6 +100,15 @@ async function fetchTx(month) {
 }
 function getTx() { return _cache.tx || []; }
 
+// ── Transactions (year-wide for reports) ──
+async function fetchTxYear(year) {
+  const y = year || String(new Date().getFullYear());
+  const data = await api('GET', `/transactions?month=${y}&limit=10000`);
+  _cache.txYear = data;
+  return data;
+}
+function getTxYear() { return _cache.txYear || []; }
+
 // ── Accounts ──
 async function fetchAccs() {
   const data = await api('GET', '/accounts');

@@ -169,83 +169,101 @@ function doBackup() {
 }
 async function doRestore(ev) {
   const file = ev.target.files[0]; if (!file) return;
-  const r = new FileReader();
-  r.onload = async e => {
-    try {
-      const d = JSON.parse(e.target.result);
-      if (!d.transactions) throw new Error('Format invalid');
-      if (!confirm('Restore akan memulihkan semua data ke server. Lanjutkan?')) return;
-      // Settings & receipts tetap lokal
-      if (d.settings) sv(K.set, d.settings);
-      if (d.receipts) sv(K.rec, d.receipts);
-      showLoadingOverlay(true);
-      let txOk = 0, txFail = 0, billOk = 0, goalOk = 0, budOk = 0;
-      // Transaksi → D1
-      if (d.transactions?.length) {
-        for (const tx of d.transactions) {
-          try {
-            await api('POST', '/transactions', {
-              type: tx.type, amount: tx.amount, date: tx.date,
-              account_id: tx.account_id, category_id: tx.category_id,
-              note: tx.note || '', store: tx.store || null, source: 'restore'
-            });
-            txOk++;
-          } catch (e) { txFail++; }
-        }
-      }
-      // Bills → D1
-      if (d.bills?.length) {
-        for (const b of d.bills) {
-          try {
-            await api('POST', '/bills', {
-              name: b.name, bill_type: b.bill_type || 'lainnya',
-              amount: b.amount || 0, due_type: b.due_type || 'monthly',
-              due_day: b.due_day || null, due_date: b.due_date || null,
-              notes: b.notes || null, status: 'unpaid'
-            });
-            billOk++;
-          } catch (e) { }
-        }
-      }
-      // Goals → D1
-      if (d.goals?.length) {
-        for (const g of d.goals) {
-          try {
-            await api('POST', '/goals', {
-              name: g.name, target: g.target, current: g.current || 0,
-              deadline: g.deadline || null, icon: g.icon || 'target'
-            });
-            goalOk++;
-          } catch (e) { }
-        }
-      }
-      // Budgets → D1
-      if (d.budgets?.length) {
-        for (const b of d.budgets) {
-          try {
-            await api('POST', '/budgets', {
-              category_id: b.category_id, limit_amount: b.limit_amount || b.limit || 0,
-              month: b.month || thisMon()
-            });
-            budOk++;
-          } catch (e) { }
-        }
-      }
-      showLoadingOverlay(false);
-      const parts = [`${txOk} transaksi`];
-      if (billOk) parts.push(`${billOk} tagihan`);
-      if (goalOk) parts.push(`${goalOk} target`);
-      if (budOk) parts.push(`${budOk} anggaran`);
-      toast(`Direstore! ${parts.join(', ')} berhasil dipulihkan.` + (txFail > 0 ? ` ${txFail} transaksi gagal.` : ''), 'ok');
-      setTimeout(() => location.reload(), 1200);
-    } catch (e) { toast('File tidak valid: ' + e.message, 'err'); }
-  };
-  r.readAsText(file); ev.target.value = '';
+  ev.target.value = '';
+  let text;
+  try {
+    // Prefer Blob.text() — avoids FileReader truncation issues on some mobile browsers
+    if (typeof file.text === 'function') {
+      text = await file.text();
+    } else {
+      text = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = () => reject(new Error('Gagal membaca file'));
+        r.readAsText(file);
+      });
+    }
+  } catch (readErr) {
+    toast('Gagal membaca file: ' + readErr.message, 'err'); return;
+  }
+  let d;
+  try {
+    d = JSON.parse(text);
+  } catch (parseErr) {
+    const sizeKB = Math.round(file.size / 1024);
+    toast(`File JSON tidak valid (${sizeKB}KB). Pastikan file tidak rusak atau terpotong.`, 'err'); return;
+  }
+  if (!d.transactions) { toast('Format backup tidak valid: property "transactions" tidak ditemukan.', 'err'); return; }
+  if (!confirm('Restore akan memulihkan semua data ke server. Lanjutkan?')) return;
+  if (d.settings) sv(K.set, d.settings);
+  if (d.receipts) sv(K.rec, d.receipts);
+  showLoadingOverlay(true);
+  let txOk = 0, txFail = 0, billOk = 0, goalOk = 0, budOk = 0;
+  // Transaksi → D1 (batch 5 concurrent)
+  if (d.transactions?.length) {
+    const batch = 5;
+    for (let i = 0; i < d.transactions.length; i += batch) {
+      const chunk = d.transactions.slice(i, i + batch);
+      const results = await Promise.allSettled(chunk.map(tx =>
+        api('POST', '/transactions', {
+          type: tx.type, amount: tx.amount, date: tx.date,
+          account_id: tx.account_id, category_id: tx.category_id,
+          note: tx.note || '', store: tx.store || null, source: 'restore'
+        })
+      ));
+      results.forEach(r => r.status === 'fulfilled' ? txOk++ : txFail++);
+    }
+  }
+  // Bills → D1
+  if (d.bills?.length) {
+    for (const b of d.bills) {
+      try {
+        await api('POST', '/bills', {
+          name: b.name, bill_type: b.bill_type || 'lainnya',
+          amount: b.amount || 0, due_type: b.due_type || 'monthly',
+          due_day: b.due_day || null, due_date: b.due_date || null,
+          notes: b.notes || null, status: 'unpaid'
+        });
+        billOk++;
+      } catch (e) { }
+    }
+  }
+  // Goals → D1
+  if (d.goals?.length) {
+    for (const g of d.goals) {
+      try {
+        await api('POST', '/goals', {
+          name: g.name, target: g.target, current: g.current || 0,
+          deadline: g.deadline || null, icon: g.icon || 'target'
+        });
+        goalOk++;
+      } catch (e) { }
+    }
+  }
+  // Budgets → D1
+  if (d.budgets?.length) {
+    for (const b of d.budgets) {
+      try {
+        await api('POST', '/budgets', {
+          category_id: b.category_id, limit_amount: b.limit_amount || b.limit || 0,
+          month: b.month || thisMon()
+        });
+        budOk++;
+      } catch (e) { }
+    }
+  }
+  showLoadingOverlay(false);
+  const parts = [`${txOk} transaksi`];
+  if (billOk) parts.push(`${billOk} tagihan`);
+  if (goalOk) parts.push(`${goalOk} target`);
+  if (budOk) parts.push(`${budOk} anggaran`);
+  toast(`Direstore! ${parts.join(', ')} berhasil dipulihkan.` + (txFail > 0 ? ` ${txFail} transaksi gagal.` : ''), 'ok');
+  setTimeout(() => location.reload(), 1200);
 }
 function expCSV() {
   const year = el('repYear').value;
   const MFULL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-  const txs = getTx().filter(t => t.date.startsWith(year));
+  const txs = (typeof getTxYear === 'function' ? getTxYear() : getTx()).filter(t => t.date.startsWith(year));
   const rows = [['Bulan', 'Pemasukan', 'Pengeluaran', 'Selisih', 'Tabungan%']];
   MFULL.forEach((m, i) => { const mk = year + '-' + String(i + 1).padStart(2, '0'); const mTx = txs.filter(t => mKey(t.date) === mk); const mi = mTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0); const me = mTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0); const diff = mi - me; rows.push([m, mi, me, diff, mi > 0 ? ((diff / mi) * 100).toFixed(1) + '%' : '0%']); });
   dlF(rows.map(r => r.join(',')).join('\n'), 'laksa_' + year + '.csv', 'text/csv'); toast('CSV diunduh!', 'ok');
