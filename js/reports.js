@@ -2,12 +2,17 @@
 // reports.js — Reports Page
 // ══════════════════════════════════════
 
-function renderReports() {
+async function renderReports() {
   const sel = el('repYear');
-  const years = [...new Set(getTx().map(t => t.date.slice(0, 4)))].sort((a, b) => b - a);
-  const cy = String(new Date().getFullYear()); if (!years.includes(cy)) years.unshift(cy);
-  const cur = sel.value || cy; sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join(''); sel.value = cur;
-  const txs = getTx().filter(t => t.date.startsWith(cur));
+  const cy = String(new Date().getFullYear());
+  const cur = sel.value || cy;
+  // Fetch year-wide data from server (not just current month)
+  try { await fetchTxYear(cur); } catch (e) { console.error('fetchTxYear error:', e); }
+  const allTx = getTxYear();
+  const years = [...new Set(allTx.map(t => t.date.slice(0, 4)))].sort((a, b) => b - a);
+  if (!years.includes(cy)) years.unshift(cy);
+  sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join(''); sel.value = cur;
+  const txs = allTx.filter(t => t.date.startsWith(cur));
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
   const MFULL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
   const inc = Array(12).fill(0), exp = Array(12).fill(0);
