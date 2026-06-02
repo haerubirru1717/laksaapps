@@ -12,8 +12,8 @@ const AI_STYLE = `<style>
     /* ── AI ORB (inline, top-right of page header) ── */
     .ai-orb {
       position: relative;
-      width: 48px;
-      height: 48px;
+      width: 52px;
+      height: 52px;
       cursor: pointer;
       flex-shrink: 0;
     }
@@ -22,8 +22,8 @@ const AI_STYLE = `<style>
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 30px;
-      height: 30px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       background: linear-gradient(135deg, #6366f1, #2563eb);
       border: 1.5px solid rgba(255,255,255,.3);
@@ -32,6 +32,7 @@ const AI_STYLE = `<style>
       align-items: center;
       justify-content: center;
       transition: transform .2s, box-shadow .2s;
+      z-index: 2;
     }
     .ai-orb:hover .ai-orb-core {
       transform: translate(-50%, -50%) scale(1.08);
@@ -40,24 +41,40 @@ const AI_STYLE = `<style>
     .ai-orb:active .ai-orb-core {
       transform: translate(-50%, -50%) scale(.95);
     }
-    .ai-orb-text {
+    .ai-orb-ring {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
-      animation: orbSpin 12s linear infinite;
+      animation: orbSpin 10s linear infinite;
     }
-    .ai-orb-text text {
-      font-size: 8.2px;
+    .ai-orb-ring text {
+      font-size: 8.5px;
       font-weight: 700;
-      fill: rgba(129,140,248,.8);
-      letter-spacing: 1.5px;
+      fill: rgba(129,140,248,.85);
+      letter-spacing: 2px;
       text-transform: uppercase;
       font-family: 'Inter', system-ui, sans-serif;
+    }
+    .ai-orb-ring.ring-a {
+      animation: orbSpin 10s linear infinite, orbFadeA 6s ease-in-out infinite;
+    }
+    .ai-orb-ring.ring-b {
+      animation: orbSpin 10s linear infinite reverse, orbFadeB 6s ease-in-out infinite;
     }
     @keyframes orbSpin {
       from { transform: rotate(0deg); }
       to   { transform: rotate(360deg); }
+    }
+    @keyframes orbFadeA {
+      0%, 40% { opacity: 1; }
+      50%, 90% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+    @keyframes orbFadeB {
+      0%, 40% { opacity: 0; }
+      50%, 90% { opacity: 1; }
+      100% { opacity: 0; }
     }
 
     /* ── AI CHAT SCRIM & PANEL — Frosted Premium ── */
