@@ -4441,3 +4441,31 @@
       box-shadow: 6px 6px 0px #0f172a;
     }
 
+    /* ── Reports Summary Card ── */
+    .rep-sum-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .6rem;
+    }
+    .rep-sum-item {
+      display: flex;
+      flex-direction: column;
+      gap: .15rem;
+      padding: .5rem .6rem;
+      border-radius: .5rem;
+      background: var(--card-glass, rgba(255,255,255,.04));
+      border: 1px solid var(--border, rgba(255,255,255,.06));
+    }
+    .rep-sum-lbl {
+      font-size: .68rem;
+      color: var(--ink3);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+    .rep-sum-val {
+      font-size: .95rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
