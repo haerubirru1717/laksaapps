@@ -92,7 +92,6 @@ function renderDash() {
 
   renderDCs(accs, total, txs, now);
   renderRecent(txs);
-  renderCF(txs);
   renderCatDonut(mTx);
   renderBudgProg(mTx);
   renderDashBills();
@@ -306,24 +305,6 @@ function upsert(id, cfg) {
   Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.08)';
   try { CH[id] = new Chart(c, cfg); } catch (e) { console.warn(e); }
 }
-
-function renderCF(txs) {
-  const days = [];
-  for (let i = cfDays - 1; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); days.push(d.toISOString().slice(0, 10)); }
-  const inc = days.map(d => txs.filter(t => t.date === d && t.type === 'income').reduce((s, t) => s + t.amount, 0));
-  const exp = days.map(d => txs.filter(t => t.date === d && t.type === 'expense').reduce((s, t) => s + t.amount, 0));
-  const labels = days.map(d => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }));
-  upsert('cfChart', {
-    type: 'line', data: {
-      labels, datasets: [
-        { label: 'Pemasukan', data: inc, borderColor: '#00a878', backgroundColor: 'rgba(0,168,120,.07)', tension: .4, fill: true, pointRadius: 3, pointBackgroundColor: '#00a878' },
-        { label: 'Pengeluaran', data: exp, borderColor: '#e63c1e', backgroundColor: 'rgba(230,60,30,.06)', tension: .4, fill: true, pointRadius: 3, pointBackgroundColor: '#e63c1e' }
-      ]
-    }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { usePointStyle: true, boxWidth: 7, font: { size: 11 } } }, tooltip: { callbacks: { label: c => ' ' + c.dataset.label + ': ' + fCur(c.raw) } } }, scales: { y: { ticks: { callback: v => fCur(v), maxTicksLimit: 5 }, grid: { color: document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(255,255,255,.07)' : 'rgba(15,23,42,.09)' } }, x: { grid: { display: false } } } }
-  });
-}
-
-function setCF(d, btn) { cfDays = d; document.querySelectorAll('.tgl').forEach(b => b.classList.remove('active')); btn.classList.add('active'); renderCF(getTx()); }
 
 function renderCatDonut(mTx) {
   const exp = mTx.filter(t => t.type === 'expense');

@@ -487,21 +487,11 @@
           </div>
           <div class="accs-scroll" id="ewalletScroll" style="gap:12px;"></div>
         </div>
-        <div class="dgrid">
-          <div class="widget">
-            <div class="wh">
-              <h3 class="wt">Arus Kas</h3>
-              <div class="tgl-grp"><button class="tgl active" onclick="setCF(7,this)">7H</button><button class="tgl"
-                  onclick="setCF(30,this)">30H</button></div>
-            </div>
-            <div style="position:relative;height:200px;width:100%"><canvas id="cfChart"></canvas></div>
+        <div class="widget">
+          <div class="wh">
+            <h3 class="wt">Terbaru</h3><button class="lbtn" onclick="go('transactions')">Lihat semua →</button>
           </div>
-          <div class="widget">
-            <div class="wh">
-              <h3 class="wt">Terbaru</h3><button class="lbtn" onclick="go('transactions')">Lihat semua →</button>
-            </div>
-            <ul class="tx-list" id="recentList"></ul>
-          </div>
+          <ul class="tx-list" id="recentList"></ul>
         </div>
         <!-- TAGIHAN MENDATANG — contextual -->
         <div id="dashBillWidget" style="display:none;margin-top:.9rem">
@@ -915,31 +905,46 @@
         <div class="widget" style="margin-bottom:.9rem">
           <div class="wh">
             <h3 class="wt">Pemasukan vs Pengeluaran</h3>
-          </div><canvas id="mChart" height="260"></canvas>
+            <div class="tgl-grp">
+              <button class="tgl active" onclick="setRepChartType('bar',this)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="5" width="4" height="16"/><rect x="17" y="8" width="4" height="13"/></svg>
+              </button>
+              <button class="tgl" onclick="setRepChartType('line',this)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 17 9 11 13 15 21 7"/></svg>
+              </button>
+              <button class="tgl" onclick="setRepChartType('area',this)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 17l6-6 4 4 8-8v11H3z"/></svg>
+              </button>
+            </div>
+          </div>
+          <div style="position:relative;height:250px;width:100%"><canvas id="mChart"></canvas></div>
         </div>
         <div class="widget" style="margin-bottom:.9rem">
           <div class="wh">
-            <h3 class="wt">Ringkasan Bulanan</h3><button class="btn2" onclick="expCSV()">↓ CSV</button>
+            <h3 class="wt">Ringkasan</h3>
+            <button class="btn2" onclick="expCSV()">↓ CSV</button>
           </div>
-          <div class="tbl-wrap">
-            <table class="tbl">
-              <thead>
-                <tr>
-                  <th>Bulan</th>
-                  <th>Pemasukan</th>
-                  <th>Pengeluaran</th>
-                  <th>Selisih</th>
-                  <th>Tabungan%</th>
-                </tr>
-              </thead>
-              <tbody id="mRepBody"></tbody>
-            </table>
+          <div class="rep-summary" id="repSummary"></div>
+          <button class="lbtn" id="repDetailToggle" onclick="toggleRepDetail()" style="display:flex;align-items:center;gap:.3rem;margin-top:.6rem;font-size:.76rem">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" id="repDetailArrow" style="transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+            Lihat detail bulanan
+          </button>
+          <div id="repDetailWrap" style="display:none;margin-top:.6rem">
+            <div class="tbl-wrap">
+              <table class="tbl">
+                <thead>
+                  <tr>
+                    <th>Bulan</th>
+                    <th>Pemasukan</th>
+                    <th>Pengeluaran</th>
+                    <th>Selisih</th>
+                    <th>Tabungan%</th>
+                  </tr>
+                </thead>
+                <tbody id="mRepBody"></tbody>
+              </table>
+            </div>
           </div>
-        </div>
-        <div class="widget">
-          <div class="wh">
-            <h3 class="wt">Top Kategori Pengeluaran</h3>
-          </div><canvas id="topCat" height="230"></canvas>
         </div>
       </section>
 
