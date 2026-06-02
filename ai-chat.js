@@ -9,33 +9,55 @@ const AI_STYLE = `<style>
       display: none !important;
     }
 
-    /* ── AI PAGE BUTTON (inline, top-right of page header) ── */
-    .ai-page-btn {
+    /* ── AI ORB (inline, top-right of page header) ── */
+    .ai-orb {
+      position: relative;
+      width: 48px;
+      height: 48px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .ai-orb-core {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6366f1, #2563eb);
+      border: 1.5px solid rgba(255,255,255,.3);
+      box-shadow: 0 4px 16px rgba(99,102,241,.4);
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      border-radius: 999px;
-      background: linear-gradient(135deg, rgba(99,102,241,.15), rgba(37,99,235,.1));
-      border: 1px solid rgba(99,102,241,.25);
-      color: #818cf8;
+      justify-content: center;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .ai-orb:hover .ai-orb-core {
+      transform: translate(-50%, -50%) scale(1.08);
+      box-shadow: 0 6px 24px rgba(99,102,241,.55);
+    }
+    .ai-orb:active .ai-orb-core {
+      transform: translate(-50%, -50%) scale(.95);
+    }
+    .ai-orb-text {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      animation: orbSpin 12s linear infinite;
+    }
+    .ai-orb-text text {
+      font-size: 8.2px;
+      font-weight: 700;
+      fill: rgba(129,140,248,.8);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
       font-family: 'Inter', system-ui, sans-serif;
-      font-size: .68rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background .2s, transform .15s;
-      white-space: nowrap;
-      flex-shrink: 0;
     }
-    .ai-page-btn:hover {
-      background: linear-gradient(135deg, rgba(99,102,241,.25), rgba(37,99,235,.18));
-      transform: scale(1.03);
-    }
-    .ai-page-btn:active {
-      transform: scale(.97);
-    }
-    .ai-page-btn svg {
-      flex-shrink: 0;
+    @keyframes orbSpin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
     }
 
     /* ── AI CHAT SCRIM & PANEL — Frosted Premium ── */
@@ -763,29 +785,7 @@ const AI_STYLE = `<style>
 
 </style>`;
 
-const AI_HTML = `  <!-- AI CHAT BUBBLE -->
-  <div class="ai-fab" id="aiFab" onclick="toggleAiChat()" title="Tanya AI Keuangan">
-    <div class="ai-fab-pulse"></div>
-    <span class="ai-fab-ico ai-fab-ico-open" style="display:flex;align-items:center;justify-content:center">
-      <svg width="24" height="24" viewBox="0 0 72 72" fill="none">
-        <g style="transform-origin:36px 36px;animation:spinOrbit 12s linear infinite">
-          <ellipse cx="36" cy="36" rx="22" ry="9" stroke="white" stroke-width="2.5" transform="rotate(-30 36 36)"/>
-        </g>
-        <g style="transform-origin:36px 36px;animation:spinOrbitRev 15s linear infinite">
-          <ellipse cx="36" cy="36" rx="22" ry="9" stroke="white" stroke-width="2" transform="rotate(30 36 36)" opacity="0.65"/>
-        </g>
-        <circle cx="36" cy="36" r="4" fill="white"/>
-      </svg>
-    </span>
-    <span class="ai-fab-ico ai-fab-ico-close">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"
-        stroke-linecap="round">
-        <line x1="18" y1="6" x2="6" y2="18" />
-        <line x1="6" y1="6" x2="18" y2="18" />
-      </svg>
-    </span>
-  </div>
-
+const AI_HTML = `
   <div class="ai-scrim" id="aiScrim" onclick="toggleAiChat()"></div>
   <div class="ai-panel" id="aiPanel">
     <div class="ai-hdr">
@@ -897,7 +897,7 @@ function toggleAiChat() {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => { panel.classList.add('open'); if (scrim) scrim.classList.add('open'); });
     });
-    fab.classList.add('open');
+    if (fab) fab.classList.add('open');
     // Lock body scroll saat full screen
     document.body.style.overflow = 'hidden';
     aiUpdateSugs();
@@ -914,7 +914,7 @@ function toggleAiChat() {
     history.pushState({ aiChat: true }, '');
   } else {
     panel.classList.remove('open');
-    fab.classList.remove('open');
+    if (fab) fab.classList.remove('open');
     if (scrim) scrim.classList.remove('open');
     document.body.style.overflow = '';
     // Tunggu animasi selesai baru hide
