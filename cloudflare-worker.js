@@ -549,7 +549,7 @@ async function handlePhoto(msg, chatId, userId, env) {
           `💚 *Top-up Berhasil Dicatat!*\n\n` +
           `💳 *Rekening:* ${targetAcc.name}\n` +
           `💵 *Jumlah:* Rp${fmt(result.total)}\n` +
-          (result.store ? `🏪 *Merchant:* ${result.store}\n` : "") +
+          `🏪 *Merchant:* ${result.store || "-"}\n` +
           `📅 *Tanggal:* ${fmtDate(date)}\n\n` +
           `_✏️ Reply pesan ini untuk koreksi_\n\nID: \`${id}\``,
           env, [[
@@ -1071,6 +1071,7 @@ async function parseCorrection(text, currentTx, env) {
     `TRANSAKSI SAAT INI:\n` +
     `- jumlah  : ${currentTx.amount}\n` +
     `- catatan : "${currentTx.note || ""}"\n` +
+    `- toko    : "${currentTx.store || ""}"\n` +
     `- tipe    : ${currentTx.type}\n` +
     `- tanggal : ${currentTx.date || today}\n\n` +
     `INPUT KOREKSI USER: "${text}"\n\n` +
@@ -1078,6 +1079,7 @@ async function parseCorrection(text, currentTx, env) {
     `FIELD YANG BISA DIUBAH:\n` +
     `- amount   : angka murni. rb/ribu=x1000, jt/juta=x1000000. Titik=pemisah ribuan: "30.400"->30400\n` +
     `- note     : deskripsi/keterangan, string bebas maks 60 karakter\n` +
+    `- store    : nama toko/merchant/tempat. Title Case. Jika user bilang "toko X" atau "merchant X" \u2192 store: "X"\n` +
     `- account  : nama rekening (mandiri, bca, jago, gopay, ovo, dana, tunai, dll)\n` +
     `- category : pilih dari: Makanan & Minuman, Transportasi, Belanja, Kesehatan, Hiburan, Tagihan, Pendidikan, Gaji, Investasi, Lainnya\n` +
     `- type     : "income" atau "expense"\n` +
@@ -1848,8 +1850,8 @@ function formatTx(tx) {
 🏷️ Kategori: *${tx.category_emoji || ""} ${tx.category_name || "Lainnya"}*
 💳 Rekening: *${tx.account_name || "-"}*
 📝 Catatan: _${tx.note || "-"}_`;
-  if (tx.type !== "income" && tx.store) {
-    msg += `\n🏪 Toko: _${tx.store}_`;
+  if (tx.store) {
+    msg += `\n🏪 ${tx.type === "income" ? "Merchant" : "Toko"}: _${tx.store}_`;
   }
   msg += `\n📅 Tanggal: *${fmtDate(tx.date)}*`;
   return msg;
