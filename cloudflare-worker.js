@@ -224,7 +224,7 @@ async function handleTelegram(body, env) {
   } catch (e) {
     console.error("handleTelegram error:", e.message, e.stack);
     if (chatId) {
-      await tgSend(chatId, "❌ Terjadi error: " + e.message + "\n\nCoba lagi atau ketik /menu.", env).catch(() => {});
+      await tgSend(chatId, "⚠️ *Oops, ada gangguan teknis.*\n\nTim kami sudah diberitahu. Silakan coba lagi atau ketik /menu.", env).catch(() => {});
     }
   }
 }
@@ -367,9 +367,9 @@ async function handleFreeText(chatId, userId, text, env) {
 
 async function handleAccPick(chatId, userId, accId, env) {
   const pending = await loadPendingText(chatId, env);
-  if (!pending) { await tgSend(chatId, "❌ Sesi habis. Kirim ulang transaksinya ya.", env); return; }
+  if (!pending) { await tgSend(chatId, "⏰ *Sesi input habis.*\n\nKirim ulang transaksimu, ya! Ketik langsung atau kirim /menu.", env); return; }
   const acc = await env.DB.prepare(`SELECT * FROM accounts WHERE id = ? AND user_id = ?`).bind(accId, userId).first();
-  if (!acc) { await tgSend(chatId, "❌ Rekening tidak valid.", env); return; }
+  if (!acc) { await tgSend(chatId, "⚠️ *Rekening tidak ditemukan.*\n\nPastikan nama rekening sudah benar. Ketik /saldo untuk lihat daftar rekeningmu.", env); return; }
   await clearPendingText(chatId, env);
   const { parsed, rawText, cat } = pending;
   await saveTx(chatId, userId, parsed, acc, cat, rawText, env);
@@ -428,7 +428,7 @@ async function handleTransfer(chatId, userId, parsed, accs, rawText, env) {
   }
 
   if (fromAcc.id === toAcc.id) {
-    await tgSend(chatId, "❌ Rekening asal dan tujuan tidak boleh sama.", env);
+    await tgSend(chatId, "⚠️ *Rekening asal dan tujuan sama.*\n\nPilih dua rekening yang berbeda untuk transfer.", env);
     return;
   }
 
@@ -480,7 +480,7 @@ async function handlePhoto(msg, chatId, userId, env) {
     const fileId  = msg.photo[msg.photo.length - 1].file_id;
     const fileRes = await fetch(`${TG(TOKEN)}/getFile?file_id=${fileId}`);
     const fd      = await fileRes.json();
-    if (!fd.ok) { await tgSend(chatId, "❌ Gagal mengambil foto dari Telegram.", env); return; }
+    if (!fd.ok) { await tgSend(chatId, "⚠️ *Gagal mengambil foto.*\n\nCoba kirim ulang foto struk dengan kualitas yang lebih baik.", env); return; }
 
     const fileUrl = `https://api.telegram.org/file/bot${TOKEN}/${fd.result.file_path}`;
     const imgRes  = await Promise.race([
@@ -488,7 +488,7 @@ async function handlePhoto(msg, chatId, userId, env) {
       new Promise((_, r) => setTimeout(() => r(new Error("timeout")), 15000)),
     ]).catch(() => ({ ok: false }));
 
-    if (!imgRes.ok) { await tgSend(chatId, "❌ Gagal mengunduh foto. Coba lagi.", env); return; }
+    if (!imgRes.ok) { await tgSend(chatId, "⚠️ *Gagal memproses foto.*\n\nCoba kirim ulang foto struk. Pastikan foto jelas dan tidak buram.", env); return; }
 
     const base64 = bufToBase64(await imgRes.arrayBuffer());
     const result = await ocrReceipt(base64, "image/jpeg", env);
@@ -580,7 +580,7 @@ async function handlePhoto(msg, chatId, userId, env) {
 
     await tgSend(chatId, "💳 *Pilih rekening pembayaran:*", env, accKeyboard);
   } catch (err) {
-    await tgSend(chatId, "❌ *Gagal memproses struk:* " + err.message + "\nSilakan kirim ulang foto struk yang lebih jelas.", env);
+    await tgSend(chatId, "⚠️ *Struk tidak dapat dibaca.*\n\nPastikan foto jelas, tidak terlipat, dan teksnya terbaca. Coba kirim ulang ya!", env);
   }
 }
 
@@ -623,10 +623,12 @@ async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId
     // Hapus pesan rincian struk (Pesan 1) agar chat tetap bersih
     if (rincianMsgId) await deleteTgMessage(chatId, rincianMsgId, env);
 
-    const successMsg = `✅ *TRANSAKSI BERHASIL DICATAT!*\n\n🏪 *Merchant:* ${draft.store}\n💵 *Total Belanja:* Rp${fmt(amount)}\n💳 *Metode:* ${account.name}\n💰 *Sisa Saldo:* Rp${fmt(newBalance)}\n📅 *Tanggal:* ${fmtDate(draft.date)}\n\n_Catatan transaksi berhasil disinkronkan ke aplikasi Laksa Anda._`;
-    await editTgMessage(chatId, messageId, successMsg, env, [[{ text: "🏠 Menu", callback_data: "menu" }]]);
+    const successMsg = `✅ *TRANSAKSI BERHASIL DICATAT!*\n\n🏪 *Merchant:* ${draft.store}\n💵 *Total Belanja:* Rp${fmt(amount)}\n💳 *Metode:* ${account.name}\n💰 *Sisa Saldo:* Rp${fmt(newBalance)}\n📅 *Tanggal:* ${fmtDate(draft.date)}\n\n_✏️ Reply pesan ini untuk koreksi_\n_Contoh: jumlah 50rb / rekening mandiri / toko alfamart_\n\nID: ${txId}`;
+    await editTgMessage(chatId, messageId, successMsg, env, [
+      [{ text: "🗑️ Hapus", callback_data: `del:${txId}` }, { text: "🏠 Menu", callback_data: "menu" }]
+    ]);
   } catch (err) {
-    await tgSend(chatId, "⚠️ *Gagal menyimpan transaksi:* " + err.message, env);
+    await tgSend(chatId, "⚠️ *Gagal menyimpan transaksi.*\n\nCoba ulangi dari awal dengan mengirim foto struk lagi.", env);
   }
 }
 
@@ -636,19 +638,19 @@ async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId
 async function handleCorrection(chatId, userId, botMsg, userText, env) {
   const idMatch = botMsg.match(/ID:\s*`?([a-z0-9_]+)`?/);
   if (!idMatch) {
-    await tgSend(chatId, "❌ Reply ke pesan konfirmasi yang ada ID-nya.", env);
+    await tgSend(chatId, "💡 *Untuk koreksi transaksi:*\n\nReply langsung ke pesan konfirmasi yang ada teks \"ID: ...\" di dalamnya.\n\n_Contoh: jumlah 50rb / kategori gaji / rekening mandiri_", env);
     return;
   }
 
   const txId = idMatch[1];
   const tx   = await env.DB.prepare(`SELECT * FROM transactions WHERE id = ? AND user_id = ?`).bind(txId, userId).first();
-  if (!tx) { await tgSend(chatId, "❌ Transaksi tidak ditemukan.", env); return; }
+  if (!tx) { await tgSend(chatId, "⚠️ *Transaksi tidak ditemukan.*\n\nMungkin sudah dihapus. Ketik /riwayat untuk cek daftar transaksi.", env); return; }
 
   await tgSend(chatId, "⏳ Memproses koreksi...", env);
   const raw = await parseCorrection(userText, tx, env);
   if (!raw || raw._error) {
     await tgSend(chatId,
-      "❌ Tidak bisa memahami koreksinya.\n\nContoh:\n_jumlah 25rb_\n_rekening jago_\n_catatan beli obat_",
+      "🤔 *Tidak bisa memahami koreksinya.*\n\nCoba tulis seperti ini:\n_jumlah 25rb_\n_rekening jago_\n_catatan beli obat_",
       env
     );
     return;
@@ -675,7 +677,7 @@ async function handleCorrection(chatId, userId, botMsg, userText, env) {
   for (const [k, v] of Object.entries(raw)) {
     if (EDITABLE[k]) { fields.push(`${k} = ?`); vals.push(v); }
   }
-  if (!fields.length) { await tgSend(chatId, "❌ Tidak ada yang bisa diubah.", env); return; }
+  if (!fields.length) { await tgSend(chatId, "🤔 *Hmm, tidak ada perubahan terdeteksi.*\n\nCoba tulis lebih spesifik, contoh:\n_jumlah 50rb_\n_kategori belanja_\n_rekening mandiri_", env); return; }
 
   await adjustBalance(tx.account_id, tx.type, tx.amount, -1, env);
   vals.push(txId);
@@ -702,7 +704,7 @@ async function handleCorrection(chatId, userId, botMsg, userText, env) {
 // ─────────────────────────────────────────────────────
 async function deleteTx(chatId, userId, txId, env) {
   const tx = await env.DB.prepare(`SELECT * FROM transactions WHERE id = ? AND user_id = ?`).bind(txId, userId).first();
-  if (!tx) { await tgSend(chatId, "❌ Transaksi tidak ditemukan.", env); return; }
+  if (!tx) { await tgSend(chatId, "⚠️ *Transaksi tidak ditemukan.*\n\nMungkin sudah dihapus sebelumnya.", env); return; }
   await adjustBalance(tx.account_id, tx.type, tx.amount, -1, env);
   await env.DB.prepare("DELETE FROM transaction_items WHERE transaction_id = ?").bind(txId).run().catch(() => {});
   await env.DB.prepare(`DELETE FROM transactions WHERE id = ?`).bind(txId).run();
@@ -960,7 +962,7 @@ async function parseWithGroq(text, env) {
   const system = `Kamu adalah AI pencatat keuangan untuk orang Indonesia. Pahami bahasa gaul, singkatan, typo.
 
 Field yang diekstrak:
-- type: "income" jika ada kata gaji/dapat/terima/masuk/refund/cashback, "transfer" jika pindah uang antar rekening sendiri (pindah/transfer ke/dari), selain itu "expense"
+- type: "income" jika ada kata gaji/dapat/terima/masuk/refund/cashback/topup/top-up/isi saldo/isi ulang, "transfer" jika pindah uang antar rekening sendiri (pindah/transfer ke/dari), selain itu "expense". PENTING: "topup gopay/ovo/dana/shopeepay" = income ke rekening e-wallet tersebut, BUKAN expense.
 - amount: angka murni. rb/ribu/k=×1000, jt/juta=×1000000. Titik adalah pemisah ribuan: "15.000"→15000
 - note: deskripsi item/barang yang dibeli/dijual, TANPA nama toko. Maks 60 karakter.
 - store: nama toko/merchant/tempat. Deteksi dari pola "di X", "dari X", "@ X", atau nama brand dikenal. Tulis dalam Title Case. null jika tidak ada.
@@ -988,6 +990,9 @@ CONTOH:
 
 "pindah 500rb dari mandiri ke seabank"
 → {"type":"transfer","amount":500000,"note":"transfer mandiri ke seabank","store":null,"date":null,"account_name":null,"from_account":"mandiri","to_account":"seabank","category_name":null}
+
+"topup gopay 700rb"
+→ {"type":"income","amount":700000,"note":"topup gopay","store":null,"date":null,"account_name":"gopay","category_name":"Lainnya"}
 
 Balas HANYA JSON valid tanpa markdown:
 {"type":"expense","amount":0,"note":"","store":null,"date":null,"account_name":null,"from_account":null,"to_account":null,"category_name":null}`;
@@ -1786,13 +1791,16 @@ async function adjustBalance(accountId, type, amount, factor, env) {
 function formatTx(tx) {
   if (!tx) return "-";
   const typeLabel = tx.type === "income" ? "💚 Pemasukan" : "🔴 Pengeluaran";
-  return `*${typeLabel}*
+  let msg = `*${typeLabel}*
 💸 *Rp${fmt(tx.amount)}*
 🏷️ Kategori: *${tx.category_emoji || ""} ${tx.category_name || "Lainnya"}*
 💳 Rekening: *${tx.account_name || "-"}*
-📝 Catatan: _${tx.note || "-"}_
-🏪 Toko: _${tx.store || "-"}_
-📅 Tanggal: *${fmtDate(tx.date)}*`;
+📝 Catatan: _${tx.note || "-"}_`;
+  if (tx.type !== "income" && tx.store) {
+    msg += `\n🏪 Toko: _${tx.store}_`;
+  }
+  msg += `\n📅 Tanggal: *${fmtDate(tx.date)}*`;
+  return msg;
 }
 
 function fmt(num) {
