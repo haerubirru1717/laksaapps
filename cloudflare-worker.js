@@ -397,7 +397,7 @@ async function saveTx(chatId, userId, parsed, acc, cat, rawText, env) {
     `${emoji} *Tersimpan!*\n\n${formatTx(tx)}\n\n` +
     `_✏️ Reply pesan ini untuk koreksi_\n` +
     `_Contoh: jumlah 5.5jt / kategori gaji / rekening mandiri_\n\n` +
-    `ID: ${id}`,
+    `ID: \`${id}\``,
     env,
     [[
       { text: "🗑️ Hapus",     callback_data: `del:${id}`       },
@@ -541,7 +541,7 @@ async function handlePhoto(msg, chatId, userId, env) {
         await env.DB.prepare(`
           INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
           VALUES (?, ?, ?, 'income', ?, ?, ?, ?, ?, '[foto struk]', 'telegram')
-        `).bind(id, userId, date, result.total, result.note || "Top-up " + targetAcc.name, null, targetAcc.id, cat?.id || null).run();
+        `).bind(id, userId, date, result.total, result.note || "Top-up " + targetAcc.name, result.store || null, targetAcc.id, cat?.id || null).run();
         await saveTransactionItems(id, result.items, env);
         await adjustBalance(targetAcc.id, "income", result.total, +1, env);
 
@@ -549,8 +549,9 @@ async function handlePhoto(msg, chatId, userId, env) {
           `💚 *Top-up Berhasil Dicatat!*\n\n` +
           `💳 *Rekening:* ${targetAcc.name}\n` +
           `💵 *Jumlah:* Rp${fmt(result.total)}\n` +
+          (result.store ? `🏪 *Merchant:* ${result.store}\n` : "") +
           `📅 *Tanggal:* ${fmtDate(date)}\n\n` +
-          `_✏️ Reply pesan ini untuk koreksi_\n\nID: ${id}`,
+          `_✏️ Reply pesan ini untuk koreksi_\n\nID: \`${id}\``,
           env, [[
             { text: "🗑️ Hapus", callback_data: `del:${id}` },
             { text: "🏠 Menu", callback_data: "menu" },
@@ -674,7 +675,7 @@ async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId
     // Hapus pesan rincian struk (Pesan 1) agar chat tetap bersih
     if (rincianMsgId) await deleteTgMessage(chatId, rincianMsgId, env);
 
-    const successMsg = `✅ *TRANSAKSI BERHASIL DICATAT!*\n\n🏪 *Merchant:* ${draft.store}\n💵 *Total Belanja:* Rp${fmt(amount)}\n💳 *Metode:* ${account.name}\n💰 *Sisa Saldo:* Rp${fmt(newBalance)}\n📅 *Tanggal:* ${fmtDate(draft.date)}\n\n_✏️ Reply pesan ini untuk koreksi_\n_Contoh: jumlah 50rb / rekening mandiri / toko alfamart_\n\nID: ${txId}`;
+    const successMsg = `✅ *TRANSAKSI BERHASIL DICATAT!*\n\n🏪 *Merchant:* ${draft.store}\n💵 *Total Belanja:* Rp${fmt(amount)}\n💳 *Metode:* ${account.name}\n💰 *Sisa Saldo:* Rp${fmt(newBalance)}\n📅 *Tanggal:* ${fmtDate(draft.date)}\n\n_✏️ Reply pesan ini untuk koreksi_\n_Contoh: jumlah 50rb / rekening mandiri / toko alfamart_\n\nID: \`${txId}\``;
     await editTgMessage(chatId, messageId, successMsg, env, [
       [{ text: "🗑️ Hapus", callback_data: `del:${txId}` }, { text: "🏠 Menu", callback_data: "menu" }]
     ]);
@@ -742,7 +743,7 @@ async function handleCorrection(chatId, userId, botMsg, userText, env) {
     `${emoji} *Diperbarui!*\n\n${formatTx(full)}\n\n` +
     `_✏️ Reply pesan ini untuk koreksi lagi_\n` +
     `_Contoh: jumlah 5.5jt / kategori gaji / rekening mandiri_\n\n` +
-    `ID: ${txId}`,
+    `ID: \`${txId}\``,
     env,
     [[
       { text: "🗑️ Hapus", callback_data: `del:${txId}` },
