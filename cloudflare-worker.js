@@ -510,6 +510,57 @@ async function handlePhoto(msg, chatId, userId, env) {
       accs = await dbAccounts(userId, env);
     }
 
+    // ── DETEKSI TOP-UP / ISI SALDO (auto income) ──
+    const topupPattern = /top\s*-?\s*up|isi\s+saldo|isi\s+ulang|pembayaran\s+(gopay|ovo|dana|shopeepay|linkaja)/i;
+    const ewalletPattern = /gopay|ovo|dana|shopeepay|linkaja|grabpay/i;
+    const itemsText = (result.items || []).map(i => i.name).join(" ");
+    const scanText = `${result.store || ""} ${itemsText} ${result.note || ""}`;
+    const isTopup = topupPattern.test(scanText);
+
+    if (isTopup) {
+      const ewalletMatch = scanText.match(ewalletPattern);
+      const ewalletName = ewalletMatch ? ewalletMatch[0].toLowerCase() : null;
+      let targetAcc = ewalletName ? resolveAccount(ewalletName, accs) : null;
+
+      // Buat rekening e-wallet otomatis jika belum ada
+      if (!targetAcc && ewalletName) {
+        const newAccId = randomId();
+        const displayName = ewalletName.charAt(0).toUpperCase() + ewalletName.slice(1);
+        await env.DB.prepare(`INSERT INTO accounts (id, user_id, name, balance, color) VALUES (?, ?, ?, 0, NULL)`)
+          .bind(newAccId, userId, displayName).run();
+        accs = await dbAccounts(userId, env);
+        targetAcc = accs.find(a => a.id === newAccId);
+      }
+
+      if (targetAcc) {
+        const cats = await dbCategories(userId, env);
+        const filteredCats = cats.filter(c => c.type === "income" || c.type === "both");
+        const cat = resolveCategory(null, result.note || "topup", result.store, "income", filteredCats);
+        const id = randomId();
+        const date = result.date || todayStr();
+        await env.DB.prepare(`
+          INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
+          VALUES (?, ?, ?, 'income', ?, ?, ?, ?, ?, '[foto struk]', 'telegram')
+        `).bind(id, userId, date, result.total, result.note || "Top-up " + targetAcc.name, null, targetAcc.id, cat?.id || null).run();
+        await saveTransactionItems(id, result.items, env);
+        await adjustBalance(targetAcc.id, "income", result.total, +1, env);
+
+        const mid = await tgSend(chatId,
+          `💚 *Top-up Berhasil Dicatat!*\n\n` +
+          `💳 *Rekening:* ${targetAcc.name}\n` +
+          `💵 *Jumlah:* Rp${fmt(result.total)}\n` +
+          `📅 *Tanggal:* ${fmtDate(date)}\n\n` +
+          `_✏️ Reply pesan ini untuk koreksi_\n\nID: ${id}`,
+          env, [[
+            { text: "🗑️ Hapus", callback_data: `del:${id}` },
+            { text: "🏠 Menu", callback_data: "menu" },
+          ]]
+        );
+        await trackBotMsg(chatId, mid, env);
+        return;
+      }
+    }
+
     const cats        = await dbCategories(userId, env);
     const filteredCats = cats.filter(c => c.type === "expense" || c.type === "both");
     const cat         = resolveCategory(null, result.note, result.store, "expense", filteredCats);
