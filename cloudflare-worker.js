@@ -200,7 +200,7 @@ async function handleTelegram(body, env) {
     if (!text) return;
 
     // Perintah
-    if (text === "/start" || text === "/menu") { await sendMenu(chatId, env); return; }
+    if (text === "/start" || text === "/menu") { await sendMenu(chatId, userId, env); return; }
     if (text === "/myid")    { await sendMyId(chatId, userId, msg.from.first_name, env); return; }
     if (text === "/saldo")   { await sendSaldo(chatId, userId, env); return; }
     if (text === "/riwayat") { await sendRiwayat(chatId, userId, env); return; }
@@ -216,7 +216,7 @@ async function handleTelegram(body, env) {
     // Teks bebas → catat transaksi
     if (!text.startsWith("/")) { await handleFreeText(chatId, userId, text, env); return; }
 
-    await sendMenu(chatId, env);
+    await sendMenu(chatId, userId, env);
   } catch (e) {
     console.error("handleTelegram error:", e.message, e.stack);
     if (chatId) {
@@ -240,7 +240,7 @@ async function handleCallback(cb, env) {
     body: JSON.stringify({ callback_query_id: cb.id }),
   });
 
-  if (data === "menu")    { await sendMenu(chatId, env); return; }
+  if (data === "menu")    { await sendMenu(chatId, userId, env); return; }
   if (data === "saldo")   { await sendSaldo(chatId, userId, env); return; }
   if (data === "riwayat") { await sendRiwayat(chatId, userId, env); return; }
   if (data === "tagihan") { await sendTagihan(chatId, userId, env); return; }
@@ -268,38 +268,7 @@ async function handleCallback(cb, env) {
     );
     return;
   }
-  if (data.startsWith("edit_acc:")) { await promptPickAccount(chatId, userId, data.slice(9), env); return; }
-  if (data.startsWith("edit_cat:")) { await promptPickCategory(chatId, userId, data.slice(9), env); return; }
-  if (data.startsWith("set_acc:"))  { await setTxAccount(chatId, userId, data, env); return; }
-  if (data.startsWith("set_cat:"))  { await setTxCategory(chatId, userId, data, env); return; }
 
-  // Edit jumlah & keterangan via ForceReply
-  if (data.startsWith("edit_amt:")) {
-    const txId = data.slice(9);
-    await tgSendForceReply(chatId,
-      `✏️ *Edit Jumlah*
-
-Reply pesan ini dengan jumlah baru.
-_Contoh: 25rb atau 25000_
-
-ID: ${txId}`,
-      env
-    );
-    return;
-  }
-  if (data.startsWith("edit_note:")) {
-    const txId = data.slice(10);
-    await tgSendForceReply(chatId,
-      `✏️ *Edit Keterangan*
-
-Reply pesan ini dengan keterangan baru.
-_Contoh: beli obat di apotek_
-
-ID: ${txId}`,
-      env
-    );
-    return;
-  }
 
   // Handle Interactive Photo Scan callbacks
   if (data.startsWith("pay:")) {
@@ -324,7 +293,7 @@ ID: ${txId}`,
 // TEKS BEBAS → CATAT TRANSAKSI (FULLY AUTO)
 // ─────────────────────────────────────────────────────
 async function handleFreeText(chatId, userId, text, env) {
-  if (!likelyTx(text)) { await sendMenu(chatId, env); return; }
+  if (!likelyTx(text)) { await sendMenu(chatId, userId, env); return; }
 
   await tgSend(chatId, "⏳ Memproses...", env);
 
@@ -415,15 +384,12 @@ async function saveTx(chatId, userId, parsed, acc, cat, rawText, env) {
   const emoji = parsed.type === "income" ? "💚" : "🔴";
 
   await tgSend(chatId,
-    `${emoji} *Tersimpan!*\n\n${formatTx(tx)}\n\nID: ${id}`,
+    `${emoji} *Tersimpan!*\n\n${formatTx(tx)}\n\n` +
+    `_✏️ Reply pesan ini untuk koreksi_\n` +
+    `_Contoh: jumlah 5.5jt / kategori gaji / rekening mandiri_\n\n` +
+    `ID: ${id}`,
     env,
     [[
-      { text: "✏️ Jumlah",     callback_data: `edit_amt:${id}`  },
-      { text: "✏️ Keterangan", callback_data: `edit_note:${id}` },
-    ],[
-      { text: "💳 Rekening",   callback_data: `edit_acc:${id}`  },
-      { text: "🏷️ Kategori",  callback_data: `edit_cat:${id}`  },
-    ],[
       { text: "🗑️ Hapus",     callback_data: `del:${id}`       },
       { text: "🏠 Menu",       callback_data: "menu"            },
     ]]
@@ -657,7 +623,7 @@ async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId
 // KOREKSI VIA REPLY
 // ─────────────────────────────────────────────────────
 async function handleCorrection(chatId, userId, botMsg, userText, env) {
-  const idMatch = botMsg.match(/ID: `?([a-f0-9-]{36})`?/);
+  const idMatch = botMsg.match(/ID:\s*`?([a-z0-9_]+)`?/);
   if (!idMatch) {
     await tgSend(chatId, "❌ Reply ke pesan konfirmasi yang ada ID-nya.", env);
     return;
@@ -709,7 +675,10 @@ async function handleCorrection(chatId, userId, botMsg, userText, env) {
   const full  = await getTxFull(txId, env);
   const emoji = full.type === "income" ? "💚" : "🔴";
   await tgSend(chatId,
-    `${emoji} *Diperbarui!*\n\n${formatTx(full)}\n\n_✏️ Reply pesan ini untuk koreksi lagi._\n\`ID: ${txId}\``,
+    `${emoji} *Diperbarui!*\n\n${formatTx(full)}\n\n` +
+    `_✏️ Reply pesan ini untuk koreksi lagi_\n` +
+    `_Contoh: jumlah 5.5jt / kategori gaji / rekening mandiri_\n\n` +
+    `ID: ${txId}`,
     env,
     [[
       { text: "🗑️ Hapus", callback_data: `del:${txId}` },
@@ -719,48 +688,6 @@ async function handleCorrection(chatId, userId, botMsg, userText, env) {
 }
 
 // ─────────────────────────────────────────────────────
-// EDIT TRANSAKSI VIA TOMBOL
-// ─────────────────────────────────────────────────────
-async function promptPickAccount(chatId, userId, txId, env) {
-  const accs = await dbAccounts(userId, env);
-  await tgSend(chatId, `*Pilih rekening baru:*`, env,
-    chunks(accs.map(a => ({ text: a.name, callback_data: `set_acc:${txId}:${a.id}` })), 2)
-  );
-}
-
-async function promptPickCategory(chatId, userId, txId, env) {
-  const tx       = await env.DB.prepare(`SELECT * FROM transactions WHERE id = ?`).bind(txId).first();
-  const cats     = await dbCategories(userId, env);
-  const filtered = cats.filter(c => c.type === (tx?.type || "expense") || c.type === "both");
-  await tgSend(chatId, `*Pilih kategori baru:*`, env,
-    chunks(filtered.map(c => ({ text: `${c.emoji} ${c.name}`, callback_data: `set_cat:${txId}:${c.id}` })), 2)
-  );
-}
-
-async function setTxAccount(chatId, userId, data, env) {
-  const [, txId, accId] = data.split(":");
-  const tx = await env.DB.prepare(`SELECT * FROM transactions WHERE id = ? AND user_id = ?`).bind(txId, userId).first();
-  if (!tx) { await tgSend(chatId, "❌ Transaksi tidak ditemukan.", env); return; }
-  await adjustBalance(tx.account_id, tx.type, tx.amount, -1, env);
-  await env.DB.prepare(`UPDATE transactions SET account_id = ? WHERE id = ?`).bind(accId, txId).run();
-  await adjustBalance(accId, tx.type, tx.amount, +1, env);
-  const full = await getTxFull(txId, env);
-  await tgSend(chatId, `✅ *Rekening diperbarui!*\n\n${formatTx(full)}\n\nID: ${txId}`, env,
-    [[{ text: "🏠 Menu", callback_data: "menu" }]]
-  );
-}
-
-async function setTxCategory(chatId, userId, data, env) {
-  const [, txId, catId] = data.split(":");
-  const tx = await env.DB.prepare(`SELECT * FROM transactions WHERE id = ? AND user_id = ?`).bind(txId, userId).first();
-  if (!tx) { await tgSend(chatId, "❌ Transaksi tidak ditemukan.", env); return; }
-  await env.DB.prepare(`UPDATE transactions SET category_id = ? WHERE id = ?`).bind(catId, txId).run();
-  const full = await getTxFull(txId, env);
-  await tgSend(chatId, `✅ *Kategori diperbarui!*\n\n${formatTx(full)}\n\nID: ${txId}`, env,
-    [[{ text: "🏠 Menu", callback_data: "menu" }]]
-  );
-}
-
 async function deleteTx(chatId, userId, txId, env) {
   const tx = await env.DB.prepare(`SELECT * FROM transactions WHERE id = ? AND user_id = ?`).bind(txId, userId).first();
   if (!tx) { await tgSend(chatId, "❌ Transaksi tidak ditemukan.", env); return; }
@@ -773,14 +700,72 @@ async function deleteTx(chatId, userId, txId, env) {
 // ─────────────────────────────────────────────────────
 // INFO COMMANDS
 // ─────────────────────────────────────────────────────
-async function sendMenu(chatId, env) {
-  await tgSend(chatId,
-    `🌊 *Laksa* — Pencatat Keuangan\n\n` +
-    `Ketik langsung untuk mencatat:\n` +
-    `_beli bakso 15rb pakai mandiri_\n` +
-    `_gaji masuk 5jt ke bca_\n\n` +
-    `Atau kirim foto struk 📸`,
-    env,
+async function sendMenu(chatId, userId, env) {
+  let msg = `🌊 *LAKSA — Dashboard Keuangan*\n`;
+
+  // ── Saldo ──
+  const accs = await dbAccounts(userId, env);
+  if (accs.length) {
+    let total = 0;
+    let accLines = "";
+    for (const a of accs) {
+      const sign = a.balance >= 0 ? "" : "−";
+      accLines += `  ▪️ ${a.name}: ${sign}Rp${fmt(Math.abs(a.balance))}\n`;
+      total += a.balance;
+    }
+    const tsign = total >= 0 ? "" : "−";
+    msg += `\n💰 *Total Saldo: ${tsign}Rp${fmt(Math.abs(total))}*\n`;
+    msg += `┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n`;
+    msg += `🏦 *Rekening:*\n${accLines}`;
+  } else {
+    msg += `\n📭 _Belum ada rekening._\n`;
+  }
+
+  // ── Pemasukan & Pengeluaran bulan ini ──
+  const now = new Date();
+  const thisMonth = now.toISOString().slice(0, 7);
+  const txMonth = await env.DB.prepare(
+    `SELECT type, SUM(amount) AS total FROM transactions WHERE user_id = ? AND date LIKE ? GROUP BY type`
+  ).bind(userId, `${thisMonth}%`).all();
+  const monthIncome  = txMonth.results.find(r => r.type === "income")?.total || 0;
+  const monthExpense = txMonth.results.find(r => r.type === "expense")?.total || 0;
+  const diff = monthIncome - monthExpense;
+  const diffSign = diff >= 0 ? "+" : "−";
+
+  msg += `┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n`;
+  msg += `📊 *Bulan Ini (${fmtMonthYear(thisMonth)}):*\n`;
+  msg += `  💚 Pemasukan  : Rp${fmt(monthIncome)}\n`;
+  msg += `  🔴 Pengeluaran: Rp${fmt(monthExpense)}\n`;
+  msg += `  📈 Selisih    : ${diffSign}Rp${fmt(Math.abs(diff))}\n`;
+
+  // ── Tagihan mendesak ──
+  const bills = await env.DB.prepare(
+    `SELECT * FROM bills WHERE user_id = ? AND status = 'unpaid' ORDER BY due_day ASC LIMIT 3`
+  ).bind(userId).all();
+  if (bills.results.length) {
+    msg += `┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n`;
+    msg += `🗓️ *Tagihan Mendesak:*\n`;
+    for (const b of bills.results) {
+      const dueDay = b.due_day || 1;
+      const due = b.due_type === "once" && b.due_date
+        ? new Date(b.due_date + "T00:00:00")
+        : new Date(now.getFullYear(), now.getMonth(), dueDay);
+      const diffDays = Math.ceil((due - now) / 86400000);
+      const icon = diffDays < 0 ? "🔴" : diffDays <= 3 ? "🟡" : "⚪";
+      const label = diffDays < 0 ? `Overdue ${Math.abs(diffDays)}h` : diffDays === 0 ? "Hari ini!" : `${diffDays} hari`;
+      msg += `  ${icon} ${b.name}`;
+      if (b.amount > 0) msg += ` — Rp${fmt(b.amount)}`;
+      msg += ` _(${label})_\n`;
+    }
+  }
+
+  // ── Petunjuk ──
+  msg += `┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\n`;
+  msg += `✏️ _Ketik langsung untuk catat:_\n`;
+  msg += `_beli bakso 15rb pakai mandiri_\n`;
+  msg += `📸 _Kirim foto struk untuk scan_`;
+
+  await tgSend(chatId, msg, env,
     [[
       { text: "💰 Saldo",    callback_data: "saldo"   },
       { text: "📋 Riwayat", callback_data: "riwayat" },
@@ -789,6 +774,12 @@ async function sendMenu(chatId, env) {
       { text: "ℹ️ Info Akun", callback_data: "myid" },
     ]]
   );
+}
+
+function fmtMonthYear(ym) {
+  const [y, m] = ym.split("-");
+  const months = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+  return `${months[parseInt(m, 10) - 1]} ${y}`;
 }
 
 async function sendSaldo(chatId, userId, env) {
@@ -1402,7 +1393,27 @@ async function setupDatabase(env) {
       )
     `).run();
 
-    return jsonRes({ status: "success", message: "Database tables created successfully (accounts, categories, transactions, transaction_items, budgets, goals, bills, pending_scans, piutang, pending_texts, processed_updates)" });
+    // ── Setup Telegram Bot Commands (burger menu) ──
+    const TOKEN = env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN;
+    if (TOKEN) {
+      await fetch(`https://api.telegram.org/bot${TOKEN}/setMyCommands`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          commands: [
+            { command: "start", description: "Mulai bot Laksa" },
+            { command: "menu",  description: "Buka dashboard keuangan" },
+            { command: "saldo", description: "Cek saldo semua rekening" },
+            { command: "riwayat", description: "Lihat 10 transaksi terakhir" },
+            { command: "tagihan", description: "Lihat tagihan yang belum dibayar" },
+            { command: "myid", description: "Lihat Telegram ID kamu" },
+            { command: "batal", description: "Batalkan input yang sedang berjalan" },
+          ]
+        })
+      }).catch(() => {});
+    }
+
+    return jsonRes({ status: "success", message: "Database tables created + bot commands registered." });
   } catch (e) {
     return jsonRes({ error: e.message }, 500);
   }
@@ -1869,20 +1880,6 @@ async function tgSend(chatId, text, env, keyboard = null) {
   });
   const data2 = await res2.json().catch(() => null);
   return data2?.result?.message_id || null;
-}
-
-async function tgSendForceReply(chatId, text, env) {
-  const TOKEN = env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN;
-  await fetch(`${TG(TOKEN)}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text,
-      parse_mode: "Markdown",
-      reply_markup: { force_reply: true, selective: true }
-    })
-  });
 }
 
 async function deleteTgMessage(chatId, messageId, env) {
