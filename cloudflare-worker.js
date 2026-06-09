@@ -199,13 +199,17 @@ async function handleTelegram(body, env) {
     if (msg.photo) { await handlePhoto(msg, chatId, userId, env); return; }
     if (!text) return;
 
-    // Perintah
+    // Perintah — hapus history bot sebelumnya agar chat bersih
+    if (text.startsWith("/") || !msg.reply_to_message) {
+      await clearBotHistory(chatId, env);
+    }
+
     if (text === "/start" || text === "/menu") { await sendMenu(chatId, userId, env); return; }
     if (text === "/myid")    { await sendMyId(chatId, userId, msg.from.first_name, env); return; }
     if (text === "/saldo")   { await sendSaldo(chatId, userId, env); return; }
     if (text === "/riwayat") { await sendRiwayat(chatId, userId, env); return; }
     if (text === "/tagihan") { await sendTagihan(chatId, userId, env); return; }
-    if (text === "/batal")   { await clearPendingText(chatId, env); await tgSend(chatId, "❌ Dibatalkan.", env); return; }
+    if (text === "/batal")   { await clearPendingText(chatId, env); const mid = await tgSend(chatId, "❌ Dibatalkan.", env); await trackBotMsg(chatId, mid, env); return; }
 
     // Reply ke pesan bot → koreksi transaksi
     if (msg.reply_to_message?.from?.is_bot) {
@@ -239,6 +243,11 @@ async function handleCallback(cb, env) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ callback_query_id: cb.id }),
   });
+
+  // Hapus history bot sebelumnya untuk navigasi utama
+  if (["menu","saldo","riwayat","tagihan","myid"].includes(data)) {
+    await clearBotHistory(chatId, env);
+  }
 
   if (data === "menu")    { await sendMenu(chatId, userId, env); return; }
   if (data === "saldo")   { await sendSaldo(chatId, userId, env); return; }
@@ -295,7 +304,8 @@ async function handleCallback(cb, env) {
 async function handleFreeText(chatId, userId, text, env) {
   if (!likelyTx(text)) { await sendMenu(chatId, userId, env); return; }
 
-  await tgSend(chatId, "⏳ Memproses...", env);
+  const processingMid = await tgSend(chatId, "⏳ Memproses...", env);
+  await trackBotMsg(chatId, processingMid, env);
 
   // 1. Parse dengan AI
   const parsed = await parseWithGroq(text, env);
@@ -383,7 +393,7 @@ async function saveTx(chatId, userId, parsed, acc, cat, rawText, env) {
   const tx    = await getTxFull(id, env);
   const emoji = parsed.type === "income" ? "💚" : "🔴";
 
-  await tgSend(chatId,
+  const mid = await tgSend(chatId,
     `${emoji} *Tersimpan!*\n\n${formatTx(tx)}\n\n` +
     `_✏️ Reply pesan ini untuk koreksi_\n` +
     `_Contoh: jumlah 5.5jt / kategori gaji / rekening mandiri_\n\n` +
@@ -394,6 +404,7 @@ async function saveTx(chatId, userId, parsed, acc, cat, rawText, env) {
       { text: "🏠 Menu",       callback_data: "menu"            },
     ]]
   );
+  await trackBotMsg(chatId, mid, env);
 }
 
 // ─────────────────────────────────────────────────────
@@ -674,7 +685,7 @@ async function handleCorrection(chatId, userId, botMsg, userText, env) {
 
   const full  = await getTxFull(txId, env);
   const emoji = full.type === "income" ? "💚" : "🔴";
-  await tgSend(chatId,
+  const mid = await tgSend(chatId,
     `${emoji} *Diperbarui!*\n\n${formatTx(full)}\n\n` +
     `_✏️ Reply pesan ini untuk koreksi lagi_\n` +
     `_Contoh: jumlah 5.5jt / kategori gaji / rekening mandiri_\n\n` +
@@ -685,6 +696,7 @@ async function handleCorrection(chatId, userId, botMsg, userText, env) {
       { text: "🏠 Menu",  callback_data: "menu"         },
     ]]
   );
+  await trackBotMsg(chatId, mid, env);
 }
 
 // ─────────────────────────────────────────────────────
@@ -765,7 +777,7 @@ async function sendMenu(chatId, userId, env) {
   msg += `_beli bakso 15rb pakai mandiri_\n`;
   msg += `📸 _Kirim foto struk untuk scan_`;
 
-  await tgSend(chatId, msg, env,
+  const mid = await tgSend(chatId, msg, env,
     [[
       { text: "💰 Saldo",    callback_data: "saldo"   },
       { text: "📋 Riwayat", callback_data: "riwayat" },
@@ -774,6 +786,7 @@ async function sendMenu(chatId, userId, env) {
       { text: "ℹ️ Info Akun", callback_data: "myid" },
     ]]
   );
+  await trackBotMsg(chatId, mid, env);
 }
 
 function fmtMonthYear(ym) {
@@ -785,10 +798,11 @@ function fmtMonthYear(ym) {
 async function sendSaldo(chatId, userId, env) {
   const accs = await dbAccounts(userId, env);
   if (!accs.length) {
-    await tgSend(chatId,
+    const mid = await tgSend(chatId,
       "📭 Belum ada rekening.\n\nCatat transaksi pertamamu dan rekening akan dibuat otomatis.",
       env, [[{ text: "🏠 Menu", callback_data: "menu" }]]
     );
+    await trackBotMsg(chatId, mid, env);
     return;
   }
   let msg   = `💳 *Saldo Rekening:*\n\n`;
@@ -800,7 +814,8 @@ async function sendSaldo(chatId, userId, env) {
   }
   const tsign = total >= 0 ? "" : "−";
   msg += `\n📊 *Total: ${tsign}Rp${fmt(Math.abs(total))}*`;
-  await tgSend(chatId, msg, env, [[{ text: "🏠 Menu", callback_data: "menu" }]]);
+  const mid = await tgSend(chatId, msg, env, [[{ text: "🏠 Menu", callback_data: "menu" }]]);
+  await trackBotMsg(chatId, mid, env);
 }
 
 async function sendRiwayat(chatId, userId, env) {
@@ -813,8 +828,8 @@ async function sendRiwayat(chatId, userId, env) {
   `).bind(userId).all();
 
   if (!rows.results.length) {
-    await tgSend(chatId, "📭 Belum ada transaksi.", env, [[{ text: "🏠 Menu", callback_data: "menu" }]]
-    );
+    const mid = await tgSend(chatId, "📭 Belum ada transaksi.", env, [[{ text: "🏠 Menu", callback_data: "menu" }]]);
+    await trackBotMsg(chatId, mid, env);
     return;
   }
 
@@ -825,7 +840,8 @@ async function sendRiwayat(chatId, userId, env) {
     msg += `   ${t.category_emoji || ""} ${t.note || "-"}  ·  ${t.account_name || "-"}\n\n`;
   }
 
-  await tgSend(chatId, msg, env, [[{ text: "🏠 Menu", callback_data: "menu" }]]);
+  const mid2 = await tgSend(chatId, msg, env, [[{ text: "🏠 Menu", callback_data: "menu" }]]);
+  await trackBotMsg(chatId, mid2, env);
 }
 
 async function sendTagihan(chatId, userId, env) {
@@ -843,9 +859,10 @@ async function sendTagihan(chatId, userId, env) {
   ).bind(userId).all();
 
   if (!r.results.length) {
-    await tgSend(chatId, "📭 Belum ada tagihan tercatat.\n\nTambahkan tagihan dari website Laksa.", env,
+    const mid = await tgSend(chatId, "📭 Belum ada tagihan tercatat.\n\nTambahkan tagihan dari website Laksa.", env,
       [[{ text: "🏠 Menu", callback_data: "menu" }]]
     );
+    await trackBotMsg(chatId, mid, env);
     return;
   }
 
@@ -889,14 +906,16 @@ async function sendTagihan(chatId, userId, env) {
     msg += `━━━━━━━━━━━━━━\n💸 *Total belum lunas: Rp${fmt(totalUnpaid)}*`;
   }
 
-  await tgSend(chatId, msg, env, [[{ text: "🏠 Menu", callback_data: "menu" }]]);
+  const mid3 = await tgSend(chatId, msg, env, [[{ text: "🏠 Menu", callback_data: "menu" }]]);
+  await trackBotMsg(chatId, mid3, env);
 }
 
 async function sendMyId(chatId, userId, firstName, env) {
-  await tgSend(chatId,
+  const mid = await tgSend(chatId,
     `🪪 *Telegram ID kamu:*\n\n\`${userId}\`\n\nHai ${firstName || ""}! Salin angka ini ke halaman setup website Laksa. 🔒`,
     env, [[{ text: "🏠 Menu", callback_data: "menu" }]]
   );
+  await trackBotMsg(chatId, mid, env);
 }
 
 // ─────────────────────────────────────────────────────
@@ -1393,6 +1412,15 @@ async function setupDatabase(env) {
       )
     `).run();
 
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS bot_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chat_id TEXT NOT NULL,
+        message_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+
     // ── Setup Telegram Bot Commands (burger menu) ──
     const TOKEN = env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN;
     if (TOKEN) {
@@ -1403,11 +1431,7 @@ async function setupDatabase(env) {
           commands: [
             { command: "start", description: "Mulai bot Laksa" },
             { command: "menu",  description: "Buka dashboard keuangan" },
-            { command: "saldo", description: "Cek saldo semua rekening" },
-            { command: "riwayat", description: "Lihat 10 transaksi terakhir" },
-            { command: "tagihan", description: "Lihat tagihan yang belum dibayar" },
-            { command: "myid", description: "Lihat Telegram ID kamu" },
-            { command: "batal", description: "Batalkan input yang sedang berjalan" },
+            { command: "myid",  description: "Lihat Telegram ID kamu" },
           ]
         })
       }).catch(() => {});
@@ -1880,6 +1904,24 @@ async function tgSend(chatId, text, env, keyboard = null) {
   });
   const data2 = await res2.json().catch(() => null);
   return data2?.result?.message_id || null;
+}
+
+// ── Bot message tracking (clean history) ──
+async function trackBotMsg(chatId, messageId, env) {
+  if (!messageId) return;
+  await env.DB.prepare("INSERT INTO bot_messages (chat_id, message_id) VALUES (?, ?)")
+    .bind(String(chatId), messageId).run().catch(() => {});
+}
+
+async function clearBotHistory(chatId, env) {
+  const rows = await env.DB.prepare("SELECT message_id FROM bot_messages WHERE chat_id = ?")
+    .bind(String(chatId)).all().catch(() => ({ results: [] }));
+  const ids = rows.results || [];
+  for (const r of ids) {
+    await deleteTgMessage(chatId, r.message_id, env);
+  }
+  await env.DB.prepare("DELETE FROM bot_messages WHERE chat_id = ?")
+    .bind(String(chatId)).run().catch(() => {});
 }
 
 async function deleteTgMessage(chatId, messageId, env) {
