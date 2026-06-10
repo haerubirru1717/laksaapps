@@ -708,6 +708,25 @@ async function handleCorrection(chatId, userId, botMsg, userText, env) {
     return;
   }
 
+  // ── LAPIS 2: Safeguard — filter field yang tidak disebut user ──
+  const lo = userText.toLowerCase();
+  const fieldKeywords = {
+    amount:      /jumlah|nominal|harga|total|\d+\s*(rb|ribu|jt|juta|k)\b/i,
+    note:        /catatan|keterangan|deskripsi|note/i,
+    store:       /toko|merchant|tempat|store/i,
+    account:     /rekening|rek|akun|account/i,
+    category:    /kategori|category|kat\b/i,
+    type:        /tipe|type|pemasukan|pengeluaran|income|expense/i,
+    date:        /tanggal|date|tgl|kemarin|lusa/i,
+  };
+  for (const key of Object.keys(raw)) {
+    if (key === "_error") continue;
+    const kw = fieldKeywords[key];
+    if (kw && !kw.test(lo)) {
+      delete raw[key]; // AI hallucinated this field — user didn't mention it
+    }
+  }
+
   // Resolve rekening jika disebutkan
   if (raw.account) {
     const accs = await dbAccounts(userId, env);
@@ -1064,8 +1083,12 @@ async function parseCorrection(text, currentTx, env) {
   const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
   const system = `Kamu adalah AI koreksi transaksi keuangan Indonesia. ` +
-    `Tugasmu: dari input bebas user, tentukan field mana yang ingin diubah dibanding transaksi saat ini. ` +
-    `Balas HANYA JSON valid. Jangan tulis apapun selain JSON.`;
+    `Tugasmu: dari input bebas user, tentukan field mana yang ingin diubah. ` +
+    `ATURAN PENTING: Ubah HANYA field yang SECARA EKSPLISIT disebutkan user. ` +
+    `JANGAN menginferensi atau menambah perubahan field lain. ` +
+    `Contoh: "merchant indomaret" → {"store":"Indomaret"} SAJA. JANGAN ubah type/note/amount. ` +
+    `Contoh: "jumlah 50rb" → {"amount":50000} SAJA. JANGAN ubah field lain. ` +
+    `Balas HANYA JSON valid.`;
 
   const prompt =
     `TRANSAKSI SAAT INI:\n` +
@@ -1075,19 +1098,19 @@ async function parseCorrection(text, currentTx, env) {
     `- tipe    : ${currentTx.type}\n` +
     `- tanggal : ${currentTx.date || today}\n\n` +
     `INPUT KOREKSI USER: "${text}"\n\n` +
-    `TUGAS: Ekstrak HANYA field yang berubah. Output JSON dengan key yang relevan saja.\n\n` +
+    `TUGAS: Ubah HANYA field yang EKSPLISIT disebutkan user. Jika user hanya menyebut 1 field, output HANYA 1 key.\n\n` +
     `FIELD YANG BISA DIUBAH:\n` +
     `- amount   : angka murni. rb/ribu=x1000, jt/juta=x1000000. Titik=pemisah ribuan: "30.400"->30400\n` +
     `- note     : deskripsi/keterangan, string bebas maks 60 karakter\n` +
     `- store    : nama toko/merchant/tempat. Title Case. Jika user bilang "toko X" atau "merchant X" \u2192 store: "X"\n` +
     `- account  : nama rekening (mandiri, bca, jago, gopay, ovo, dana, tunai, dll)\n` +
     `- category : pilih dari: Makanan & Minuman, Transportasi, Belanja, Kesehatan, Hiburan, Tagihan, Pendidikan, Gaji, Investasi, Lainnya\n` +
-    `- type     : "income" atau "expense"\n` +
+    `- type     : HANYA jika user EKSPLISIT bilang "tipe income"/"tipe expense"/"ubah ke pemasukan"/"ubah ke pengeluaran"\n` +
     `- date     : YYYY-MM-DD. Referensi: hari ini=${today}, kemarin=${yesterday}\n\n` +
     `WHITELIST NAMA REKENING:\n` +
     `Bank umum: bca, mandiri, bni, bri, btn, jago, seabank, blu, neo, allobank, aladin, superbank, linebank, jenius\n` +
     `E-wallet: gopay, ovo, dana, shopeepay, linkaja, flip, tunai, cash\n\n` +
-    `Balas HANYA JSON valid.`;
+    `INGAT: Output HANYA field yang user sebut. JANGAN tambah field lain. Balas HANYA JSON valid.`;
 
   try {
     const { data } = await groqChat(
