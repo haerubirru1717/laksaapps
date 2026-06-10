@@ -541,7 +541,7 @@ async function handlePhoto(msg, chatId, userId, env) {
         await env.DB.prepare(`
           INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
           VALUES (?, ?, ?, 'income', ?, ?, ?, ?, ?, '[foto struk]', 'telegram')
-        `).bind(id, userId, date, result.total, result.note || "Top-up " + targetAcc.name, result.store || null, targetAcc.id, cat?.id || null).run();
+        `).bind(id, userId, date, result.total, "Top-up " + targetAcc.name, result.store || null, targetAcc.id, cat?.id || null).run();
         await saveTransactionItems(id, result.items, env);
         await adjustBalance(targetAcc.id, "income", result.total, +1, env);
 
