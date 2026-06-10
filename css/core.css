@@ -951,16 +951,12 @@
 
     html[data-theme="dark"] .nav-item:hover {
       background: rgba(255,255,255,.07);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
       color: var(--ink);
       border-color: rgba(255,255,255,.1)
     }
 
     html[data-theme="dark"] .nav-item.active {
       background: linear-gradient(135deg, rgba(37,99,235,.35), rgba(14,165,233,.25));
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
       color: #bfdbfe;
       border-color: rgba(99,179,237,.3);
       box-shadow: 0 4px 16px rgba(37,99,235,.25), inset 0 1px 0 rgba(255,255,255,.1)
@@ -995,9 +991,7 @@
     }
 
     html[data-theme="dark"] .sidebar {
-      background: linear-gradient(150deg, rgba(5,5,6,.8) 0%, rgba(5,5,6,.6) 100%);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
+      background: linear-gradient(150deg, rgba(5,5,6,.95) 0%, rgba(5,5,6,.92) 100%);
       border-right-color: rgba(255,255,255,.08);
       box-shadow: 4px 0 32px rgba(0,0,0,.6), inset -1px 0 0 rgba(255,255,255,.02)
     }
@@ -1228,10 +1222,8 @@
     }
 
     html[data-theme="dark"] .fbar {
-      background: rgba(10, 11, 20, 0.92) !important;
+      background: rgba(10, 11, 20, 0.96) !important;
       border-color: rgba(255, 255, 255, 0.08) !important;
-      backdrop-filter: blur(20px) saturate(140%) !important;
-      -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35) !important;
     }
 
@@ -1409,9 +1401,7 @@
     html[data-theme="dark"] .tx-item,
     html[data-theme="dark"] .sidebar-profile,
     html[data-theme="dark"] .acc-item {
-      background: rgba(10, 11, 20, 0.92) !important;
-      backdrop-filter: blur(20px) saturate(140%) !important;
-      -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+      background: rgba(10, 11, 20, 0.96) !important;
       border: 1px solid rgba(255, 255, 255, 0.08) !important;
       box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
       color: var(--ink) !important;
@@ -1468,7 +1458,6 @@
       border: 1px solid rgba(94, 106, 210, 0.3) !important;
       color: #8b96fc !important;
       box-shadow: 0 4px 12px rgba(94, 106, 210, 0.15) !important;
-      backdrop-filter: blur(12px) !important;
       transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
     html[data-theme="dark"] .btn-add-glass:hover {
@@ -1554,5 +1543,52 @@
       .main {
         overflow-y: visible;
         min-height: 100vh
+      }
+    }
+
+    /* ══════════════════════════════════════════
+       PERFORMANCE OPTIMIZATIONS
+       ══════════════════════════════════════════ */
+
+    /* Pages not visible → skip rendering entirely */
+    .page:not(.active) {
+      content-visibility: hidden;
+    }
+
+    /* Isolate repaints within cards/widgets */
+    .widget, .card, .gc, .glass-card, .acc-item, .tx-item {
+      contain: layout style paint;
+    }
+
+    /* GPU-composite blurred elements (glass theme) */
+    .sidebar, .bnav-capsule, .modal, .fab-sheet, .tx-sheet, .acc-sheet {
+      will-change: transform;
+    }
+
+    /* Reduce box-shadow on mobile for less paint */
+    @media (max-width: 768px) {
+      .widget, .card, .gc, .glass-card {
+        box-shadow: 0 2px 8px rgba(0,0,0,.06) !important;
+      }
+      html[data-theme="dark"] .widget,
+      html[data-theme="dark"] .card,
+      html[data-theme="dark"] .gc,
+      html[data-theme="dark"] .glass-card {
+        box-shadow: 0 4px 16px rgba(0,0,0,.4) !important;
+      }
+    }
+
+    /* Dark theme: disable ALL backdrop-filter (opaque bg = no visual benefit) */
+    html[data-theme="dark"] *:not(.sidebar):not(.bnav-capsule) {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
+    /* Reduce motion for users who prefer it */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
       }
     }

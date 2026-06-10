@@ -493,6 +493,12 @@ const AI_STYLE = `<style>
       50% { opacity: 1; transform: scale(1.08); }
     }
 
+    /* Pause AI panel animations when hidden */
+    .ai-panel:not(.open) .ai-hdr-ava svg g,
+    .ai-panel:not(.open) .ai-typing svg g {
+      animation-play-state: paused !important;
+    }
+
     .ai-md-h {
       font-size: .83rem;
       font-weight: 700;
