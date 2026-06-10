@@ -104,6 +104,7 @@ async function routeAPI(req, url, env) {
   if (path === "/accounts") {
     if (m === "GET")  return getAccounts(uid, env);
     if (m === "POST") return createAccount(uid, await req.json(), env);
+    if (m === "DELETE") return deleteAllAccounts(uid, env);
   }
   const accM = path.match(/^\/accounts\/([^/]+)$/);
   if (accM) {
@@ -115,6 +116,7 @@ async function routeAPI(req, url, env) {
   if (path === "/categories") {
     if (m === "GET")  return getCategories(uid, env);
     if (m === "POST") return createCategory(uid, await req.json(), env);
+    if (m === "DELETE") return deleteAllCategories(uid, env);
   }
   const catM = path.match(/^\/categories\/([^/]+)$/);
   if (catM && m === "DELETE") return deleteCategory(uid, catM[1], env);
@@ -123,6 +125,7 @@ async function routeAPI(req, url, env) {
   if (path === "/transactions") {
     if (m === "GET")  return getTransactions(uid, url, env);
     if (m === "POST") return createTransaction(uid, await req.json(), env);
+    if (m === "DELETE") return deleteAllTransactions(uid, env);
   }
   const txM = path.match(/^\/transactions\/([^/]+)$/);
   if (txM) {
@@ -1735,6 +1738,27 @@ async function deleteTransaction(uid, id, env) {
     await env.DB.prepare("DELETE FROM transaction_items WHERE transaction_id = ?").bind(id).run().catch(() => {});
     await env.DB.prepare("DELETE FROM transactions WHERE id = ? AND user_id = ?").bind(id, uid).run();
   }
+  return jsonRes({ status: "deleted" });
+}
+
+async function deleteAllTransactions(uid, env) {
+  // Reverse balance adjustments for all transactions
+  const { results: txs } = await env.DB.prepare("SELECT * FROM transactions WHERE user_id = ?").bind(uid).all();
+  for (const tx of txs) {
+    await adjustBalance(tx.account_id, tx.type, tx.amount, -1, env).catch(() => {});
+  }
+  await env.DB.prepare("DELETE FROM transaction_items WHERE transaction_id IN (SELECT id FROM transactions WHERE user_id = ?)").bind(uid).run().catch(() => {});
+  await env.DB.prepare("DELETE FROM transactions WHERE user_id = ?").bind(uid).run();
+  return jsonRes({ status: "deleted", count: txs.length });
+}
+
+async function deleteAllAccounts(uid, env) {
+  await env.DB.prepare("DELETE FROM accounts WHERE user_id = ?").bind(uid).run();
+  return jsonRes({ status: "deleted" });
+}
+
+async function deleteAllCategories(uid, env) {
+  await env.DB.prepare("DELETE FROM categories WHERE user_id = ?").bind(uid).run();
   return jsonRes({ status: "deleted" });
 }
 
