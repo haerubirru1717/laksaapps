@@ -688,6 +688,39 @@ const AI_STYLE = `<style>
       font-style: italic
     }
 
+    .ai-tx-balance-info {
+      margin-top: .55rem;
+      margin-bottom: .55rem;
+      padding: .55rem .7rem;
+      background: linear-gradient(135deg, rgba(99,102,241,.06), rgba(37,99,235,.04));
+      border: 1px dashed rgba(99,102,241,.25);
+      border-radius: 10px;
+      font-size: .72rem;
+    }
+    .ai-tx-balance-title {
+      font-weight: 700;
+      color: var(--accent);
+      font-size: .68rem;
+      margin-bottom: .35rem;
+      display: flex;
+      align-items: center;
+      gap: .3rem;
+    }
+    .ai-tx-balance-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: .12rem 0;
+      color: var(--ink2);
+    }
+    .ai-tx-balance-row .bal-val {
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .ai-tx-balance-row .bal-val.after {
+      color: var(--accent);
+    }
+
     html[data-theme="dark"] .ai-tx-confirm {
       background: linear-gradient(135deg, rgba(37, 99, 235, .12), rgba(16, 185, 129, .08));
       border-color: rgba(37, 99, 235, .28)
@@ -1407,20 +1440,26 @@ async function aiCallGroq() {
       answer = raw.replace(/^\s*\{\s*"answer"\s*:\s*"?/i, '').replace(/"\s*,\s*"followups[\s\S]*$/i, '').replace(/\\n/g, '\n').replace(/\\"/g, '"');
     }
 
-    aiAppendMsg('bot', answer);
+    // Jika AI deteksi transaksi → tampilkan HANYA confirm card, skip narasi
+    const hasTxConfirm = transaction && transaction.amount && (transaction.account_name || (transaction.from_account_name && transaction.to_account_name));
+    const hasBills = bills && Array.isArray(bills) && bills.length > 0;
+
+    if (!hasTxConfirm && !hasBills) {
+      aiAppendMsg('bot', answer);
+    }
     aiHistory.push({ role: 'assistant', content: answer });
 
-    // Jika AI deteksi transaksi → tampilkan bubble konfirmasi
-    if (transaction && transaction.amount && (transaction.account_name || (transaction.from_account_name && transaction.to_account_name))) {
+    if (hasTxConfirm) {
       aiAppendTxConfirm(transaction);
-    } else if (bills && Array.isArray(bills) && bills.length > 0) {
+    } else if (hasBills) {
       if (typeof aiAppendBillsConfirm === 'function') {
         aiAppendBillsConfirm(bills);
       }
     }
 
+    // Sembunyikan suggestion saat confirm card aktif
     const sanitizedFollowups = typeof sanitizeFollowups === 'function' ? sanitizeFollowups(followups) : followups;
-    if (sanitizedFollowups.length) {
+    if (sanitizedFollowups.length && !hasTxConfirm && !hasBills) {
       const sugsEl = el('aiSugs');
       sugsEl.style.display = 'flex';
       sugsEl.innerHTML = sanitizedFollowups.map(s => `<button class="ai-sug" onclick="aiSendSug(this,event)">${esc(s)}</button>`).join('');
@@ -1444,6 +1483,44 @@ function aiAppendTxConfirm(tx) {
   const typeClass = txType === 'income' ? 'inc' : txType === 'transfer' ? '' : 'exp';
   const typeIco = txType === 'income' ? '↑' : txType === 'transfer' ? '⇄' : '↓';
   const txId = 'txc_' + Date.now();
+
+  // Sembunyikan suggestion cards saat confirm card muncul
+  const sugsEl = el('aiSugs');
+  if (sugsEl) { sugsEl.innerHTML = ''; sugsEl.style.display = 'none'; }
+
+  // Hitung saldo rekening sebelum & sesudah
+  let balanceHtml = '';
+  const accs = typeof getAccs === 'function' ? getAccs() : [];
+  const amt = Number(tx.amount) || 0;
+  if (txType === 'transfer') {
+    const accFrom = accs.find(a => a.name.toLowerCase().includes((tx.from_account_name || '').toLowerCase()));
+    const accTo = accs.find(a => a.name.toLowerCase().includes((tx.to_account_name || '').toLowerCase()));
+    if (accFrom || accTo) {
+      balanceHtml = `<div class="ai-tx-balance-info"><div class="ai-tx-balance-title">💳 Info Saldo Rekening</div>`;
+      if (accFrom) {
+        const afterFrom = (accFrom.balance || 0) - amt;
+        balanceHtml += `<div class="ai-tx-balance-row"><span>${esc(accFrom.name)} saat ini</span><span class="bal-val">${fCur(accFrom.balance || 0)}</span></div>`;
+        balanceHtml += `<div class="ai-tx-balance-row"><span>${esc(accFrom.name)} setelah</span><span class="bal-val after">${fCur(afterFrom)}</span></div>`;
+      }
+      if (accTo) {
+        const afterTo = (accTo.balance || 0) + amt;
+        balanceHtml += `<div class="ai-tx-balance-row"><span>${esc(accTo.name)} saat ini</span><span class="bal-val">${fCur(accTo.balance || 0)}</span></div>`;
+        balanceHtml += `<div class="ai-tx-balance-row"><span>${esc(accTo.name)} setelah</span><span class="bal-val after">${fCur(afterTo)}</span></div>`;
+      }
+      balanceHtml += `</div>`;
+    }
+  } else {
+    const acc = accs.find(a => a.name.toLowerCase().includes((tx.account_name || '').toLowerCase()));
+    if (acc) {
+      const afterBal = txType === 'income' ? (acc.balance || 0) + amt : (acc.balance || 0) - amt;
+      balanceHtml = `<div class="ai-tx-balance-info">` +
+        `<div class="ai-tx-balance-title">💳 ${esc(acc.name)}</div>` +
+        `<div class="ai-tx-balance-row"><span>Saldo saat ini</span><span class="bal-val">${fCur(acc.balance || 0)}</span></div>` +
+        `<div class="ai-tx-balance-row"><span>Setelah dicatat</span><span class="bal-val after">${fCur(afterBal)}</span></div>` +
+        `</div>`;
+    }
+  }
+
   const div = document.createElement('div');
   div.className = 'ai-msg bot';
   div.id = txId;
@@ -1461,6 +1538,7 @@ function aiAppendTxConfirm(tx) {
         <div class="ai-tx-confirm-row"><span class="ai-tx-confirm-lbl">Catatan</span><span class="ai-tx-confirm-val">${esc(tx.note || '-')}</span></div>
         <div class="ai-tx-confirm-row"><span class="ai-tx-confirm-lbl">Tanggal</span><span class="ai-tx-confirm-val">${tx.date || today()}</span></div>
       </div>
+      ${balanceHtml}
       <div class="ai-tx-confirm-btns">
         <button class="ai-tx-btn-ok" onclick="aiConfirmTx(${JSON.stringify(tx).replace(/"/g, '&quot;')},'${txId}')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
