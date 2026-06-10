@@ -688,6 +688,67 @@ const AI_STYLE = `<style>
       font-style: italic
     }
 
+    .ai-tx-edit-inline {
+      margin-top: .4rem;
+      padding: .55rem .65rem;
+      background: rgba(99,102,241,.05);
+      border: 1.5px solid rgba(99,102,241,.18);
+      border-radius: 10px;
+    }
+    .ai-tx-edit-hint {
+      font-size: .68rem;
+      color: var(--ink3);
+      margin-bottom: .4rem;
+      line-height: 1.4;
+    }
+    .ai-tx-edit-hint b { color: var(--ink2); }
+    .ai-tx-edit-row {
+      display: flex;
+      gap: .35rem;
+      align-items: center;
+    }
+    .ai-tx-edit-input {
+      flex: 1;
+      padding: .4rem .6rem;
+      border-radius: 8px;
+      border: 1.5px solid var(--gs-border);
+      background: var(--gs-1);
+      font-family: inherit;
+      font-size: .75rem;
+      color: var(--ink);
+      outline: none;
+      transition: border-color .15s;
+    }
+    .ai-tx-edit-input:focus {
+      border-color: var(--accent);
+    }
+    .ai-tx-edit-input::placeholder {
+      color: var(--ink4);
+    }
+    .ai-tx-edit-send {
+      padding: .4rem .6rem;
+      border-radius: 8px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-family: inherit;
+      font-size: .72rem;
+      font-weight: 700;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .ai-tx-edit-cancel {
+      padding: .35rem .5rem;
+      border-radius: 8px;
+      border: 1px solid rgba(239,68,68,.2);
+      background: transparent;
+      color: var(--expense);
+      font-family: inherit;
+      font-size: .7rem;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
     .ai-tx-balance-info {
       margin-top: .55rem;
       margin-bottom: .55rem;
@@ -1237,6 +1298,7 @@ Jika user meminta mencatat transaksi (misal: "masuk gaji 5juta", "beli kopi 25k"
 - \`amount\`: WAJIB angka murni tanpa titik/koma/string (misal 5juta = 5000000, 25k = 25000). Jika user bilang "seluruh uang", lihat Saldo rekening saat ini dan gunakan angka tersebut.
 - \`type\`: "income" (pemasukan), "expense" (pengeluaran), atau "transfer".
 - \`account_name\`: Wajib untuk income/expense. Harus cocok dengan rekening yang ada.
+- \`store\`: Nama toko/merchant (opsional). Jika user menyebut nama toko/merchant (Alfamart, Indomaret, dll), isi field ini. Title Case.
 - KHUSUS "transfer": GUNAKAN \`from_account_name\` (rekening asal) dan \`to_account_name\` (rekening tujuan). JANGAN gunakan \`account_name\` atau \`category_name\`.
 - PENTING: Aplikasi ini TIDAK MEMILIKI "batas transfer" atau "limit harian". JANGAN PERNAH menolak transaksi dengan alasan fiktif seperti batas transfer melebihi limit. Catat saja berapapun nominalnya!
 
@@ -1319,7 +1381,7 @@ Selalu balas dalam format JSON murni TANPA markdown block (\`\`\`json). Struktur
   * JANGAN PERNAH menyarankan pertanyaan yang berujung pada tips teoritis, nasihat umum (seperti "Bagaimana cara menghemat?", "Berikan tips keuangan"), atau fitur yang belum diintegrasikan di sistem (seperti membuat anggaran/budget baru).
   * SETIAP saran pertanyaan lanjutan HARUS berorientasi pada data keuangan riil (seperti cek saldo, cek tagihan, cek kategori boros) atau aksi pencatatan nyata (seperti mencatat transaksi/tagihan).
   * CONTOH YANG BENAR: ["Berapa sisa saldo BNI saya?", "Tolong tunjukkan daftar tagihan bulan ini", "Kategori mana yang paling boros?", "Bagaimana status anggaran saya?"]
-- \`transaction\`: \`null\` kecuali user meminta CATAT transaksi. Jika catat, isi objek: {"type":"income/expense/transfer","amount":angka,"account_name":"...","category_name":"...","note":"...","date":"YYYY-MM-DD"}. Untuk transfer gunakan \`from_account_name\` dan \`to_account_name\` sebagai ganti \`account_name\`.
+- \`transaction\`: \`null\` kecuali user meminta CATAT transaksi. Jika catat, isi objek: {"type":"income/expense/transfer","amount":angka,"account_name":"...","category_name":"...","note":"...","store":"...","date":"YYYY-MM-DD"}. \`store\` = nama toko/merchant (opsional, isi jika disebutkan). Untuk transfer gunakan \`from_account_name\` dan \`to_account_name\` sebagai ganti \`account_name\`.
 - \`bills\`: \`null\` kecuali user meminta CATAT tagihan. Jika catat, isi array objek: [{"name":"...","bill_type":"cc/paylater/cicilan/langganan/lainnya","amount":angka,"due_date":"YYYY-MM-DD","status":"unpaid/paid"}]
 
 Contoh respons untuk "Bantu lihat ringkasan keuangan":
@@ -1535,7 +1597,8 @@ function aiAppendTxConfirm(tx) {
         <div class="ai-tx-confirm-row"><span class="ai-tx-confirm-lbl">Jumlah</span><span class="ai-tx-confirm-val ${typeClass}">${fCur(tx.amount)}</span></div>
         <div class="ai-tx-confirm-row"><span class="ai-tx-confirm-lbl">Rekening</span><span class="ai-tx-confirm-val">${(tx.type || '').toLowerCase() === 'transfer' ? esc(tx.from_account_name) + ' ➔ ' + esc(tx.to_account_name) : esc(tx.account_name)}</span></div>
         <div class="ai-tx-confirm-row"><span class="ai-tx-confirm-lbl">Kategori</span><span class="ai-tx-confirm-val">${(tx.type || '').toLowerCase() === 'transfer' ? 'Transfer' : esc(tx.category_name || 'Lainnya')}</span></div>
-        <div class="ai-tx-confirm-row"><span class="ai-tx-confirm-lbl">Catatan</span><span class="ai-tx-confirm-val">${esc(tx.note || '-')}</span></div>
+        ${tx.store ? `<div class="ai-tx-confirm-row"><span class="ai-tx-confirm-lbl">Merchant</span><span class="ai-tx-confirm-val">${esc(tx.store)}</span></div>` : ''}
+        ${tx.note ? `<div class="ai-tx-confirm-row"><span class="ai-tx-confirm-lbl">Catatan</span><span class="ai-tx-confirm-val">${esc(tx.note)}</span></div>` : ''}
         <div class="ai-tx-confirm-row"><span class="ai-tx-confirm-lbl">Tanggal</span><span class="ai-tx-confirm-val">${tx.date || today()}</span></div>
       </div>
       ${balanceHtml}
@@ -1613,7 +1676,8 @@ async function aiConfirmTx(tx, bubbleId) {
       toast('Saldo rekening tidak cukup!', 'err');
       return;
     }
-    reqs.push({ type: txType, amount: amt, date: dt, account_id: acc.id, category_id: cat.id, note: nt, source: 'ai-chat' });
+    const st = tx.store || '';
+    reqs.push({ type: txType, amount: amt, date: dt, account_id: acc.id, category_id: cat.id, note: nt, store: st || undefined, source: 'ai-chat' });
   }
 
   if (bubble) {
@@ -1645,25 +1709,75 @@ async function aiConfirmTx(tx, bubbleId) {
 }
 
 function aiEditTx(tx, bubbleId) {
-  // Pre-fill form addTransaction dengan data dari AI, lalu tutup bubble
-  const accs = getAccs();
-  const cats = getCats();
-  const acc = accs.find(a => a.name.toLowerCase().includes((tx.account_name || '').toLowerCase())) || accs[0];
-  const cat = cats.find(c => c.name.toLowerCase().includes((tx.category_name || '').toLowerCase())) || cats[cats.length - 1];
-  const prefilled = {
-    type: tx.type || 'expense',
-    amount: tx.amount || 0,
-    date: tx.date || today(),
-    account_id: acc?.id || accs[0]?.id,
-    category_id: cat?.id || cats[0]?.id,
-    note: tx.note || ''
-  };
   const bubble = el(bubbleId);
-  if (bubble) {
-    const btns = bubble.querySelector('.ai-tx-confirm-btns');
-    if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done">✏️ Membuka form edit…</div>';
+  if (!bubble) return;
+  const btns = bubble.querySelector('.ai-tx-confirm-btns');
+  if (!btns) return;
+
+  const editId = 'edit_' + Date.now();
+  btns.innerHTML = `
+    <div class="ai-tx-edit-inline">
+      <div class="ai-tx-edit-hint">
+        ✏️ Ketik koreksi, contoh:<br>
+        <b>rekening BNI</b> / <b>jumlah 75rb</b> / <b>tanggal kemarin</b> / <b>merchant Alfamart</b>
+      </div>
+      <div class="ai-tx-edit-row">
+        <input class="ai-tx-edit-input" id="${editId}" placeholder="Tulis koreksi..." autofocus />
+        <button class="ai-tx-edit-send" onclick="aiSubmitEdit('${editId}',${JSON.stringify(tx).replace(/"/g, '&quot;')},'${bubbleId}')">Kirim</button>
+        <button class="ai-tx-edit-cancel" onclick="aiCancelEdit('${bubbleId}',${JSON.stringify(tx).replace(/"/g, '&quot;')})">✗</button>
+      </div>
+    </div>`;
+
+  setTimeout(() => {
+    const inp = el(editId);
+    if (inp) {
+      inp.focus();
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); inp.closest('.ai-tx-edit-row').querySelector('.ai-tx-edit-send').click(); }
+      });
+    }
+  }, 100);
+  const wrap = el('aiMsgs');
+  if (wrap) requestAnimationFrame(() => { wrap.scrollTop = wrap.scrollHeight; });
+}
+
+async function aiSubmitEdit(inputId, originalTx, bubbleId) {
+  const inp = el(inputId);
+  const text = (inp ? inp.value : '').trim();
+  if (!text) return;
+
+  const bubble = el(bubbleId);
+  const editArea = bubble ? bubble.querySelector('.ai-tx-edit-inline') : null;
+  if (editArea) editArea.innerHTML = '<div class="ai-tx-confirm-done">⏳ Memproses koreksi...</div>';
+
+  // Kirim sebagai chat message biasa — AI akan proses ulang
+  const chatInput = el('aiInput');
+  if (chatInput) { chatInput.value = text; }
+  await aiSend();
+}
+
+function aiCancelEdit(bubbleId, tx) {
+  const bubble = el(bubbleId);
+  if (!bubble) return;
+  const editArea = bubble.querySelector('.ai-tx-edit-inline');
+  if (editArea) {
+    const txId = bubbleId;
+    editArea.parentElement.innerHTML = `
+      <div class="ai-tx-confirm-btns">
+        <button class="ai-tx-btn-ok" onclick="aiConfirmTx(${JSON.stringify(tx).replace(/"/g, '&quot;')},'${txId}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Catat
+        </button>
+        <button class="ai-tx-btn-edit" onclick="aiEditTx(${JSON.stringify(tx).replace(/"/g, '&quot;')},'${txId}')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Edit
+        </button>
+        <button class="ai-tx-btn-cancel" onclick="aiCancelTx('${txId}')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Batal
+        </button>
+      </div>`;
   }
-  setTimeout(() => openModal('addTransaction', prefilled), 150);
 }
 
 function aiCancelTx(bubbleId) {
