@@ -126,10 +126,12 @@ async function doScan() {
     fill.style.width = '35%'; lbl.textContent = 'Menunggu respons AI…';
 
     // Kirim ke Worker proxy — Worker yang panggil Groq Vision
-    const uid = getUserId();
-    const resp = await fetch(`${CLOUD_URL}/scan-receipt?user_id=${uid}`, {
+    const scanHeaders = { 'Content-Type': 'application/json' };
+    const scanToken = getToken();
+    if (scanToken) scanHeaders['Authorization'] = `Bearer ${scanToken}`;
+    const resp = await fetch(`${CLOUD_URL}/scan-receipt`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: scanHeaders,
       body: JSON.stringify({ image: compressed, mime: 'image/jpeg' })
     });
 

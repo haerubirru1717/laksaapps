@@ -33,11 +33,11 @@ function updateProfilePreview() {
   }
   nameDisplayEl.textContent = name;
 
-  // Update Telegram ID
+  // Update profile info
   const p = getProfile();
   const tgEl = el('profileAvatarTg');
   if (tgEl && p) {
-    tgEl.textContent = 'Telegram ID: ' + (p.tgId || '—');
+    tgEl.textContent = p.email || ('Telegram ID: ' + (p.tgId || '—'));
     const connTgEl = el('connectedTgId');
     if (connTgEl) connTgEl.textContent = p.tgId || '—';
   }

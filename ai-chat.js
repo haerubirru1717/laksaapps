@@ -1438,9 +1438,12 @@ async function aiCallGroq() {
     ];
 
     // Autochain: kirim array model ke Worker, Worker iterasi jika 429
-    const resp = await fetch(`${CLOUD_URL}/ai-chat?user_id=${userId}`, {
+    const aiHeaders = { 'Content-Type': 'application/json' };
+    const token = getToken();
+    if (token) aiHeaders['Authorization'] = `Bearer ${token}`;
+    const resp = await fetch(`${CLOUD_URL}/ai-chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: aiHeaders,
       body: JSON.stringify({ messages, models: AI_CHAT_CHAIN })
     });
     if (!resp.ok) {

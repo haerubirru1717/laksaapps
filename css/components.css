@@ -4486,3 +4486,33 @@
       color: var(--ink);
     }
 
+/* ══════════════════════════════════════════
+   AUTH TABS
+   ══════════════════════════════════════════ */
+.auth-tab {
+  flex: 1;
+  padding: .6rem .8rem;
+  border: none;
+  background: var(--gs-4, rgba(0,0,0,.03));
+  color: var(--ink3, #64748b);
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+}
+.auth-tab.active {
+  background: var(--accent, #3b82f6);
+  color: #fff;
+}
+.auth-tab:hover:not(.active) {
+  background: var(--gs-border, rgba(0,0,0,.06));
+}
+html[data-theme="dark"] .auth-tab {
+  background: rgba(255,255,255,.05);
+  color: rgba(255,255,255,.5);
+}
+html[data-theme="dark"] .auth-tab.active {
+  background: var(--accent, #3b82f6);
+  color: #fff;
+}
+

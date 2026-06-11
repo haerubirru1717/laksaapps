@@ -77,18 +77,49 @@ const CLOUD_URL = 'https://laksana.haerubirru17.workers.dev';
 // In-memory cache — di-refresh setiap load halaman
 let _cache = { tx: null, accs: null, cats: null, buds: null, goals: null, bills: null, piutang: null, loading: false };
 
+// ── AUTH TOKEN MANAGEMENT ──
+const TOKEN_KEY = 'laksa_token';
+function getToken() { return localStorage.getItem(TOKEN_KEY); }
+function setToken(token) { localStorage.setItem(TOKEN_KEY, token); }
+function clearToken() { localStorage.removeItem(TOKEN_KEY); }
+function isLoggedIn() { return !!getToken(); }
+
 function getProfile() { try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || null; } catch { return null; } }
-function getUserId() { return getProfile()?.tgId || null; }
+function getUserId() {
+  // For backward compat: if token exists, user_id is in JWT (server extracts it)
+  // If no token but profile has tgId, use that as fallback
+  return getProfile()?.id || getProfile()?.tgId || null;
+}
 
 async function api(method, path, body) {
-  const uid = getUserId();
-  const sep = path.includes('?') ? '&' : '?';
-  const url = `${CLOUD_URL}${path}${uid ? sep + 'user_id=' + uid : ''}`;
+  const token = getToken();
+  const url = `${CLOUD_URL}${path}`;
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (token) {
+    opts.headers['Authorization'] = `Bearer ${token}`;
+  }
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(url, opts);
+  if (r.status === 401) {
+    // Token expired or invalid — redirect to login
+    clearToken();
+    localStorage.removeItem(PROFILE_KEY);
+    showAuthPage();
+    throw new Error('Sesi expired, silakan login kembali');
+  }
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || `HTTP ${r.status}`); }
+  return r.json();
+}
+
+// ── AUTH API CALLS ──
+async function apiAuth(method, path, body) {
+  const url = `${CLOUD_URL}${path}`;
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(url, opts);
-  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || `HTTP ${r.status}`); }
-  return r.json();
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+  return data;
 }
 
 // ── Transactions ──
@@ -365,6 +396,93 @@ function showSetupPage() {
 function hideSetupPage() {
   const o = el('setupOverlay'); if (o) o.style.display = 'none';
 }
+
+// ── AUTH PAGE ──
+function showAuthPage() {
+  const o = el('authOverlay'); if (o) o.style.display = 'flex';
+  hideSetupPage();
+  switchAuthTab('login');
+}
+function hideAuthPage() {
+  const o = el('authOverlay'); if (o) o.style.display = 'none';
+}
+function switchAuthTab(tab) {
+  const loginForm = el('authLoginForm');
+  const registerForm = el('authRegisterForm');
+  const loginTab = el('authTabLogin');
+  const registerTab = el('authTabRegister');
+  if (tab === 'login') {
+    if (loginForm) loginForm.style.display = '';
+    if (registerForm) registerForm.style.display = 'none';
+    if (loginTab) loginTab.classList.add('active');
+    if (registerTab) registerTab.classList.remove('active');
+  } else {
+    if (loginForm) loginForm.style.display = 'none';
+    if (registerForm) registerForm.style.display = '';
+    if (loginTab) loginTab.classList.remove('active');
+    if (registerTab) registerTab.classList.add('active');
+  }
+}
+
+async function handleAuthLogin() {
+  const email = (el('authLoginEmail')?.value || '').trim();
+  const password = el('authLoginPassword')?.value || '';
+  if (!email || !password) { toast('Email dan password wajib diisi', 'err'); return; }
+  const btn = el('authLoginBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
+  try {
+    const data = await apiAuth('POST', '/auth/login', { email, password });
+    setToken(data.token);
+    const p = { id: data.user.id, name: data.user.name, email: data.user.email, tgId: data.user.telegram_id || '', theme: 'glass' };
+    saveProfile(p);
+    const s = getSet(); s.name = p.name; sv(K.set, s);
+    hideAuthPage();
+    updateProfileUI();
+    updateSidebarProfile();
+    showLoadingOverlay(true);
+    try { await loadAll(thisMon()); } finally { showLoadingOverlay(false); }
+    go('dashboard');
+    refresh();
+  } catch (e) {
+    toast(e.message, 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Masuk'; }
+  }
+}
+
+async function handleAuthRegister() {
+  const name = (el('authRegisterName')?.value || '').trim();
+  const email = (el('authRegisterEmail')?.value || '').trim();
+  const password = el('authRegisterPassword')?.value || '';
+  const password2 = el('authRegisterPassword2')?.value || '';
+  if (!name || !email || !password) { toast('Semua field wajib diisi', 'err'); return; }
+  if (password.length < 6) { toast('Password minimal 6 karakter', 'err'); return; }
+  if (password !== password2) { toast('Password tidak cocok', 'err'); return; }
+  const btn = el('authRegisterBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
+  try {
+    const data = await apiAuth('POST', '/auth/register', { email, password, name });
+    setToken(data.token);
+    const p = { id: data.user.id, name: data.user.name, email: data.user.email, tgId: '', theme: setupThemeChoice || 'glass' };
+    saveProfile(p);
+    const s = getSet(); s.name = p.name; s.theme = p.theme; sv(K.set, s);
+    hideAuthPage();
+    applyTheme(p.theme, null, true);
+    updateProfileUI();
+    updateSidebarProfile();
+    showLoadingOverlay(true);
+    try { await loadAll(thisMon()); } finally { showLoadingOverlay(false); }
+    go('dashboard');
+    refresh();
+    toast('Akun berhasil dibuat! Selamat datang ' + p.name, 'ok');
+  } catch (e) {
+    toast(e.message, 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Daftar'; }
+  }
+}
+
+// Legacy setup (kept for backward compat with existing users without auth)
 async function saveSetupProfile() {
   const name = (el('setupName')?.value || '').trim();
   const tgId = (el('setupTgId')?.value || '').trim().replace(/\D/g, '');
@@ -512,10 +630,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   const accsEl = document.getElementById('accsScroll');
   if (accsEl) { accsEl.addEventListener('scroll', updateAccArrows, { passive: true }); }
 
-  // Cek profil
+  // Cek auth: token exists = logged in, otherwise show auth page
   const profile = getProfile();
-  if (!profile || !profile.tgId) {
-    showSetupPage();
+  if (!isLoggedIn()) {
+    // No token — show auth page (new users) or legacy setup (existing users without auth)
+    if (profile && profile.tgId && !profile.id) {
+      // Legacy user: has Telegram ID but no auth — show setup page for backward compat
+      showSetupPage();
+    } else {
+      showAuthPage();
+    }
     go('dashboard');
     return;
   }
