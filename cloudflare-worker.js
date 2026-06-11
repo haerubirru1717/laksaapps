@@ -128,6 +128,8 @@ async function handleRegister(body, env) {
   await env.DB.prepare(
     "INSERT INTO users (id, email, name, password_hash, salt, created_at) VALUES (?, ?, ?, ?, ?, ?)"
   ).bind(id, emailLower, name.trim(), passwordHash, salt, new Date().toISOString()).run();
+  // Seed default categories for new user
+  await seedCategories(id, env);
   const token = await signJWT({ sub: id, email: emailLower, name: name.trim() }, env.JWT_SECRET || "laksa-default-secret");
   return jsonRes({ token, user: { id, email: emailLower, name: name.trim() } }, 201);
 }
