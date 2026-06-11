@@ -43,6 +43,139 @@ const VISION_MODELS = [
 // Max age for pending text entries (ms)
 const PENDING_TEXT_TTL_MS = 5 * 60 * 1000; // 5 menit
 
+// JWT config
+const JWT_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 hari
+
+// ─────────────────────────────────────────────────────
+// AUTH UTILITIES (PBKDF2 + JWT via Web Crypto API)
+// ─────────────────────────────────────────────────────
+async function hashPassword(password, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt: enc.encode(salt), iterations: 100000, hash: "SHA-256" },
+    keyMaterial, 256
+  );
+  return btoa(String.fromCharCode(...new Uint8Array(bits)));
+}
+
+async function verifyPassword(password, salt, hash) {
+  const computed = await hashPassword(password, salt);
+  return computed === hash;
+}
+
+function base64url(buf) {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64urlDecode(str) {
+  str = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (str.length % 4) str += '=';
+  const bin = atob(str);
+  return Uint8Array.from(bin, c => c.charCodeAt(0));
+}
+
+async function signJWT(payload, secret) {
+  const enc = new TextEncoder();
+  const header = { alg: "HS256", typ: "JWT" };
+  const now = Math.floor(Date.now() / 1000);
+  payload.iat = now;
+  payload.exp = now + JWT_EXPIRY_SECONDS;
+  const headerB64 = base64url(enc.encode(JSON.stringify(header)));
+  const payloadB64 = base64url(enc.encode(JSON.stringify(payload)));
+  const data = `${headerB64}.${payloadB64}`;
+  const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(data));
+  return `${data}.${base64url(sig)}`;
+}
+
+async function verifyJWT(token, secret) {
+  const enc = new TextEncoder();
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const [headerB64, payloadB64, sigB64] = parts;
+  const data = `${headerB64}.${payloadB64}`;
+  const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
+  const sig = base64urlDecode(sigB64);
+  const valid = await crypto.subtle.verify("HMAC", key, sig, enc.encode(data));
+  if (!valid) return null;
+  const payload = JSON.parse(new TextDecoder().decode(base64urlDecode(payloadB64)));
+  if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+  return payload;
+}
+
+function extractToken(req) {
+  const auth = req.headers.get("Authorization");
+  if (!auth || !auth.startsWith("Bearer ")) return null;
+  return auth.slice(7);
+}
+
+// ─────────────────────────────────────────────────────
+// AUTH ENDPOINTS
+// ─────────────────────────────────────────────────────
+async function handleRegister(body, env) {
+  const { email, password, name } = body || {};
+  if (!email || !password || !name) return jsonRes({ error: "Email, password, dan nama wajib diisi" }, 400);
+  const emailLower = email.toLowerCase().trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLower)) return jsonRes({ error: "Format email tidak valid" }, 400);
+  if (password.length < 6) return jsonRes({ error: "Password minimal 6 karakter" }, 400);
+  const existing = await env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(emailLower).first();
+  if (existing) return jsonRes({ error: "Email sudah terdaftar" }, 409);
+  const id = "usr_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+  const salt = crypto.randomUUID();
+  const passwordHash = await hashPassword(password, salt);
+  await env.DB.prepare(
+    "INSERT INTO users (id, email, name, password_hash, salt, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+  ).bind(id, emailLower, name.trim(), passwordHash, salt, new Date().toISOString()).run();
+  const token = await signJWT({ sub: id, email: emailLower, name: name.trim() }, env.JWT_SECRET || "laksa-default-secret");
+  return jsonRes({ token, user: { id, email: emailLower, name: name.trim() } }, 201);
+}
+
+async function handleLogin(body, env) {
+  const { email, password } = body || {};
+  if (!email || !password) return jsonRes({ error: "Email dan password wajib diisi" }, 400);
+  const emailLower = email.toLowerCase().trim();
+  const user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(emailLower).first();
+  if (!user) return jsonRes({ error: "Email atau password salah" }, 401);
+  const valid = await verifyPassword(password, user.salt, user.password_hash);
+  if (!valid) return jsonRes({ error: "Email atau password salah" }, 401);
+  const token = await signJWT({ sub: user.id, email: user.email, name: user.name }, env.JWT_SECRET || "laksa-default-secret");
+  return jsonRes({ token, user: { id: user.id, email: user.email, name: user.name, telegram_id: user.telegram_id } });
+}
+
+async function handleMe(req, env) {
+  const token = extractToken(req);
+  if (!token) return jsonRes({ error: "Token diperlukan" }, 401);
+  const payload = await verifyJWT(token, env.JWT_SECRET || "laksa-default-secret");
+  if (!payload) return jsonRes({ error: "Token tidak valid atau expired" }, 401);
+  const user = await env.DB.prepare("SELECT id, email, name, telegram_id, created_at FROM users WHERE id = ?").bind(payload.sub).first();
+  if (!user) return jsonRes({ error: "User tidak ditemukan" }, 404);
+  return jsonRes(user);
+}
+
+async function handleLinkTelegram(req, body, env) {
+  const token = extractToken(req);
+  if (!token) return jsonRes({ error: "Token diperlukan" }, 401);
+  const payload = await verifyJWT(token, env.JWT_SECRET || "laksa-default-secret");
+  if (!payload) return jsonRes({ error: "Token tidak valid" }, 401);
+  const { telegram_id } = body || {};
+  if (!telegram_id) return jsonRes({ error: "telegram_id diperlukan" }, 400);
+  await env.DB.prepare("UPDATE users SET telegram_id = ? WHERE id = ?").bind(String(telegram_id), payload.sub).run();
+  return jsonRes({ status: "linked", telegram_id });
+}
+
+async function handleRefreshToken(req, env) {
+  const token = extractToken(req);
+  if (!token) return jsonRes({ error: "Token diperlukan" }, 401);
+  const payload = await verifyJWT(token, env.JWT_SECRET || "laksa-default-secret");
+  if (!payload) return jsonRes({ error: "Token tidak valid atau expired" }, 401);
+  const user = await env.DB.prepare("SELECT id, email, name FROM users WHERE id = ?").bind(payload.sub).first();
+  if (!user) return jsonRes({ error: "User tidak ditemukan" }, 404);
+  const newToken = await signJWT({ sub: user.id, email: user.email, name: user.name }, env.JWT_SECRET || "laksa-default-secret");
+  return jsonRes({ token: newToken });
+}
+
 // ─────────────────────────────────────────────────────
 // ENTRY POINT
 // ─────────────────────────────────────────────────────
@@ -89,16 +222,33 @@ export default {
 async function routeAPI(req, url, env) {
   const m    = req.method;
   const path = url.pathname;
-  const uid  = url.searchParams.get("user_id");
 
   if (path === "/" && m === "GET") return jsonRes({ status: "ok", version: "3.0.0" });
   if (path === "/setup")           return setupDatabase(env);
 
-  // Web AI proxy (tidak perlu user_id)
+  // Auth routes (public — no token needed)
+  if (path === "/auth/register" && m === "POST") return handleRegister(await req.json(), env);
+  if (path === "/auth/login"    && m === "POST") return handleLogin(await req.json(), env);
+  if (path === "/auth/me"       && m === "GET")  return handleMe(req, env);
+  if (path === "/auth/refresh"  && m === "POST") return handleRefreshToken(req, env);
+  if (path === "/auth/link-telegram" && m === "POST") return handleLinkTelegram(req, await req.json(), env);
+
+  // Resolve user_id: prefer JWT token, fallback to query param (backward compat for Telegram bot)
+  let uid = null;
+  const token = extractToken(req);
+  if (token) {
+    const payload = await verifyJWT(token, env.JWT_SECRET || "laksa-default-secret");
+    if (!payload) return jsonRes({ error: "Token tidak valid atau expired" }, 401);
+    uid = payload.sub;
+  } else {
+    uid = url.searchParams.get("user_id");
+  }
+
+  // Web AI proxy
   if (path === "/ai-chat"      && m === "POST") return handleAiChat(uid, await req.json(), env);
   if (path === "/scan-receipt" && m === "POST") return handleScanReceipt(uid, await req.json(), env);
 
-  if (!uid) return jsonRes({ error: "user_id diperlukan" }, 400);
+  if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
 
   // accounts
   if (path === "/accounts") {
@@ -1369,6 +1519,18 @@ function resolveCategory(catName, note, store, type, cats) {
 // ─────────────────────────────────────────────────────
 async function setupDatabase(env) {
   try {
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
+        salt TEXT NOT NULL,
+        telegram_id TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+
     await env.DB.prepare(`
       CREATE TABLE IF NOT EXISTS accounts (
         id TEXT PRIMARY KEY,

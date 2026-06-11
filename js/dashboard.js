@@ -149,11 +149,10 @@ function triggerAvatarUpload(e) {
 function logoutAkun(e) {
   e.stopPropagation();
   closeAvatarDropdown();
-  if (!confirm('Logout dan ganti akun? Anda perlu isi ulang nama & Telegram ID.\n\nData keuangan di server tetap aman.')) return;
-  // Hapus identitas lokal
+  if (!confirm('Logout? Data keuangan di server tetap aman.')) return;
+  clearToken();
   localStorage.removeItem('laksa_profile');
   localStorage.removeItem('laksa_avatar');
-  // Hapus cache data lokal agar tidak bocor ke akun berikutnya
   const K_KEYS = ['ft_tx', 'ft_bud', 'ft_goals', 'ft_acc', 'ft_cats', 'ft_set', 'ft_rec'];
   K_KEYS.forEach(k => localStorage.removeItem(k));
   location.reload();
