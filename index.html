@@ -200,7 +200,8 @@
             </svg>
             Password
           </label>
-          <input class="setup-input" id="authRegisterPassword" type="password" placeholder="Min. 6 karakter" />
+          <input class="setup-input" id="authRegisterPassword" type="password" placeholder="Min. 6 karakter" oninput="checkPasswordMatch()" />
+          <div class="auth-pw-hint" id="authPwLengthHint" style="display:none"></div>
         </div>
         <div class="setup-field">
           <label class="setup-label">
@@ -209,7 +210,8 @@
             </svg>
             Konfirmasi Password
           </label>
-          <input class="setup-input" id="authRegisterPassword2" type="password" placeholder="Ulangi password" onkeydown="if(event.key==='Enter')handleAuthRegister()" />
+          <input class="setup-input" id="authRegisterPassword2" type="password" placeholder="Ulangi password" oninput="checkPasswordMatch()" onkeydown="if(event.key==='Enter')handleAuthRegister()" />
+          <div class="auth-pw-hint" id="authPwMatchHint" style="display:none"></div>
         </div>
 
         <!-- Theme picker in register form -->

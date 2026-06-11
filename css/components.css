@@ -4515,4 +4515,17 @@ html[data-theme="dark"] .auth-tab.active {
   background: var(--accent, #3b82f6);
   color: #fff;
 }
+.auth-pw-hint {
+  font-size: .7rem;
+  font-weight: 600;
+  margin-top: .3rem;
+  padding: .15rem 0;
+  transition: all .2s;
+}
+.auth-pw-hint.error {
+  color: #ef4444;
+}
+.auth-pw-hint.success {
+  color: #22c55e;
+}
 

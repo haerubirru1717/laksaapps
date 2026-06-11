@@ -450,6 +450,44 @@ async function handleAuthLogin() {
   }
 }
 
+function checkPasswordMatch() {
+  const pw = el('authRegisterPassword')?.value || '';
+  const pw2 = el('authRegisterPassword2')?.value || '';
+  const lengthHint = el('authPwLengthHint');
+  const matchHint = el('authPwMatchHint');
+
+  // Password length hint
+  if (lengthHint) {
+    if (pw.length > 0 && pw.length < 6) {
+      lengthHint.style.display = '';
+      lengthHint.textContent = '✕ Minimal 6 karakter';
+      lengthHint.className = 'auth-pw-hint error';
+    } else if (pw.length >= 6) {
+      lengthHint.style.display = '';
+      lengthHint.textContent = '✓ Panjang password cukup';
+      lengthHint.className = 'auth-pw-hint success';
+    } else {
+      lengthHint.style.display = 'none';
+    }
+  }
+
+  // Password match hint
+  if (matchHint) {
+    if (pw2.length > 0) {
+      matchHint.style.display = '';
+      if (pw === pw2) {
+        matchHint.textContent = '✓ Password cocok';
+        matchHint.className = 'auth-pw-hint success';
+      } else {
+        matchHint.textContent = '✕ Password tidak cocok';
+        matchHint.className = 'auth-pw-hint error';
+      }
+    } else {
+      matchHint.style.display = 'none';
+    }
+  }
+}
+
 async function handleAuthRegister() {
   const name = (el('authRegisterName')?.value || '').trim();
   const email = (el('authRegisterEmail')?.value || '').trim();
