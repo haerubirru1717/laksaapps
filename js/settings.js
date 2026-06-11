@@ -148,6 +148,43 @@ async function delCat(id) {
   } catch (e) { toast('Gagal: ' + e.message, 'err'); }
 }
 
+// ── LINK TELEGRAM ──
+function showLinkTelegramForm() {
+  const btn = el('linkTgBtn');
+  const form = el('linkTgForm');
+  if (btn) btn.style.display = 'none';
+  if (form) form.style.display = '';
+  const p = getProfile();
+  if (p && p.tgId) {
+    const input = el('linkTgInput');
+    if (input) input.value = p.tgId;
+  }
+}
+function hideLinkTelegramForm() {
+  const btn = el('linkTgBtn');
+  const form = el('linkTgForm');
+  if (btn) btn.style.display = '';
+  if (form) form.style.display = 'none';
+}
+async function submitLinkTelegram() {
+  const tgId = (el('linkTgInput')?.value || '').trim().replace(/\D/g, '');
+  if (!tgId) { toast('Telegram ID wajib diisi (angka)', 'err'); return; }
+  const btn = el('linkTgSubmitBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
+  try {
+    await api('POST', '/auth/link-telegram', { telegram_id: tgId });
+    const p = getProfile();
+    if (p) { p.tgId = tgId; saveProfile(p); }
+    hideLinkTelegramForm();
+    updateProfilePreview();
+    toast('Telegram berhasil dihubungkan!', 'ok');
+  } catch (e) {
+    toast('Gagal: ' + e.message, 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Hubungkan'; }
+  }
+}
+
 // ── SCAN STRUK ──
 
 // ── Backup & Restore ──

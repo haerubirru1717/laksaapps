@@ -1099,9 +1099,21 @@
                   <button class="abtn del" onclick="logoutAkun(event)" title="Putus koneksi &amp; Keluar" style="color:var(--expense);background:transparent;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;margin-left:0.2rem"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
                 </div>
               </div>
-              <div class="sett-list-item" onclick="logoutAkun(event)" style="justify-content:center;color:var(--accent);font-weight:700;font-size:0.8rem;border-top:1px solid var(--border)">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:0.4rem"><path d="M15 3h6v6M10 14L21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
-                Hubungkan Telegram Lain
+              <div id="linkTgSection">
+                <div class="sett-list-item" onclick="showLinkTelegramForm()" style="justify-content:center;color:var(--accent);font-weight:700;font-size:0.8rem;border-top:1px solid var(--border)" id="linkTgBtn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:0.4rem"><path d="M15 3h6v6M10 14L21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                  Hubungkan Telegram
+                </div>
+                <div id="linkTgForm" style="display:none;padding:.8rem 1rem;border-top:1px solid var(--border)">
+                  <div style="font-size:.72rem;color:var(--ink3);margin-bottom:.5rem">
+                    Masukkan Telegram ID kamu (kirim <code>/start</code> ke <b>@userinfobot</b> di Telegram untuk tahu ID-mu):
+                  </div>
+                  <div style="display:flex;gap:.5rem;align-items:center">
+                    <input class="setup-input" id="linkTgInput" type="text" placeholder="Contoh: 123456789" style="flex:1;margin:0;padding:.5rem .7rem;font-size:.8rem" />
+                    <button class="setup-btn" id="linkTgSubmitBtn" onclick="submitLinkTelegram()" style="margin:0;padding:.5rem .8rem;font-size:.75rem;white-space:nowrap">Hubungkan</button>
+                  </div>
+                  <button onclick="hideLinkTelegramForm()" style="background:none;border:none;color:var(--ink3);font-size:.7rem;cursor:pointer;margin-top:.4rem;padding:0">Batal</button>
+                </div>
               </div>
             </div>
 

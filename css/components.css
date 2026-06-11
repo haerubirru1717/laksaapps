@@ -4238,6 +4238,8 @@
     }
     .theme-preview-colors span {
       flex: 1;
+      display: block;
+      min-height: 32px;
       border-radius: 5px;
       transition: flex .25s;
     }

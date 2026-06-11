@@ -513,7 +513,7 @@ function updateProfileUI() {
   const profileEl = el('sidebarProfile');
   const nameEl = el('sidebarName');
   const avatarEl = el('sidebarAvatar');
-  if (!p || !p.tgId) {
+  if (!p || (!p.tgId && !p.id && !p.email)) {
     if (noProfile) noProfile.style.display = '';
     if (profileEl) profileEl.style.display = 'none';
   } else {
