@@ -557,7 +557,12 @@ function switchAuthTab(tab) {
 async function handleAuthLogin() {
   const email = (el('authLoginEmail')?.value || '').trim();
   const password = el('authLoginPassword')?.value || '';
-  if (!email || !password) { toast('Email dan password wajib diisi', 'err'); return; }
+  const errEl = el('authLoginError');
+  if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+  if (!email || !password) {
+    if (errEl) { errEl.textContent = 'Email dan password wajib diisi'; errEl.style.display = 'block'; }
+    return;
+  }
   const btn = el('authLoginBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
   try {
@@ -574,10 +579,26 @@ async function handleAuthLogin() {
     go('dashboard');
     refresh();
   } catch (e) {
-    toast(e.message, 'err');
+    if (errEl) { errEl.textContent = e.message || 'Email atau password salah'; errEl.style.display = 'block'; }
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Masuk'; }
   }
+}
+
+function showForgotPassword() {
+  const existing = document.getElementById('forgot-pw-info');
+  if (existing) { existing.remove(); return; }
+  const div = document.createElement('div');
+  div.id = 'forgot-pw-info';
+  div.className = 'auth-forgot-info';
+  div.innerHTML = `
+    <p><strong>Lupa password?</strong></p>
+    <p>Hubungi admin untuk reset password:</p>
+    <a href="https://wa.me/6287785067348?text=${encodeURIComponent('Halo Admin, saya lupa password akun Laksa.\nEmail: ')}" target="_blank" class="btn-forgot-wa">Hubungi via WhatsApp</a>
+    <p style="margin-top:0.5rem;font-size:0.7rem;color:var(--ink3)">Sertakan email akun kamu.</p>
+  `;
+  const form = el('authLoginForm');
+  if (form) form.appendChild(div);
 }
 
 async function handleAuthRegister() {

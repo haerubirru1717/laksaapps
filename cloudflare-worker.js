@@ -214,8 +214,10 @@ async function handleRegister(body, env) {
   await env.DB.prepare(
     "INSERT INTO users (id, email, name, password_hash, salt, created_at) VALUES (?, ?, ?, ?, ?, ?)"
   ).bind(id, emailLower, name.trim(), passwordHash, salt, new Date().toISOString()).run();
-  // Seed default categories for new user
+  // Seed default categories + default account for new user
   await seedCategories(id, env);
+  const defAccId = "acc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+  await env.DB.prepare("INSERT OR IGNORE INTO accounts (id, user_id, name, balance, color) VALUES (?, ?, 'Tunai', 0, '#7c3aed')").bind(defAccId, id).run().catch(() => {});
   const token = await signJWT({ sub: id, email: emailLower, name: name.trim() }, env.JWT_SECRET || "laksa-default-secret");
   return jsonRes({ token, user: { id, email: emailLower, name: name.trim() } }, 201);
 }
@@ -2547,7 +2549,7 @@ async function handleAdminBot(body, env) {
 
   try {
     if (text === '/start' || text === '/help') {
-      await adminSend(chatId, `🔐 *Admin Panel Laksa*\n\n*Perintah tersedia:*\n\n📋 *User Management*\n/users — List semua user\n/search email — Cari user\n/user email — Detail user\n/ban email — Ban user\n/unban email — Unban user\n\n💎 *Premium Management*\n/approve email durasi — Aktifkan premium\n  Durasi: 30d, 90d, 365d, lifetime\n/extend email durasi — Perpanjang premium\n/revoke email — Cabut premium\n/pending — Request upgrade pending\n/receipt email — Generate bukti (copas WA)\n\n💰 *Pricing & QRIS*\n/pricing — Lihat harga saat ini\n/setprice id harga — Update harga\n  ID: p30, p90, p365, p0\n/setqris — Upload gambar QRIS (kirim foto)\n\n📊 *Statistik*\n/stats — Overview dashboard\n/revenue — Revenue summary\n\n📢 *Broadcast*\n/broadcast pesan — Kirim ke semua user\n\n_Contoh:_\n/approve andi@gmail.com 30d\n/setprice p30 29000\n/receipt budi@gmail.com`, ADMIN_TOKEN);
+      await adminSend(chatId, `🔐 *Admin Panel Laksa*\n\n*Perintah tersedia:*\n\n📋 *User Management*\n/users — List semua user\n/search email — Cari user\n/user email — Detail user\n/ban email — Ban user\n/unban email — Unban user\n/resetpw email password — Reset password user\n\n💎 *Premium Management*\n/approve email durasi — Aktifkan premium\n  Durasi: 30d, 90d, 365d, lifetime\n/extend email durasi — Perpanjang premium\n/revoke email — Cabut premium\n/pending — Request upgrade pending\n/receipt email — Generate bukti (copas WA)\n\n💰 *Pricing & QRIS*\n/pricing — Lihat harga saat ini\n/setprice id harga — Update harga\n  ID: p30, p90, p365, p0\n/setqris — Upload gambar QRIS (kirim foto)\n\n📊 *Statistik*\n/stats — Overview dashboard\n/revenue — Revenue summary\n\n📢 *Broadcast*\n/broadcast pesan — Kirim ke semua user\n\n_Contoh:_\n/approve andi@gmail.com 30d\n/setprice p30 29000\n/receipt budi@gmail.com`, ADMIN_TOKEN);
       return;
     }
 
@@ -2687,6 +2689,22 @@ async function handleAdminBot(body, env) {
       if (!user) { await adminSend(chatId, `❌ User "${email}" tidak ditemukan.`, ADMIN_TOKEN); return; }
       await env.DB.prepare("UPDATE users SET is_banned = 0 WHERE id = ?").bind(user.id).run();
       await adminSend(chatId, `✅ *User di-unban*\n\n*User:* ${user.name} (${user.email})`, ADMIN_TOKEN);
+      return;
+    }
+
+    if (text === '/resetpw') { await adminSend(chatId, "📝 Format: /resetpw email@contoh.com passwordbaru", ADMIN_TOKEN); return; }
+    if (text.startsWith('/resetpw ')) {
+      const parts = text.slice(9).trim().split(/\s+/);
+      const email = parts[0]?.toLowerCase();
+      const newPw = parts[1];
+      if (!email || !newPw) { await adminSend(chatId, "📝 Format: /resetpw email@contoh.com passwordbaru\n\nPassword minimal 6 karakter.", ADMIN_TOKEN); return; }
+      if (newPw.length < 6) { await adminSend(chatId, "❌ Password minimal 6 karakter.", ADMIN_TOKEN); return; }
+      const user = await env.DB.prepare("SELECT id, name FROM users WHERE email = ?").bind(email).first();
+      if (!user) { await adminSend(chatId, `❌ User "${email}" tidak ditemukan.`, ADMIN_TOKEN); return; }
+      const salt = crypto.randomUUID();
+      const hash = await hashPassword(newPw, salt);
+      await env.DB.prepare("UPDATE users SET password_hash = ?, salt = ? WHERE id = ?").bind(hash, salt, user.id).run();
+      await adminSend(chatId, `✅ *Password direset!*\n\n*User:* ${user.name} (${email})\n*Password baru:* \`${newPw}\`\n\nSampaikan ke user secara pribadi.`, ADMIN_TOKEN);
       return;
     }
 
