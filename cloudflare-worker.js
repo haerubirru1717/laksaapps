@@ -1930,13 +1930,25 @@ async function setupDatabase(env) {
       )
     `).run();
 
+    // Migration check: Drop categories table if it only has 'id' as primary key
+    try {
+      const { results: cols } = await env.DB.prepare("PRAGMA table_info(categories)").all();
+      if (cols && cols.length > 0) {
+        const pkCols = cols.filter(c => c.pk > 0);
+        if (pkCols.length === 1 && pkCols[0].name === "id") {
+          await env.DB.prepare("DROP TABLE categories").run();
+        }
+      }
+    } catch (_) {}
+
     await env.DB.prepare(`
       CREATE TABLE IF NOT EXISTS categories (
-        id TEXT PRIMARY KEY,
+        id TEXT NOT NULL,
         user_id TEXT NOT NULL,
         name TEXT NOT NULL,
         emoji TEXT,
-        type TEXT NOT NULL
+        type TEXT NOT NULL,
+        PRIMARY KEY (id, user_id)
       )
     `).run();
 
@@ -2176,7 +2188,7 @@ async function seedCategories(userId, env) {
 }
 
 async function dbAccounts(userId, env) {
-  const { results } = await env.DB.prepare("SELECT * FROM accounts WHERE user_id = ? ORDER BY name ASC").bind(userId).all();
+  const { results } = await env.DB.prepare("SELECT * FROM accounts WHERE user_id = ? ORDER BY rowid ASC").bind(userId).all();
   return results || [];
 }
 
@@ -2247,7 +2259,7 @@ async function getTxFull(id, env) {
 // CRUD ENDPOINT HANDLERS
 // ─────────────────────────────────────────────────────
 async function getAccounts(uid, env) {
-  const { results } = await env.DB.prepare("SELECT * FROM accounts WHERE user_id = ? ORDER BY name ASC").bind(uid).all();
+  const { results } = await env.DB.prepare("SELECT * FROM accounts WHERE user_id = ? ORDER BY rowid ASC").bind(uid).all();
   return jsonRes(results);
 }
 

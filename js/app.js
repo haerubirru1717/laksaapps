@@ -182,7 +182,7 @@ async function showUpgradeModal(message) {
           : `Rp ${p.price.toLocaleString('id-ID')}`;
         return `
         <label class="pricing-option${i === 0 ? ' selected' : ''}">
-          <input type="radio" name="upgrade-plan" value="${p.id}" data-label="${p.label}" data-price="${p.price}" data-days="${p.duration_days}" ${i === 0 ? 'checked' : ''}>
+          <input type="radio" name="upgrade-plan" value="${p.id}" data-label="${p.label}" data-price="${p.price}" data-days="${p.duration_days}" data-original="${p.original_price || ''}" ${i === 0 ? 'checked' : ''}>
           <span class="pricing-name">${p.label}</span>
           <span class="pricing-price">${priceDisplay}</span>
         </label>`;
@@ -264,6 +264,43 @@ async function showUpgradeModal(message) {
   });
 }
 
+function updatePricingPrices() {
+  const options = document.querySelectorAll('#upgrade-modal .pricing-option');
+  options.forEach(opt => {
+    const input = opt.querySelector('input[name="upgrade-plan"]');
+    if (!input) return;
+    const basePrice = parseFloat(input.dataset.price) || 0;
+    const priceSpan = opt.querySelector('.pricing-price');
+    if (!priceSpan) return;
+
+    if (window._appliedCoupon) {
+      let discount = 0;
+      if (window._appliedCoupon.type === 'percent') {
+        discount = basePrice * (parseFloat(window._appliedCoupon.value) / 100);
+      } else if (window._appliedCoupon.type === 'fixed') {
+        discount = parseFloat(window._appliedCoupon.value);
+      }
+      const finalPrice = Math.max(0, basePrice - discount);
+      priceSpan.innerHTML = `
+        <span class="pricing-original" style="text-decoration: line-through; color: #ef4444; font-size: 0.8rem; margin-right: 0.4rem; font-weight: normal;">Rp ${basePrice.toLocaleString('id-ID')}</span>
+        <span class="pricing-discounted" style="font-weight: 700; color: var(--accent);">Rp ${finalPrice.toLocaleString('id-ID')}</span>
+      `;
+    } else {
+      // Restore default price display
+      const hasOriginal = input.dataset.original && parseFloat(input.dataset.original) > basePrice;
+      if (hasOriginal) {
+        const orig = parseFloat(input.dataset.original);
+        priceSpan.innerHTML = `
+          <span class="pricing-original">Rp ${orig.toLocaleString('id-ID')}</span>
+          <span class="pricing-discounted">Rp ${basePrice.toLocaleString('id-ID')}</span>
+        `;
+      } else {
+        priceSpan.innerHTML = `Rp ${basePrice.toLocaleString('id-ID')}`;
+      }
+    }
+  });
+}
+
 let _appliedCoupon = null;
 async function applyCoupon() {
   const input = document.getElementById('couponInput');
@@ -283,9 +320,11 @@ async function applyCoupon() {
       status.className = 'coupon-status success';
       status.style.display = 'block';
     }
+    updatePricingPrices();
   } catch (e) {
     window._appliedCoupon = null;
     if (status) { status.textContent = e.message || 'Kupon tidak valid'; status.className = 'coupon-status error'; status.style.display = 'block'; }
+    updatePricingPrices();
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Pakai'; }
   }
@@ -987,7 +1026,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Terapkan tema dari profil
-  applyTheme(profile.theme || theme, null, false);
+  applyTheme((profile && profile.theme) || theme, null, false);
   updateProfileUI();
   updateSidebarProfile();
 

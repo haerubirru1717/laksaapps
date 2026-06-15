@@ -113,10 +113,10 @@ const BANKS = {
   shopee:    {color:'#EE4D2D',c2:'#c93b1e',domain:'shopee.co.id',slug:'shopeepay'},
 
   // ── Kas/Tunai ──
-  tunai:     {color:'#34d399',c2:'#10b981',domain:null},
-  cash:      {color:'#34d399',c2:'#10b981',domain:null},
-  dompet:    {color:'#5c6ac4',c2:'#4355b9',domain:null,isWallet:true},
-  kas:       {color:'#d4920a',c2:'#a87200',domain:null}
+  tunai:     {color:'#7c5a43',c2:'#593c2a',domain:null,noLogo:true},
+  cash:      {color:'#7c5a43',c2:'#593c2a',domain:null,noLogo:true},
+  dompet:    {color:'#70483c',c2:'#4e2e25',domain:null,isWallet:true,noLogo:true},
+  kas:       {color:'#8c6239',c2:'#5f3e1b',domain:null,noLogo:true}
 };
 
 // ── DAFTAR SEMUA FILE SVG ──
@@ -254,8 +254,13 @@ const detBank = (name) => {
   }
 
   // 5. Dompet/wallet detection
-  if (/dompet|tunai|cash|wallet|kas/i.test(n))
-    return { color: '#5c6ac4', c2: '#4355b9', domain: null, isWallet: true, slug: nClean };
+  if (/dompet|tunai|cash|wallet|kas/i.test(n)) {
+    const isKas = /kas/i.test(n);
+    const isDompet = /dompet/i.test(n);
+    const col = isKas ? '#8c6239' : (isDompet ? '#70483c' : '#7c5a43');
+    const col2 = isKas ? '#5f3e1b' : (isDompet ? '#4e2e25' : '#593c2a');
+    return { color: col, c2: col2, domain: null, isWallet: true, slug: nClean, noLogo: true };
+  }
 
   // 6. Fallback
   const slug = nClean || 'unknown';
@@ -270,6 +275,7 @@ function getLogoHtml(accName, b, imgClass, fbClass, imgStyle = '', useFavicon = 
   const slug = b && b.slug ? b.slug : (b && b.domain ? b.domain.split('.')[0] : null);
   const domain = b && b.domain ? b.domain : null;
 
+  if (b && b.noLogo) return `<div class="${fbClass}" style="display:flex">${init}</div>`;
   if (!slug && !domain) return `<div class="${fbClass}" style="display:flex">${init}</div>`;
 
   const scale = (b && b.logoScale) ? b.logoScale : 1.45;

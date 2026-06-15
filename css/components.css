@@ -4523,6 +4523,9 @@ html[data-theme="dark"] .auth-tab {
   margin-bottom: 10px;
   text-align: center;
 }
+.auth-error:empty {
+  display: none !important;
+}
 .auth-forgot-info {
   margin-top: 1rem;
   padding: 12px;
@@ -4555,13 +4558,14 @@ html[data-theme="dark"] .auth-tab.active {
   inset: 0;
   z-index: 99999;
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   padding: 20px;
   background: rgba(0,0,0,.5);
   backdrop-filter: blur(4px);
   opacity: 0;
   transition: opacity .3s;
+  overflow-y: auto;
 }
 .modal-overlay.show { opacity: 1; }
 .modal-box.upgrade-box {
@@ -4573,6 +4577,65 @@ html[data-theme="dark"] .auth-tab.active {
   text-align: center;
   box-shadow: 0 20px 60px rgba(0,0,0,.25);
   border: 1px solid var(--gs-border, rgba(0,0,0,.08));
+  margin: auto;
+}
+
+@media (min-width: 768px) {
+  .modal-box.upgrade-box {
+    max-width: 720px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    text-align: left;
+    padding: 32px;
+  }
+  .upgrade-icon {
+    grid-column: span 2;
+    text-align: center;
+    margin-bottom: 0;
+  }
+  .upgrade-box h3 {
+    grid-column: span 2;
+    text-align: center;
+    font-size: 22px;
+    margin: 0;
+  }
+  .upgrade-msg {
+    grid-column: span 2;
+    text-align: center;
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+  .upgrade-pricing {
+    grid-column: 1;
+    margin-bottom: 0;
+  }
+  .coupon-section {
+    grid-column: 1;
+    margin-bottom: 0;
+    margin-top: 10px;
+  }
+  .upgrade-qris {
+    grid-column: 2;
+    grid-row: 4 / 6;
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  .upgrade-contact {
+    grid-column: 2;
+    text-align: center;
+    margin-top: 10px;
+  }
+  .upgrade-actions {
+    grid-column: span 2;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 10px;
+  }
 }
 .upgrade-icon {
   font-size: 40px;
