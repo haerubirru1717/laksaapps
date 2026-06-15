@@ -266,6 +266,54 @@ async function handleRefreshToken(req, env) {
   return jsonRes({ token: newToken });
 }
 
+async function handleDeleteAccount(req, body, env) {
+  const token = extractToken(req);
+  if (!token) return jsonRes({ error: "Token diperlukan" }, 401);
+  const payload = await verifyJWT(token, env.JWT_SECRET || "laksa-default-secret");
+  if (!payload) return jsonRes({ error: "Token tidak valid" }, 401);
+  const { password } = body || {};
+  if (!password) return jsonRes({ error: "Password diperlukan untuk konfirmasi" }, 400);
+  const user = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(payload.sub).first();
+  if (!user) return jsonRes({ error: "User tidak ditemukan" }, 404);
+  const valid = await verifyPassword(password, user.salt, user.password_hash);
+  if (!valid) return jsonRes({ error: "Password salah" }, 401);
+  const uid = user.id;
+  await env.DB.prepare("DELETE FROM transaction_items WHERE transaction_id IN (SELECT id FROM transactions WHERE user_id = ?)").bind(uid).run().catch(() => {});
+  await env.DB.prepare("DELETE FROM transactions WHERE user_id = ?").bind(uid).run().catch(() => {});
+  await env.DB.prepare("DELETE FROM accounts WHERE user_id = ?").bind(uid).run().catch(() => {});
+  await env.DB.prepare("DELETE FROM categories WHERE user_id = ?").bind(uid).run().catch(() => {});
+  await env.DB.prepare("DELETE FROM budgets WHERE user_id = ?").bind(uid).run().catch(() => {});
+  await env.DB.prepare("DELETE FROM goals WHERE user_id = ?").bind(uid).run().catch(() => {});
+  await env.DB.prepare("DELETE FROM bills WHERE user_id = ?").bind(uid).run().catch(() => {});
+  await env.DB.prepare("DELETE FROM piutang WHERE user_id = ?").bind(uid).run().catch(() => {});
+  await env.DB.prepare("DELETE FROM pending_scans WHERE user_id = ?").bind(uid).run().catch(() => {});
+  await env.DB.prepare("DELETE FROM pending_texts WHERE user_id = ?").bind(uid).run().catch(() => {});
+  await env.DB.prepare("DELETE FROM usage_logs WHERE user_id = ?").bind(uid).run().catch(() => {});
+  await env.DB.prepare("DELETE FROM payment_requests WHERE user_id = ?").bind(uid).run().catch(() => {});
+  await env.DB.prepare("DELETE FROM bot_messages WHERE user_id = ?").bind(uid).run().catch(() => {});
+  await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(uid).run();
+  return jsonRes({ status: "deleted", message: "Akun dan semua data berhasil dihapus." });
+}
+
+// ─────────────────────────────────────────────────────
+// RATE LIMITING (per-IP, in-memory with D1 fallback)
+// ─────────────────────────────────────────────────────
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 menit
+const RATE_LIMIT_MAX = 10; // max 10 attempts per 15 min per IP
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now - entry.start > RATE_LIMIT_WINDOW) {
+    rateLimitMap.set(ip, { start: now, count: 1 });
+    return true;
+  }
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) return false;
+  return true;
+}
+
 // ─────────────────────────────────────────────────────
 // ENTRY POINT
 // ─────────────────────────────────────────────────────
@@ -323,11 +371,18 @@ async function routeAPI(req, url, env) {
   if (path === "/setup")           return setupDatabase(env);
 
   // Auth routes (public — no token needed)
+  if ((path === "/auth/login" || path === "/auth/register") && m === "POST") {
+    const ip = req.headers.get("CF-Connecting-IP") || req.headers.get("X-Forwarded-For") || "unknown";
+    if (!checkRateLimit(ip)) {
+      return jsonRes({ error: "Terlalu banyak percobaan. Coba lagi dalam 15 menit." }, 429);
+    }
+  }
   if (path === "/auth/register" && m === "POST") return handleRegister(await req.json(), env);
   if (path === "/auth/login"    && m === "POST") return handleLogin(await req.json(), env);
   if (path === "/auth/me"       && m === "GET")  return handleMe(req, env);
   if (path === "/auth/refresh"  && m === "POST") return handleRefreshToken(req, env);
   if (path === "/auth/link-telegram" && m === "POST") return handleLinkTelegram(req, await req.json(), env);
+  if (path === "/auth/delete-account" && m === "POST") return handleDeleteAccount(req, await req.json(), env);
 
   // Public pricing endpoint
   if (path === "/pricing" && m === "GET") {
@@ -2549,7 +2604,7 @@ async function handleAdminBot(body, env) {
 
   try {
     if (text === '/start' || text === '/help') {
-      await adminSend(chatId, `🔐 *Admin Panel Laksa*\n\n*Perintah tersedia:*\n\n📋 *User Management*\n/users — List semua user\n/search email — Cari user\n/user email — Detail user\n/ban email — Ban user\n/unban email — Unban user\n/resetpw email password — Reset password user\n\n💎 *Premium Management*\n/approve email durasi — Aktifkan premium\n  Durasi: 30d, 90d, 365d, lifetime\n/extend email durasi — Perpanjang premium\n/revoke email — Cabut premium\n/pending — Request upgrade pending\n/receipt email — Generate bukti (copas WA)\n\n💰 *Pricing & QRIS*\n/pricing — Lihat harga saat ini\n/setprice id harga — Update harga\n  ID: p30, p90, p365, p0\n/setqris — Upload gambar QRIS (kirim foto)\n\n📊 *Statistik*\n/stats — Overview dashboard\n/revenue — Revenue summary\n\n📢 *Broadcast*\n/broadcast pesan — Kirim ke semua user\n\n_Contoh:_\n/approve andi@gmail.com 30d\n/setprice p30 29000\n/receipt budi@gmail.com`, ADMIN_TOKEN);
+      await adminSend(chatId, `🔐 *Admin Panel Laksa*\n\n*Perintah tersedia:*\n\n📋 *User Management*\n/users — List semua user\n/search email — Cari user\n/user email — Detail user\n/ban email — Ban user\n/unban email — Unban user\n/resetpw email password — Reset password user\n/deleteuser email — Hapus akun permanen\n\n💎 *Premium Management*\n/approve email durasi — Aktifkan premium\n  Durasi: 30d, 90d, 365d, lifetime\n/extend email durasi — Perpanjang premium\n/revoke email — Cabut premium\n/pending — Request upgrade pending\n/receipt email — Generate bukti (copas WA)\n\n💰 *Pricing & QRIS*\n/pricing — Lihat harga saat ini\n/setprice id harga — Update harga\n  ID: p30, p90, p365, p0\n/setqris — Upload gambar QRIS (kirim foto)\n\n📊 *Statistik*\n/stats — Overview dashboard\n/revenue — Revenue summary\n\n📢 *Broadcast*\n/broadcast pesan — Kirim ke semua user\n\n_Contoh:_\n/approve andi@gmail.com 30d\n/setprice p30 29000\n/receipt budi@gmail.com`, ADMIN_TOKEN);
       return;
     }
 
@@ -2689,6 +2744,31 @@ async function handleAdminBot(body, env) {
       if (!user) { await adminSend(chatId, `❌ User "${email}" tidak ditemukan.`, ADMIN_TOKEN); return; }
       await env.DB.prepare("UPDATE users SET is_banned = 0 WHERE id = ?").bind(user.id).run();
       await adminSend(chatId, `✅ *User di-unban*\n\n*User:* ${user.name} (${user.email})`, ADMIN_TOKEN);
+      return;
+    }
+
+    if (text === '/deleteuser') { await adminSend(chatId, "📝 Format: /deleteuser email@contoh.com\n\n⚠️ PERMANEN — semua data user akan dihapus.", ADMIN_TOKEN); return; }
+    if (text.startsWith('/deleteuser ')) {
+      const email = text.slice(12).trim().toLowerCase();
+      if (!email) { await adminSend(chatId, "📝 Format: /deleteuser email@contoh.com", ADMIN_TOKEN); return; }
+      const user = await env.DB.prepare("SELECT id, name FROM users WHERE email = ?").bind(email).first();
+      if (!user) { await adminSend(chatId, `❌ User "${email}" tidak ditemukan.`, ADMIN_TOKEN); return; }
+      const uid = user.id;
+      await env.DB.prepare("DELETE FROM transaction_items WHERE transaction_id IN (SELECT id FROM transactions WHERE user_id = ?)").bind(uid).run().catch(() => {});
+      await env.DB.prepare("DELETE FROM transactions WHERE user_id = ?").bind(uid).run().catch(() => {});
+      await env.DB.prepare("DELETE FROM accounts WHERE user_id = ?").bind(uid).run().catch(() => {});
+      await env.DB.prepare("DELETE FROM categories WHERE user_id = ?").bind(uid).run().catch(() => {});
+      await env.DB.prepare("DELETE FROM budgets WHERE user_id = ?").bind(uid).run().catch(() => {});
+      await env.DB.prepare("DELETE FROM goals WHERE user_id = ?").bind(uid).run().catch(() => {});
+      await env.DB.prepare("DELETE FROM bills WHERE user_id = ?").bind(uid).run().catch(() => {});
+      await env.DB.prepare("DELETE FROM piutang WHERE user_id = ?").bind(uid).run().catch(() => {});
+      await env.DB.prepare("DELETE FROM pending_scans WHERE user_id = ?").bind(uid).run().catch(() => {});
+      await env.DB.prepare("DELETE FROM pending_texts WHERE user_id = ?").bind(uid).run().catch(() => {});
+      await env.DB.prepare("DELETE FROM usage_logs WHERE user_id = ?").bind(uid).run().catch(() => {});
+      await env.DB.prepare("DELETE FROM payment_requests WHERE user_id = ?").bind(uid).run().catch(() => {});
+      await env.DB.prepare("DELETE FROM bot_messages WHERE user_id = ?").bind(uid).run().catch(() => {});
+      await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(uid).run();
+      await adminSend(chatId, `🗑️ *Akun dihapus permanen*\n\n*User:* ${user.name} (${email})\n\nSemua data (transaksi, rekening, kategori, dll) telah dihapus.`, ADMIN_TOKEN);
       return;
     }
 

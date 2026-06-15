@@ -526,3 +526,22 @@ function toggleProfileEdit() {
   elCollapse.style.display = isHidden ? 'block' : 'none';
   chev.style.transform = isHidden ? 'rotate(90deg)' : '';
 }
+
+function showDeleteAccountConfirm() {
+  const pw = prompt('⚠️ HAPUS AKUN PERMANEN\n\nSemua data (transaksi, rekening, kategori, dll) akan dihapus dan tidak bisa dikembalikan.\n\nMasukkan password kamu untuk konfirmasi:');
+  if (!pw) return;
+  if (!confirm('Yakin ingin menghapus akun? Tindakan ini TIDAK BISA dibatalkan.')) return;
+  deleteAccountPermanent(pw);
+}
+
+async function deleteAccountPermanent(password) {
+  try {
+    toast('Menghapus akun...', 'info');
+    await api('POST', '/auth/delete-account', { password });
+    toast('Akun berhasil dihapus.', 'ok');
+    localStorage.clear();
+    setTimeout(() => { window.location.reload(); }, 1500);
+  } catch (e) {
+    toast(e.message || 'Gagal menghapus akun', 'err');
+  }
+}
