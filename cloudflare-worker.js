@@ -312,7 +312,7 @@ async function handleForgotPassword(req, body, env) {
   const origin = req.headers.get("Origin") || "https://haerubirru17.github.io/laksaapps";
   const resetLink = `${origin}/?reset_token=${resetToken}`;
 
-  const resendApiKey = env.REESEND_API_KEY;
+  const resendApiKey = env.RESEND_API_KEY;
   if (!resendApiKey) {
     return jsonRes({ error: "Layanan email belum dikonfigurasi oleh admin." }, 500);
   }
