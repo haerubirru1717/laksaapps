@@ -126,15 +126,19 @@ function todayMidnight() {
 }
 
 async function getUserPlan(uid, env) {
-  const user = await env.DB.prepare("SELECT plan, plan_expired_at, is_banned FROM users WHERE id = ?").bind(uid).first();
-  if (!user) return { plan: 'free', expired: null, banned: false };
-  if (user.plan === 'premium' && user.plan_expired_at) {
-    if (new Date(user.plan_expired_at) < new Date()) {
-      await env.DB.prepare("UPDATE users SET plan = 'free', plan_expired_at = NULL WHERE id = ?").bind(uid).run();
-      return { plan: 'free', expired: null, banned: !!user.is_banned };
+  try {
+    const user = await env.DB.prepare("SELECT plan, plan_expired_at, is_banned FROM users WHERE id = ?").bind(uid).first();
+    if (!user) return { plan: 'free', expired: null, banned: false };
+    if (user.plan === 'premium' && user.plan_expired_at) {
+      if (new Date(user.plan_expired_at) < new Date()) {
+        await env.DB.prepare("UPDATE users SET plan = 'free', plan_expired_at = NULL WHERE id = ?").bind(uid).run();
+        return { plan: 'free', expired: null, banned: !!user.is_banned };
+      }
     }
+    return { plan: user.plan || 'free', expired: user.plan_expired_at, banned: !!user.is_banned };
+  } catch (e) {
+    return { plan: 'free', expired: null, banned: false };
   }
-  return { plan: user.plan || 'free', expired: user.plan_expired_at, banned: !!user.is_banned };
 }
 
 async function getUsageCount(uid, feature, env) {
@@ -146,22 +150,26 @@ async function getUsageCount(uid, feature, env) {
 }
 
 async function checkAndTrackUsage(uid, feature, env) {
-  const { plan, banned } = await getUserPlan(uid, env);
-  if (banned) return { allowed: false, reason: 'banned', used: 0, limit: 0 };
-  if (plan === 'premium') {
+  try {
+    const { plan, banned } = await getUserPlan(uid, env);
+    if (banned) return { allowed: false, reason: 'banned', used: 0, limit: 0 };
+    if (plan === 'premium') {
+      await env.DB.prepare(
+        "INSERT INTO usage_logs (id, user_id, feature, used_at) VALUES (?, ?, ?, ?)"
+      ).bind('u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), uid, feature, new Date().toISOString()).run();
+      return { allowed: true, used: 0, limit: -1 };
+    }
+    const used = await getUsageCount(uid, feature, env);
+    if (used >= FREE_LIMIT_PER_FEATURE) {
+      return { allowed: false, reason: 'limit', used, limit: FREE_LIMIT_PER_FEATURE };
+    }
     await env.DB.prepare(
       "INSERT INTO usage_logs (id, user_id, feature, used_at) VALUES (?, ?, ?, ?)"
     ).bind('u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), uid, feature, new Date().toISOString()).run();
-    return { allowed: true, used: 0, limit: -1 };
+    return { allowed: true, used: used + 1, limit: FREE_LIMIT_PER_FEATURE };
+  } catch (e) {
+    return { allowed: true, used: 0, limit: FREE_LIMIT_PER_FEATURE };
   }
-  const used = await getUsageCount(uid, feature, env);
-  if (used >= FREE_LIMIT_PER_FEATURE) {
-    return { allowed: false, reason: 'limit', used, limit: FREE_LIMIT_PER_FEATURE };
-  }
-  await env.DB.prepare(
-    "INSERT INTO usage_logs (id, user_id, feature, used_at) VALUES (?, ?, ?, ?)"
-  ).bind('u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), uid, feature, new Date().toISOString()).run();
-  return { allowed: true, used: used + 1, limit: FREE_LIMIT_PER_FEATURE };
 }
 
 async function resolveUserByTelegramId(tgId, env) {
@@ -351,9 +359,47 @@ async function routeAPI(req, url, env) {
     const usage = await checkAndTrackUsage(uid, feature, env);
     if (!usage.allowed) {
       if (usage.reason === 'banned') return jsonRes({ error: "Akun diblokir" }, 403);
-      return jsonRes({ error: `Batas harian tercapai (${usage.limit}x/hari).`, upgrade: true, used: usage.used, limit: usage.limit }, 429);
+      return jsonRes({ error: "Batas harian tercapai. Upgrade ke Premium untuk akses unlimited.", upgrade: true, used: usage.used, limit: usage.limit }, 429);
     }
     return jsonRes({ used: usage.used, limit: usage.limit });
+  }
+
+  // Public pricing (no auth required)
+  if (path === "/pricing/public" && m === "GET") {
+    try {
+      const prices = await env.DB.prepare("SELECT id, duration_days, price, label FROM pricing WHERE active = 1 ORDER BY duration_days ASC").all();
+      const qrisSetting = await env.DB.prepare("SELECT value FROM app_settings WHERE key = 'qris_image_url'").first();
+      return jsonRes({ pricing: prices.results || [], qris_url: qrisSetting?.value || null });
+    } catch (e) {
+      return jsonRes({ pricing: [], qris_url: null });
+    }
+  }
+
+  // Payment request (user submits intent to pay)
+  if (path === "/payment/request" && m === "POST") {
+    if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
+    const body = await req.json();
+    const pricingId = body.pricing_id;
+    if (!pricingId) return jsonRes({ error: "pricing_id diperlukan" }, 400);
+    const pricing = await env.DB.prepare("SELECT * FROM pricing WHERE id = ?").bind(pricingId).first();
+    if (!pricing) return jsonRes({ error: "Paket tidak ditemukan" }, 404);
+    const user = await env.DB.prepare("SELECT email, name FROM users WHERE id = ?").bind(uid).first();
+    if (!user) return jsonRes({ error: "User tidak ditemukan" }, 404);
+    const reqId = 'pay_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    await env.DB.prepare(
+      "INSERT INTO payment_requests (id, user_id, email, pricing_id, amount, status, created_at) VALUES (?, ?, ?, ?, ?, 'pending', ?)"
+    ).bind(reqId, uid, user.email, pricingId, pricing.price, new Date().toISOString()).run();
+    // Notify admin via admin bot
+    const ADMIN_TOKEN = env.ADMIN_BOT_TOKEN;
+    const ADMIN_ID = env.ADMIN_TELEGRAM_ID;
+    if (ADMIN_TOKEN && ADMIN_ID) {
+      const notif = `🔔 *Request Upgrade Baru!*\n\n👤 *${user.name}*\n📧 ${user.email}\n📦 Paket: ${pricing.label} (${pricing.duration_days === 0 ? 'Lifetime' : pricing.duration_days + ' hari'})\n💰 Rp ${pricing.price.toLocaleString('id-ID')}\n🕐 ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\n\n_Cek mutasi lalu:_\n/approve ${user.email} ${pricing.duration_days === 0 ? 'lifetime' : pricing.duration_days + 'd'}`;
+      fetch(`https://api.telegram.org/bot${ADMIN_TOKEN}/sendMessage`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: ADMIN_ID, text: notif, parse_mode: 'Markdown' })
+      }).catch(() => {});
+    }
+    return jsonRes({ ok: true, request_id: reqId, message: "Permintaan upgrade tercatat. Hubungi admin untuk konfirmasi." });
   }
 
   // Web AI proxy (usage limited)
@@ -362,7 +408,7 @@ async function routeAPI(req, url, env) {
     const usage = await checkAndTrackUsage(uid, 'ai_chat', env);
     if (!usage.allowed) {
       if (usage.reason === 'banned') return jsonRes({ error: "Akun diblokir" }, 403);
-      return jsonRes({ error: "Batas harian AI Chat tercapai (3x/hari). Upgrade ke Premium untuk unlimited.", upgrade: true, used: usage.used, limit: usage.limit }, 429);
+      return jsonRes({ error: "Batas harian AI Chat tercapai. Upgrade ke Premium untuk akses unlimited.", upgrade: true, used: usage.used, limit: usage.limit }, 429);
     }
     return handleAiChat(uid, await req.json(), env);
   }
@@ -371,7 +417,7 @@ async function routeAPI(req, url, env) {
     const usage = await checkAndTrackUsage(uid, 'scan_receipt', env);
     if (!usage.allowed) {
       if (usage.reason === 'banned') return jsonRes({ error: "Akun diblokir" }, 403);
-      return jsonRes({ error: "Batas harian Scan Struk tercapai (3x/hari). Upgrade ke Premium untuk unlimited.", upgrade: true, used: usage.used, limit: usage.limit }, 429);
+      return jsonRes({ error: "Batas harian Scan Struk tercapai. Upgrade ke Premium untuk akses unlimited.", upgrade: true, used: usage.used, limit: usage.limit }, 429);
     }
     return handleScanReceipt(uid, await req.json(), env);
   }
@@ -586,7 +632,7 @@ async function handleFreeText(chatId, userId, text, env) {
   const usage = await checkTelegramUsage(userId, 'ai_chat', env);
   if (!usage.allowed) {
     if (usage.reason === 'banned') { await tgSend(chatId, "🚫 Akun Anda diblokir.", env); return; }
-    await tgSend(chatId, `⚡ *Batas harian tercapai*\n\nKamu sudah menggunakan pencatatan AI ${usage.used}x hari ini (maks ${usage.limit}x/hari).\n\n🚀 Upgrade ke *Premium* untuk unlimited: haerubirru17.github.io/laksaapps/#upgrade`, env);
+    await tgSend(chatId, `⚡ *Batas harian tercapai*\n\nUpgrade ke *Premium* untuk akses unlimited semua fitur.\n\n🚀 Upgrade: haerubirru17.github.io/laksaapps/#upgrade`, env);
     return;
   }
 
@@ -762,7 +808,7 @@ async function handlePhoto(msg, chatId, userId, env) {
   const usage = await checkTelegramUsage(userId, 'scan_receipt', env);
   if (!usage.allowed) {
     if (usage.reason === 'banned') { await tgSend(chatId, "🚫 Akun Anda diblokir.", env); return; }
-    await tgSend(chatId, `⚡ *Batas harian tercapai*\n\nKamu sudah menggunakan scan struk ${usage.used}x hari ini (maks ${usage.limit}x/hari).\n\n🚀 Upgrade ke *Premium* untuk unlimited: haerubirru17.github.io/laksaapps/#upgrade`, env);
+    await tgSend(chatId, `⚡ *Batas harian tercapai*\n\nUpgrade ke *Premium* untuk akses unlimited semua fitur.\n\n🚀 Upgrade: haerubirru17.github.io/laksaapps/#upgrade`, env);
     return;
   }
 
@@ -1839,6 +1885,30 @@ async function setupDatabase(env) {
     // Create indexes for usage_logs
     await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_usage_user_feature_date ON usage_logs (user_id, feature, used_at)").run();
 
+    // Payment requests table
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS payment_requests (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        email TEXT NOT NULL,
+        pricing_id TEXT,
+        amount INTEGER,
+        status TEXT DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        resolved_at DATETIME,
+        resolved_by TEXT
+      )
+    `).run();
+
+    // App settings (QRIS image URL, etc)
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+
     // Seed default pricing if empty
     const pricingCount = await env.DB.prepare("SELECT COUNT(*) as cnt FROM pricing").first();
     if (!pricingCount?.cnt) {
@@ -2458,9 +2528,26 @@ async function handleAdminBot(body, env) {
     return;
   }
 
+  // Handle photo upload (for /setqris)
+  if (msg.photo && (msg.caption === '/setqris' || !text)) {
+    const photo = msg.photo[msg.photo.length - 1]; // highest resolution
+    const fileResp = await fetch(`https://api.telegram.org/bot${ADMIN_TOKEN}/getFile?file_id=${photo.file_id}`);
+    const fileData = await fileResp.json();
+    if (fileData.ok && fileData.result.file_path) {
+      const fileUrl = `https://api.telegram.org/file/bot${ADMIN_TOKEN}/${fileData.result.file_path}`;
+      await env.DB.prepare(
+        "INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES ('qris_image_url', ?, ?)"
+      ).bind(fileUrl, new Date().toISOString()).run();
+      await adminSend(chatId, "✅ *QRIS berhasil disimpan!*\n\nGambar QRIS akan tampil di halaman upgrade premium user.", ADMIN_TOKEN);
+    } else {
+      await adminSend(chatId, "❌ Gagal mengambil file. Coba kirim ulang.", ADMIN_TOKEN);
+    }
+    return;
+  }
+
   try {
-    if (text === '/start') {
-      await adminSend(chatId, `🔐 *Admin Panel Laksa*\n\n*Perintah tersedia:*\n\n📋 *User Management*\n/users — List semua user\n/search <email> — Cari user\n/user <email> — Detail user\n/ban <email> — Ban user\n/unban <email> — Unban user\n\n💎 *Premium Management*\n/approve <email> <durasi> — Aktifkan premium\n  Durasi: 30d, 90d, 365d, lifetime\n/extend <email> <durasi> — Perpanjang premium\n/revoke <email> — Cabut premium\n\n💰 *Pricing*\n/pricing — Lihat harga saat ini\n/setprice <id> <harga> — Update harga\n  ID: p30, p90, p365, p0\n\n📊 *Statistik*\n/stats — Overview dashboard\n/revenue — Revenue summary\n\n📢 *Broadcast*\n/broadcast <pesan> — Kirim ke semua user`, ADMIN_TOKEN);
+    if (text === '/start' || text === '/help') {
+      await adminSend(chatId, `🔐 *Admin Panel Laksa*\n\n*Perintah tersedia:*\n\n📋 *User Management*\n/users — List semua user\n/search email — Cari user\n/user email — Detail user\n/ban email — Ban user\n/unban email — Unban user\n\n💎 *Premium Management*\n/approve email durasi — Aktifkan premium\n  Durasi: 30d, 90d, 365d, lifetime\n/extend email durasi — Perpanjang premium\n/revoke email — Cabut premium\n/pending — Request upgrade pending\n/receipt email — Generate bukti (copas WA)\n\n💰 *Pricing & QRIS*\n/pricing — Lihat harga saat ini\n/setprice id harga — Update harga\n  ID: p30, p90, p365, p0\n/setqris — Upload gambar QRIS (kirim foto)\n\n📊 *Statistik*\n/stats — Overview dashboard\n/revenue — Revenue summary\n\n📢 *Broadcast*\n/broadcast pesan — Kirim ke semua user\n\n_Contoh:_\n/approve andi@gmail.com 30d\n/setprice p30 29000\n/receipt budi@gmail.com`, ADMIN_TOKEN);
       return;
     }
 
@@ -2476,9 +2563,10 @@ async function handleAdminBot(body, env) {
       return;
     }
 
+    if (text === '/search') { await adminSend(chatId, "📝 Format: /search email atau nama", ADMIN_TOKEN); return; }
     if (text.startsWith('/search ')) {
       const query = text.slice(8).trim();
-      if (!query) { await adminSend(chatId, "❌ Format: /search <email atau nama>", ADMIN_TOKEN); return; }
+      if (!query) { await adminSend(chatId, "📝 Format: /search email atau nama", ADMIN_TOKEN); return; }
       const users = await env.DB.prepare("SELECT id, email, name, plan, plan_expired_at, is_banned FROM users WHERE email LIKE ? OR name LIKE ? LIMIT 10").bind(`%${query}%`, `%${query}%`).all();
       if (!users.results?.length) { await adminSend(chatId, `🔍 Tidak ditemukan user dengan "${query}"`, ADMIN_TOKEN); return; }
       let msg = `🔍 *Hasil pencarian:* "${query}"\n\n`;
@@ -2490,9 +2578,10 @@ async function handleAdminBot(body, env) {
       return;
     }
 
+    if (text === '/user') { await adminSend(chatId, "📝 Format: /user email@contoh.com", ADMIN_TOKEN); return; }
     if (text.startsWith('/user ')) {
       const email = text.slice(6).trim().toLowerCase();
-      if (!email) { await adminSend(chatId, "❌ Format: /user <email>", ADMIN_TOKEN); return; }
+      if (!email) { await adminSend(chatId, "📝 Format: /user email@contoh.com", ADMIN_TOKEN); return; }
       const user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
       if (!user) { await adminSend(chatId, `❌ User "${email}" tidak ditemukan.`, ADMIN_TOKEN); return; }
       const midnight = todayMidnight();
@@ -2506,11 +2595,12 @@ async function handleAdminBot(body, env) {
       return;
     }
 
+    if (text === '/approve') { await adminSend(chatId, "📝 Format: /approve email@contoh.com 30d\n\nDurasi: 30d, 90d, 365d, lifetime\n\n_Contoh:_\n/approve andi@gmail.com 30d\n/approve budi@yahoo.com lifetime", ADMIN_TOKEN); return; }
     if (text.startsWith('/approve ')) {
       const parts = text.slice(9).trim().split(/\s+/);
       const email = parts[0]?.toLowerCase();
       const duration = parts[1] || '30d';
-      if (!email) { await adminSend(chatId, "❌ Format: /approve <email> <durasi>\nDurasi: 30d, 90d, 365d, lifetime", ADMIN_TOKEN); return; }
+      if (!email) { await adminSend(chatId, "📝 Format: /approve email@contoh.com 30d\nDurasi: 30d, 90d, 365d, lifetime", ADMIN_TOKEN); return; }
       const user = await env.DB.prepare("SELECT id, name, email FROM users WHERE email = ?").bind(email).first();
       if (!user) { await adminSend(chatId, `❌ User "${email}" tidak ditemukan.`, ADMIN_TOKEN); return; }
       let expiredAt = null;
@@ -2526,26 +2616,32 @@ async function handleAdminBot(body, env) {
         durationLabel = `${days} hari (s/d ${exp.toISOString().slice(0,10)})`;
       }
       await env.DB.prepare("UPDATE users SET plan = 'premium', plan_expired_at = ? WHERE id = ?").bind(expiredAt, user.id).run();
-      await adminSend(chatId, `✅ *Premium diaktifkan!*\n\n*User:* ${user.name} (${user.email})\n*Durasi:* ${durationLabel}`, ADMIN_TOKEN);
+      await adminSend(chatId, `✅ *Premium diaktifkan!*\n\n*User:* ${user.name} (${user.email})\n*Durasi:* ${durationLabel}\n\n_Kirim bukti ke user:_\n/receipt ${user.email}`, ADMIN_TOKEN);
+      // Mark pending payment request as approved
+      await env.DB.prepare("UPDATE payment_requests SET status = 'approved', resolved_at = ?, resolved_by = 'admin' WHERE email = ? AND status = 'pending'").bind(new Date().toISOString(), user.email).run().catch(() => {});
       // Notify user via main bot if telegram_id exists
       const fullUser = await env.DB.prepare("SELECT telegram_id FROM users WHERE id = ?").bind(user.id).first();
       if (fullUser?.telegram_id) {
         const mainToken = env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN;
         if (mainToken) {
+          const expDateStr = expiredAt ? new Date(expiredAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Selamanya';
+          const todayStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+          const receipt = `━━━━━━━━━━━━━━━━━━━━━━\n✅ *PEMBAYARAN DIKONFIRMASI*\n━━━━━━━━━━━━━━━━━━━━━━\n\nTerima kasih, *${user.name}*!\n\n📋 *Detail Langganan:*\n• Status    : Premium Aktif ✓\n• Berlaku   : ${todayStr}\n• Berakhir  : ${expDateStr}\n\n🎁 *Benefit Premium:*\n• AI Chat unlimited\n• Scan Struk unlimited\n• Laporan unlimited\n• Export unlimited\n• Telegram bot unlimited\n\nNikmati semua fitur tanpa batas!\nTerima kasih telah berlangganan *Laksa Premium*.\n━━━━━━━━━━━━━━━━━━━━━━`;
           await fetch(`https://api.telegram.org/bot${mainToken}/sendMessage`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: fullUser.telegram_id, text: `🎉 *Selamat!* Akun Premium kamu sudah aktif.\n\nDurasi: *${durationLabel}*\n\nNikmati akses unlimited semua fitur Laksa!`, parse_mode: 'Markdown' })
+            body: JSON.stringify({ chat_id: fullUser.telegram_id, text: receipt, parse_mode: 'Markdown' })
           }).catch(() => {});
         }
       }
       return;
     }
 
+    if (text === '/extend') { await adminSend(chatId, "📝 Format: /extend email@contoh.com 30d", ADMIN_TOKEN); return; }
     if (text.startsWith('/extend ')) {
       const parts = text.slice(8).trim().split(/\s+/);
       const email = parts[0]?.toLowerCase();
       const duration = parts[1] || '30d';
-      if (!email) { await adminSend(chatId, "❌ Format: /extend <email> <durasi>", ADMIN_TOKEN); return; }
+      if (!email) { await adminSend(chatId, "📝 Format: /extend email@contoh.com 30d", ADMIN_TOKEN); return; }
       const user = await env.DB.prepare("SELECT id, name, plan, plan_expired_at FROM users WHERE email = ?").bind(email).first();
       if (!user) { await adminSend(chatId, `❌ User "${email}" tidak ditemukan.`, ADMIN_TOKEN); return; }
       const days = duration === 'lifetime' ? 0 : (parseInt(duration) || 30);
@@ -2561,9 +2657,10 @@ async function handleAdminBot(body, env) {
       return;
     }
 
+    if (text === '/revoke') { await adminSend(chatId, "📝 Format: /revoke email@contoh.com", ADMIN_TOKEN); return; }
     if (text.startsWith('/revoke ')) {
       const email = text.slice(8).trim().toLowerCase();
-      if (!email) { await adminSend(chatId, "❌ Format: /revoke <email>", ADMIN_TOKEN); return; }
+      if (!email) { await adminSend(chatId, "📝 Format: /revoke email@contoh.com", ADMIN_TOKEN); return; }
       const user = await env.DB.prepare("SELECT id, name FROM users WHERE email = ?").bind(email).first();
       if (!user) { await adminSend(chatId, `❌ User "${email}" tidak ditemukan.`, ADMIN_TOKEN); return; }
       await env.DB.prepare("UPDATE users SET plan = 'free', plan_expired_at = NULL WHERE id = ?").bind(user.id).run();
@@ -2571,9 +2668,10 @@ async function handleAdminBot(body, env) {
       return;
     }
 
+    if (text === '/ban') { await adminSend(chatId, "📝 Format: /ban email@contoh.com", ADMIN_TOKEN); return; }
     if (text.startsWith('/ban ')) {
       const email = text.slice(5).trim().toLowerCase();
-      if (!email) { await adminSend(chatId, "❌ Format: /ban <email>", ADMIN_TOKEN); return; }
+      if (!email) { await adminSend(chatId, "📝 Format: /ban email@contoh.com", ADMIN_TOKEN); return; }
       const user = await env.DB.prepare("SELECT id, name FROM users WHERE email = ?").bind(email).first();
       if (!user) { await adminSend(chatId, `❌ User "${email}" tidak ditemukan.`, ADMIN_TOKEN); return; }
       await env.DB.prepare("UPDATE users SET is_banned = 1 WHERE id = ?").bind(user.id).run();
@@ -2581,9 +2679,10 @@ async function handleAdminBot(body, env) {
       return;
     }
 
+    if (text === '/unban') { await adminSend(chatId, "📝 Format: /unban email@contoh.com", ADMIN_TOKEN); return; }
     if (text.startsWith('/unban ')) {
       const email = text.slice(7).trim().toLowerCase();
-      if (!email) { await adminSend(chatId, "❌ Format: /unban <email>", ADMIN_TOKEN); return; }
+      if (!email) { await adminSend(chatId, "📝 Format: /unban email@contoh.com", ADMIN_TOKEN); return; }
       const user = await env.DB.prepare("SELECT id, name FROM users WHERE email = ?").bind(email).first();
       if (!user) { await adminSend(chatId, `❌ User "${email}" tidak ditemukan.`, ADMIN_TOKEN); return; }
       await env.DB.prepare("UPDATE users SET is_banned = 0 WHERE id = ?").bind(user.id).run();
@@ -2599,16 +2698,17 @@ async function handleAdminBot(body, env) {
         const dur = p.duration_days === 0 ? 'Lifetime' : `${p.duration_days} hari`;
         msg += `• *${p.label}* (${dur}): Rp ${p.price.toLocaleString('id-ID')}\n  ID: \`${p.id}\`\n\n`;
       });
-      msg += `\n_Update: /setprice <id> <harga>_`;
+      msg += `\n_Update: /setprice p30 29000_`;
       await adminSend(chatId, msg, ADMIN_TOKEN);
       return;
     }
 
+    if (text === '/setprice') { await adminSend(chatId, "📝 Format: /setprice id harga\nContoh: /setprice p30 29000\n\nID: p30, p90, p365, p0", ADMIN_TOKEN); return; }
     if (text.startsWith('/setprice ')) {
       const parts = text.slice(10).trim().split(/\s+/);
       const priceId = parts[0];
       const price = parseInt(parts[1]);
-      if (!priceId || isNaN(price)) { await adminSend(chatId, "❌ Format: /setprice <id> <harga>\nContoh: /setprice p30 29000", ADMIN_TOKEN); return; }
+      if (!priceId || isNaN(price)) { await adminSend(chatId, "📝 Format: /setprice id harga\nContoh: /setprice p30 29000", ADMIN_TOKEN); return; }
       const existing = await env.DB.prepare("SELECT * FROM pricing WHERE id = ?").bind(priceId).first();
       if (!existing) { await adminSend(chatId, `❌ Pricing ID "${priceId}" tidak ditemukan.\nID yang valid: p30, p90, p365, p0`, ADMIN_TOKEN); return; }
       await env.DB.prepare("UPDATE pricing SET price = ? WHERE id = ?").bind(price, priceId).run();
@@ -2644,9 +2744,10 @@ async function handleAdminBot(body, env) {
       return;
     }
 
+    if (text === '/broadcast') { await adminSend(chatId, "📝 Format: /broadcast pesan yang ingin dikirim", ADMIN_TOKEN); return; }
     if (text.startsWith('/broadcast ')) {
       const message = text.slice(11).trim();
-      if (!message) { await adminSend(chatId, "❌ Format: /broadcast <pesan>", ADMIN_TOKEN); return; }
+      if (!message) { await adminSend(chatId, "📝 Format: /broadcast pesan yang ingin dikirim", ADMIN_TOKEN); return; }
       const users = await env.DB.prepare("SELECT telegram_id FROM users WHERE telegram_id IS NOT NULL AND is_banned = 0").all();
       const mainToken = env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN;
       if (!mainToken) { await adminSend(chatId, "❌ TELEGRAM_TOKEN tidak tersedia.", ADMIN_TOKEN); return; }
@@ -2661,6 +2762,53 @@ async function handleAdminBot(body, env) {
         } catch (_) {}
       }
       await adminSend(chatId, `📢 *Broadcast terkirim!*\n\nBerhasil: ${sent}/${users.results?.length || 0} user`, ADMIN_TOKEN);
+      return;
+    }
+
+    // /setqris — admin sends photo to set QRIS image
+    if (text === '/setqris') {
+      await adminSend(chatId, "📸 Kirim foto QRIS kamu sebagai reply ke pesan ini.\n\nAtau kirim langsung foto QRIS sebagai gambar (dengan caption /setqris).", ADMIN_TOKEN);
+      return;
+    }
+
+    // /pending — list pending payment requests
+    if (text === '/pending') {
+      try {
+        const pending = await env.DB.prepare(
+          "SELECT pr.*, p.label, p.duration_days FROM payment_requests pr LEFT JOIN pricing p ON pr.pricing_id = p.id WHERE pr.status = 'pending' ORDER BY pr.created_at DESC LIMIT 20"
+        ).all();
+        if (!pending.results?.length) {
+          await adminSend(chatId, "📭 Tidak ada request pending.", ADMIN_TOKEN);
+          return;
+        }
+        let msg = `📋 *Pending Requests* (${pending.results.length})\n\n`;
+        pending.results.forEach((r, i) => {
+          const ago = Math.round((Date.now() - new Date(r.created_at).getTime()) / 60000);
+          const agoStr = ago < 60 ? `${ago} menit lalu` : `${Math.round(ago/60)} jam lalu`;
+          msg += `${i+1}. *${r.email}*\n   📦 ${r.label || '-'} (${r.duration_days === 0 ? 'Lifetime' : r.duration_days + ' hari'})\n   💰 Rp ${(r.amount || 0).toLocaleString('id-ID')}\n   🕐 ${agoStr}\n   ➡️ /approve ${r.email} ${r.duration_days === 0 ? 'lifetime' : r.duration_days + 'd'}\n\n`;
+        });
+        await adminSend(chatId, msg, ADMIN_TOKEN);
+      } catch (e) {
+        await adminSend(chatId, `⚠️ Error: ${e.message}`, ADMIN_TOKEN);
+      }
+      return;
+    }
+
+    // /receipt email — generate receipt text for WhatsApp copas
+    if (text === '/receipt') { await adminSend(chatId, "📝 Format: /receipt email@contoh.com", ADMIN_TOKEN); return; }
+    if (text.startsWith('/receipt ')) {
+      const email = text.slice(9).trim().toLowerCase();
+      if (!email) { await adminSend(chatId, "📝 Format: /receipt email@contoh.com", ADMIN_TOKEN); return; }
+      const user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
+      if (!user) { await adminSend(chatId, `❌ User "${email}" tidak ditemukan.`, ADMIN_TOKEN); return; }
+      if (user.plan !== 'premium') {
+        await adminSend(chatId, `❌ User "${email}" bukan premium. Approve dulu dengan /approve`, ADMIN_TOKEN);
+        return;
+      }
+      const expDate = user.plan_expired_at ? new Date(user.plan_expired_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Selamanya';
+      const startDate = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      const receipt = `━━━━━━━━━━━━━━━━━━━━━━\n✅ PEMBAYARAN DIKONFIRMASI\n━━━━━━━━━━━━━━━━━━━━━━\n\nTerima kasih, ${user.name}!\n\n📋 Detail Langganan:\n• Status    : Premium Aktif ✓\n• Berlaku   : ${startDate}\n• Berakhir  : ${expDate}\n\n🎁 Benefit Premium:\n• AI Chat unlimited\n• Scan Struk unlimited\n• Laporan unlimited\n• Export unlimited\n• Telegram bot unlimited\n\nNikmati semua fitur tanpa batas!\nTerima kasih telah berlangganan Laksa Premium.\n━━━━━━━━━━━━━━━━━━━━━━`;
+      await adminSend(chatId, `📋 *Receipt untuk copas ke WA:*\n\n\`\`\`\n${receipt}\n\`\`\``, ADMIN_TOKEN);
       return;
     }
 

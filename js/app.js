@@ -155,37 +155,96 @@ function updateUsageBadges(data) {
   });
 }
 
-function showUpgradeModal(message) {
+async function showUpgradeModal(message) {
   if (document.getElementById('upgrade-modal')) return;
   const profile = getProfile();
   const emailText = profile?.email || '-';
+
+  // Fetch pricing data
+  let pricingData = { pricing: [], qris_url: null };
+  try {
+    const resp = await fetch(`${CLOUD_URL}/pricing/public`);
+    if (resp.ok) pricingData = await resp.json();
+  } catch (_) {}
+
+  const pricing = pricingData.pricing.filter(p => p.price > 0);
+  const qrisUrl = pricingData.qris_url;
+
+  // Build pricing options
+  let pricingHtml = '';
+  if (pricing.length > 0) {
+    pricingHtml = `<div class="upgrade-pricing">
+      <p class="pricing-label">Pilih paket:</p>
+      ${pricing.map((p, i) => `
+        <label class="pricing-option${i === 0 ? ' selected' : ''}">
+          <input type="radio" name="upgrade-plan" value="${p.id}" data-label="${p.label}" data-price="${p.price}" data-days="${p.duration_days}" ${i === 0 ? 'checked' : ''}>
+          <span class="pricing-name">${p.label}</span>
+          <span class="pricing-price">Rp ${p.price.toLocaleString('id-ID')}</span>
+        </label>
+      `).join('')}
+    </div>`;
+  } else {
+    pricingHtml = `<div class="upgrade-pricing"><p class="pricing-label" style="text-align:center;opacity:0.7">Harga belum diatur oleh admin.</p></div>`;
+  }
+
+  // Build QRIS section
+  let qrisHtml = '';
+  if (qrisUrl) {
+    qrisHtml = `<div class="upgrade-qris"><img src="${qrisUrl}" alt="QRIS" class="qris-image"></div>`;
+  } else {
+    qrisHtml = `<div class="upgrade-qris"><p class="qris-placeholder">QRIS belum tersedia</p></div>`;
+  }
+
   const overlay = document.createElement('div');
   overlay.id = 'upgrade-modal';
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
     <div class="modal-box upgrade-box">
       <div class="upgrade-icon">&#9889;</div>
-      <h3>Batas Harian Tercapai</h3>
-      <p class="upgrade-msg">${message || 'Kamu sudah mencapai batas penggunaan gratis hari ini.'}</p>
-      <div class="upgrade-info">
-        <p>Upgrade ke <strong>Premium</strong> untuk akses <strong>unlimited</strong> semua fitur.</p>
-      </div>
-      <div class="upgrade-qris">
-        <p class="qris-placeholder">QRIS akan tersedia segera</p>
-      </div>
+      <h3>Upgrade ke Premium</h3>
+      <p class="upgrade-msg">${message || 'Upgrade untuk akses unlimited semua fitur.'}</p>
+      ${pricingHtml}
+      ${qrisHtml}
       <div class="upgrade-contact">
-        <p>Silakan hubungi admin untuk konfirmasi pembayaran.</p>
+        <p>Silakan hubungi admin jika sudah melakukan pembayaran.</p>
         <p>Sebutkan email akun kamu:</p>
         <div class="upgrade-email">${emailText}</div>
       </div>
       <div class="upgrade-actions">
-        <button class="btn-upgrade-contact" onclick="window.open('https://t.me/haerubirru','_blank')">Hubungi Admin</button>
+        <button class="btn-upgrade-contact" id="btnUpgradeWA">Hubungi Admin</button>
         <button class="btn-upgrade-close" onclick="closeUpgradeModal()">Nanti Saja</button>
       </div>
     </div>
   `;
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add('show'));
+
+  // Pricing option selection
+  overlay.querySelectorAll('.pricing-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      overlay.querySelectorAll('.pricing-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      opt.querySelector('input').checked = true;
+    });
+  });
+
+  // Hubungi Admin button with pre-filled WA message
+  const btnWA = overlay.querySelector('#btnUpgradeWA');
+  btnWA.addEventListener('click', async () => {
+    const selected = overlay.querySelector('input[name="upgrade-plan"]:checked');
+    let paketText = 'Premium';
+    let pricingId = null;
+    if (selected) {
+      paketText = `${selected.dataset.label} (Rp ${parseInt(selected.dataset.price).toLocaleString('id-ID')})`;
+      pricingId = selected.value;
+    }
+    // Record payment request
+    if (pricingId) {
+      try { await api('POST', '/payment/request', { pricing_id: pricingId }); } catch (_) {}
+    }
+    const waMsg = encodeURIComponent(`Halo Admin, saya ingin upgrade Laksa Premium.\n\nEmail: ${emailText}\nPaket: ${paketText}\n\nSudah melakukan pembayaran via QRIS.`);
+    window.open(`https://wa.me/6287785067348?text=${waMsg}`, '_blank');
+  });
 }
 
 function closeUpgradeModal() {

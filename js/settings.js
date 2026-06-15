@@ -52,17 +52,37 @@ function updateProfilePreview() {
   const themeValEl = el('activeThemeVal');
   if (themeValEl) themeValEl.textContent = themeLabels[activeTheme] || activeTheme;
 
-  // Update plan badge
+  // Update plan badge + expiry detail
   const planBadge = el('planBadge');
   if (planBadge) {
     const usage = getUsageStatus();
     if (usage && usage.plan === 'premium') {
       planBadge.textContent = 'Premium';
       planBadge.className = 'plan-badge plan-premium';
+      // Show expiry detail
+      let expiryEl = document.getElementById('plan-expiry');
+      if (!expiryEl) {
+        expiryEl = document.createElement('div');
+        expiryEl.id = 'plan-expiry';
+        expiryEl.className = 'plan-expiry';
+        planBadge.parentNode.insertBefore(expiryEl, planBadge.nextSibling);
+      }
+      if (usage.plan_expired_at) {
+        const expDate = new Date(usage.plan_expired_at);
+        const now = new Date();
+        const daysLeft = Math.ceil((expDate - now) / (1000*60*60*24));
+        const expStr = expDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        expiryEl.innerHTML = `Aktif sampai <strong>${expStr}</strong> (${daysLeft} hari lagi)`;
+      } else {
+        expiryEl.innerHTML = `<strong>Lifetime</strong> — tidak pernah expired`;
+      }
     } else {
       planBadge.textContent = 'Free';
       planBadge.className = 'plan-badge plan-free';
       planBadge.onclick = () => showUpgradeModal();
+      // Remove expiry if exists
+      const expiryEl = document.getElementById('plan-expiry');
+      if (expiryEl) expiryEl.remove();
     }
   }
 }

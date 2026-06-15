@@ -4570,8 +4570,51 @@ html[data-theme="dark"] .auth-tab.active {
   font-size: 13px;
   color: var(--ink, #1a1a1a);
 }
+.upgrade-pricing {
+  margin-bottom: 16px;
+}
+.pricing-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink2, #666);
+  margin: 0 0 8px;
+}
+.pricing-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 2px solid var(--gs-border, rgba(0,0,0,.1));
+  border-radius: 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.pricing-option.selected {
+  border-color: var(--accent, #3b82f6);
+  background: rgba(59,130,246,.06);
+}
+.pricing-option input { display: none; }
+.pricing-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink, #1a1a1a);
+}
+.pricing-price {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent, #3b82f6);
+}
 .upgrade-qris {
   margin-bottom: 16px;
+  text-align: center;
+}
+.qris-image {
+  max-width: 200px;
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--gs-border, rgba(0,0,0,.1));
 }
 .qris-placeholder {
   font-size: 12px;
@@ -4635,8 +4678,23 @@ html[data-theme="dark"] .upgrade-info {
 html[data-theme="dark"] .qris-placeholder {
   border-color: rgba(255,255,255,.12);
 }
+html[data-theme="dark"] .pricing-option {
+  border-color: rgba(255,255,255,.12);
+}
+html[data-theme="dark"] .pricing-option.selected {
+  border-color: var(--accent, #6366f1);
+  background: rgba(99,102,241,.12);
+}
+html[data-theme="dark"] .pricing-name {
+  color: #e5e7eb;
+}
 html[data-theme="dark"] .upgrade-email {
   background: rgba(255,255,255,.06);
+}
+html[data-theme="dark"] .plan-expiry {
+  background: rgba(99,102,241,.08);
+  border-color: rgba(99,102,241,.2);
+  color: #a5b4fc;
 }
 
 /* ── USAGE BADGE ── */
@@ -4676,5 +4734,14 @@ html[data-theme="dark"] .upgrade-email {
 .plan-premium {
   background: linear-gradient(135deg, rgba(99,102,241,.15), rgba(168,85,247,.15));
   color: #7c3aed;
+}
+.plan-expiry {
+  font-size: 11px;
+  color: var(--ink2, #666);
+  margin-top: 4px;
+  padding: 6px 10px;
+  background: rgba(99,102,241,.05);
+  border-radius: 8px;
+  border: 1px solid rgba(99,102,241,.1);
 }
 
