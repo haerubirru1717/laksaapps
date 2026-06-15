@@ -170,18 +170,30 @@ async function showUpgradeModal(message) {
   const pricing = pricingData.pricing.filter(p => p.price > 0);
   const qrisUrl = pricingData.qris_url;
 
-  // Build pricing options
+  // Build pricing options with strikethrough
   let pricingHtml = '';
   if (pricing.length > 0) {
     pricingHtml = `<div class="upgrade-pricing">
       <p class="pricing-label">Pilih paket:</p>
-      ${pricing.map((p, i) => `
+      ${pricing.map((p, i) => {
+        const hasOriginal = p.original_price && p.original_price > p.price;
+        const priceDisplay = hasOriginal
+          ? `<span class="pricing-original">Rp ${p.original_price.toLocaleString('id-ID')}</span> <span class="pricing-discounted">Rp ${p.price.toLocaleString('id-ID')}</span>`
+          : `Rp ${p.price.toLocaleString('id-ID')}`;
+        return `
         <label class="pricing-option${i === 0 ? ' selected' : ''}">
           <input type="radio" name="upgrade-plan" value="${p.id}" data-label="${p.label}" data-price="${p.price}" data-days="${p.duration_days}" ${i === 0 ? 'checked' : ''}>
           <span class="pricing-name">${p.label}</span>
-          <span class="pricing-price">Rp ${p.price.toLocaleString('id-ID')}</span>
-        </label>
-      `).join('')}
+          <span class="pricing-price">${priceDisplay}</span>
+        </label>`;
+      }).join('')}
+    </div>
+    <div class="coupon-section">
+      <div class="coupon-input-row">
+        <input type="text" id="couponInput" class="coupon-input" placeholder="Kode kupon (opsional)" maxlength="20" autocapitalize="characters">
+        <button class="coupon-btn" id="couponApplyBtn" onclick="applyCoupon()">Pakai</button>
+      </div>
+      <div id="couponStatus" class="coupon-status" style="display:none"></div>
     </div>`;
   } else {
     pricingHtml = `<div class="upgrade-pricing"><p class="pricing-label" style="text-align:center;opacity:0.7">Harga belum diatur oleh admin.</p></div>`;
@@ -238,16 +250,49 @@ async function showUpgradeModal(message) {
       paketText = `${selected.dataset.label} (Rp ${parseInt(selected.dataset.price).toLocaleString('id-ID')})`;
       pricingId = selected.value;
     }
+    const couponCode = window._appliedCoupon?.code || '';
+    const couponDiscount = window._appliedCoupon?.discount_amount || 0;
     // Record payment request
     if (pricingId) {
-      try { await api('POST', '/payment/request', { pricing_id: pricingId }); } catch (_) {}
+      try { await api('POST', '/payment/request', { pricing_id: pricingId, coupon_code: couponCode }); } catch (_) {}
     }
-    const waMsg = encodeURIComponent(`Halo Admin, saya ingin upgrade Laksa Premium.\n\nEmail: ${emailText}\nPaket: ${paketText}\n\nSudah melakukan pembayaran via QRIS.`);
+    let waLines = `Halo Admin, saya ingin upgrade Laksa Premium.\n\nEmail: ${emailText}\nPaket: ${paketText}`;
+    if (couponCode) waLines += `\nKupon: ${couponCode} (potongan Rp ${couponDiscount.toLocaleString('id-ID')})`;
+    waLines += `\n\nSudah melakukan pembayaran via QRIS.`;
+    const waMsg = encodeURIComponent(waLines);
     window.open(`https://wa.me/6287785067348?text=${waMsg}`, '_blank');
   });
 }
 
+let _appliedCoupon = null;
+async function applyCoupon() {
+  const input = document.getElementById('couponInput');
+  const status = document.getElementById('couponStatus');
+  const code = (input?.value || '').trim().toUpperCase();
+  if (!code) { if (status) { status.textContent = 'Masukkan kode kupon'; status.className = 'coupon-status error'; status.style.display = 'block'; } return; }
+  const selected = document.querySelector('input[name="upgrade-plan"]:checked');
+  const pricingId = selected?.value || '';
+  const btn = document.getElementById('couponApplyBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    const resp = await api('POST', '/coupon/validate', { code, pricing_id: pricingId });
+    window._appliedCoupon = { code: resp.code, type: resp.type, value: resp.value, discount_amount: resp.discount_amount };
+    if (status) {
+      const discText = resp.type === 'percent' ? `${resp.value}%` : `Rp ${resp.value.toLocaleString('id-ID')}`;
+      status.innerHTML = `<span class="coupon-ok">✓ Kupon <b>${resp.code}</b> aktif — diskon ${discText}${resp.discount_amount ? ` (hemat Rp ${resp.discount_amount.toLocaleString('id-ID')})` : ''}</span>`;
+      status.className = 'coupon-status success';
+      status.style.display = 'block';
+    }
+  } catch (e) {
+    window._appliedCoupon = null;
+    if (status) { status.textContent = e.message || 'Kupon tidak valid'; status.className = 'coupon-status error'; status.style.display = 'block'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Pakai'; }
+  }
+}
+
 function closeUpgradeModal() {
+  window._appliedCoupon = null;
   const m = document.getElementById('upgrade-modal');
   if (m) { m.classList.remove('show'); setTimeout(() => m.remove(), 300); }
 }
