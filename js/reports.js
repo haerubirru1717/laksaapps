@@ -49,7 +49,7 @@ async function renderReports() {
   if (usageData && usageData.plan !== 'premium') {
     const rv = usageData.features?.report_view;
     if (rv && rv.used >= rv.limit) {
-      showUpgradeModal('Batas harian Laporan tercapai (3x/hari). Upgrade ke Premium untuk unlimited.');
+      showUpgradeModal('Batas harian Laporan tercapai. Upgrade ke Premium untuk akses unlimited.');
       return;
     }
     // Track usage client-side (actual tracking happens on next fetchUsageStatus)
