@@ -137,6 +137,11 @@ async function doScan() {
 
     fill.style.width = '80%'; lbl.textContent = 'Memproses hasil…';
 
+    if (resp.status === 429) {
+      const err = await resp.json().catch(() => ({}));
+      if (err.upgrade && typeof showUpgradeModal === 'function') showUpgradeModal(err.error);
+      throw new Error(err?.error || 'Batas harian tercapai');
+    }
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
       throw new Error(err?.error || 'Scan error ' + resp.status);

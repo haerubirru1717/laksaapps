@@ -44,6 +44,18 @@ function toggleRepDetail() {
 }
 
 async function renderReports() {
+  // Usage limit check for report_view
+  const usageData = getUsageStatus();
+  if (usageData && usageData.plan !== 'premium') {
+    const rv = usageData.features?.report_view;
+    if (rv && rv.used >= rv.limit) {
+      showUpgradeModal('Batas harian Laporan tercapai (3x/hari). Upgrade ke Premium untuk unlimited.');
+      return;
+    }
+    // Track usage client-side (actual tracking happens on next fetchUsageStatus)
+    try { await api('GET', '/usage/track/report_view'); } catch (_) {}
+    fetchUsageStatus();
+  }
   const sel = el('repYear');
   const cy = String(new Date().getFullYear());
   const cur = sel.value || cy;
