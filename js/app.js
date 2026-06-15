@@ -637,7 +637,16 @@ function toggleForgotForm(show) {
   if (show) {
     loginFormInputs.forEach(el => el.style.display = 'none');
     forgotForm.style.display = 'block';
+    
+    // Show step 1, hide step 2
+    el('forgotStepEmail').style.display = 'block';
+    el('forgotStepOTP').style.display = 'none';
+    
     el('authForgotEmail').value = (el('authLoginEmail')?.value || '');
+    el('authForgotOTP').value = '';
+    el('authForgotNewPassword').value = '';
+    el('authForgotNewPassword2').value = '';
+    
     el('authForgotError').style.display = 'none';
     el('authForgotSuccess').style.display = 'none';
   } else {
@@ -667,14 +676,62 @@ async function handleForgotPasswordSubmit() {
   
   try {
     const data = await apiAuth('POST', '/auth/forgot-password', { email });
+    // Save temporary reset token
+    el('forgotPasswordForm').dataset.token = data.token;
+    
+    // Switch to step 2 (OTP)
+    el('forgotStepEmail').style.display = 'none';
+    el('forgotStepOTP').style.display = 'block';
+    
     if (succEl) {
-      succEl.textContent = data.message || 'Link reset password telah dikirim ke email Anda.';
+      succEl.textContent = data.message || 'Kode OTP telah dikirim ke email Anda.';
       succEl.style.display = 'block';
     }
   } catch (e) {
     if (errEl) { errEl.textContent = e.message || 'Gagal mengirim email reset'; errEl.style.display = 'block'; }
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Kirim Link'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Kirim Kode OTP'; }
+  }
+}
+
+async function handleForgotPasswordResetSubmit() {
+  const otp = (el('authForgotOTP')?.value || '').trim();
+  const password = el('authForgotNewPassword')?.value || '';
+  const password2 = el('authForgotNewPassword2')?.value || '';
+  const errEl = el('authForgotError');
+  const succEl = el('authForgotSuccess');
+  if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+  if (succEl) { succEl.style.display = 'none'; succEl.textContent = ''; }
+  
+  if (!otp || otp.length !== 6) {
+    if (errEl) { errEl.textContent = 'Kode OTP harus 6 digit'; errEl.style.display = 'block'; }
+    return;
+  }
+  if (!password) {
+    if (errEl) { errEl.textContent = 'Password baru wajib diisi'; errEl.style.display = 'block'; }
+    return;
+  }
+  if (password.length < 6) {
+    if (errEl) { errEl.textContent = 'Password minimal 6 karakter'; errEl.style.display = 'block'; }
+    return;
+  }
+  if (password !== password2) {
+    if (errEl) { errEl.textContent = 'Password tidak cocok'; errEl.style.display = 'block'; }
+    return;
+  }
+  
+  const token = el('forgotPasswordForm').dataset.token;
+  const btn = el('authForgotResetBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
+  
+  try {
+    const data = await apiAuth('POST', '/auth/reset-password', { token, otp, password });
+    toast(data.message || 'Password berhasil diperbarui!', 'ok');
+    toggleForgotForm(false);
+  } catch (e) {
+    if (errEl) { errEl.textContent = e.message || 'Gagal mereset password'; errEl.style.display = 'block'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Perbarui Password'; }
   }
 }
 

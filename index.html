@@ -175,22 +175,46 @@
         
         <!-- Forgot Password Form -->
         <div id="forgotPasswordForm" style="display:none;margin-top:1rem;border-top:1.5px solid var(--gs-border);padding-top:1rem;">
-          <div class="setup-field">
-            <label class="setup-label">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                <polyline points="22,6 12,13 2,6"/>
-              </svg>
-              Email Pemulihan
-            </label>
-            <input class="setup-input" id="authForgotEmail" type="email" placeholder="email@contoh.com" onkeydown="if(event.key==='Enter')handleForgotPasswordSubmit()" />
+          <!-- Step 1: Input Email -->
+          <div id="forgotStepEmail">
+            <div class="setup-field">
+              <label class="setup-label">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+                Email Pemulihan
+              </label>
+              <input class="setup-input" id="authForgotEmail" type="email" placeholder="email@contoh.com" onkeydown="if(event.key==='Enter')handleForgotPasswordSubmit()" />
+            </div>
+            <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
+              <button class="setup-btn" id="authForgotBtn" onclick="handleForgotPasswordSubmit()" style="flex:2">Kirim Kode OTP</button>
+              <button class="setup-btn" onclick="toggleForgotForm(false)" style="flex:1;background:var(--gs-2);color:var(--ink2);border:1.5px solid var(--gs-border);box-shadow:none">Batal</button>
+            </div>
           </div>
+
+          <!-- Step 2: Input OTP & New Password -->
+          <div id="forgotStepOTP" style="display:none">
+            <div class="setup-field">
+              <label class="setup-label">Kode OTP (6 Digit)</label>
+              <input class="setup-input" id="authForgotOTP" type="text" placeholder="Masukkan 6 digit kode" maxlength="6" style="letter-spacing:0.3em;text-align:center;font-weight:bold" />
+            </div>
+            <div class="setup-field">
+              <label class="setup-label">Password Baru</label>
+              <input class="setup-input" id="authForgotNewPassword" type="password" placeholder="Min. 6 karakter" />
+            </div>
+            <div class="setup-field">
+              <label class="setup-label">Ulangi Password Baru</label>
+              <input class="setup-input" id="authForgotNewPassword2" type="password" placeholder="Ulangi password baru" onkeydown="if(event.key==='Enter')handleForgotPasswordResetSubmit()" />
+            </div>
+            <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
+              <button class="setup-btn" id="authForgotResetBtn" onclick="handleForgotPasswordResetSubmit()" style="flex:2">Perbarui Password</button>
+              <button class="setup-btn" onclick="toggleForgotForm(false)" style="flex:1;background:var(--gs-2);color:var(--ink2);border:1.5px solid var(--gs-border);box-shadow:none">Batal</button>
+            </div>
+          </div>
+
           <div id="authForgotError" class="auth-error" style="display:none;margin-top:0.5rem"></div>
           <div id="authForgotSuccess" class="auth-success" style="display:none;margin-top:0.5rem;color:var(--income);font-size:0.75rem;font-weight:600"></div>
-          <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
-            <button class="setup-btn" id="authForgotBtn" onclick="handleForgotPasswordSubmit()" style="flex:2">Kirim Link</button>
-            <button class="setup-btn" onclick="toggleForgotForm(false)" style="flex:1;background:var(--gs-2);color:var(--ink2);border:1.5px solid var(--gs-border);box-shadow:none">Batal</button>
-          </div>
         </div>
       </div>
 

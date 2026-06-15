@@ -303,14 +303,12 @@ async function handleForgotPassword(req, body, env) {
   
   if (!user) return jsonRes({ error: "Email tidak terdaftar" }, 404);
 
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const nowSec = Math.floor(Date.now() / 1000);
   const resetToken = await signJWT(
-    { sub: user.id, email: emailLower, purpose: "password_reset", reset_exp: nowSec + 3600 },
+    { sub: user.id, email: emailLower, purpose: "otp_verification", otp: otp, reset_exp: nowSec + 600 },
     env.JWT_SECRET || "laksa-default-secret"
   );
-
-  const origin = req.headers.get("Origin") || "https://haerubirru17.github.io/laksaapps";
-  const resetLink = `${origin}/?reset_token=${resetToken}`;
 
   const resendApiKey = env.RESEND_API_KEY;
   if (!resendApiKey) {
@@ -320,16 +318,16 @@ async function handleForgotPassword(req, body, env) {
   const emailPayload = {
     from: "Laksa Apps <noreply@laksaapp.my.id>",
     to: [emailLower],
-    subject: "Reset Password Akun Laksa",
+    subject: "OTP Reset Password Akun Laksa",
     html: `
       <div style="font-family:'Inter',system-ui,sans-serif;max-width:480px;margin:0 auto;padding:2rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;">
-        <h2 style="color:#1e293b;margin-top:0;font-weight:800;letter-spacing:-0.02em;">Reset Password Laksa</h2>
+        <h2 style="color:#1e293b;margin-top:0;font-weight:800;letter-spacing:-0.02em;">Kode OTP Reset Password</h2>
         <p style="color:#475569;font-size:0.9rem;line-height:1.6;">Halo <strong>${user.name || 'Pengguna'}</strong>,</p>
-        <p style="color:#475569;font-size:0.9rem;line-height:1.6;">Kami menerima permintaan untuk mereset password akun Laksa Anda. Silakan klik tombol di bawah ini untuk membuat password baru Anda:</p>
+        <p style="color:#475569;font-size:0.9rem;line-height:1.6;">Berikut adalah kode OTP untuk mereset password akun Laksa Anda:</p>
         <div style="text-align:center;margin:1.8rem 0;">
-          <a href="${resetLink}" style="background:#2563eb;color:#fff;padding:0.75rem 1.5rem;border-radius:10px;text-decoration:none;font-weight:700;font-size:0.88rem;display:inline-block;box-shadow:0 4px 12px rgba(37,99,235,0.25);">Reset Password Sekarang</a>
+          <span style="background:#2563eb;color:#fff;padding:0.75rem 2rem;border-radius:10px;font-size:1.8rem;font-weight:800;letter-spacing:0.3em;display:inline-block;box-shadow:0 4px 12px rgba(37,99,235,0.25);">${otp}</span>
         </div>
-        <p style="color:#475569;font-size:0.9rem;line-height:1.6;">Link ini hanya berlaku selama <strong>1 jam</strong>.</p>
+        <p style="color:#475569;font-size:0.9rem;line-height:1.6;">Kode ini hanya berlaku selama <strong>10 menit</strong>.</p>
         <p style="color:#94a3b8;font-size:0.75rem;margin-top:2rem;border-top:1px solid #e2e8f0;padding-top:1rem;">Jika Anda tidak merasa meminta reset password ini, silakan abaikan email ini.</p>
       </div>
     `
@@ -366,22 +364,31 @@ async function handleForgotPassword(req, body, env) {
     return jsonRes({ error: "Koneksi ke server email gagal." }, 500);
   }
 
-  return jsonRes({ message: "Link reset password telah dikirim ke email Anda!" });
+  return jsonRes({ message: "Kode OTP telah dikirim ke email Anda!", token: resetToken });
 }
 
 async function handleResetPassword(req, body, env) {
-  const { token, password } = body || {};
-  if (!token || !password) return jsonRes({ error: "Token dan password baru wajib diisi" }, 400);
+  const { token, otp, password } = body || {};
+  if (!token || !password) return jsonRes({ error: "Sesi reset tidak valid atau password baru wajib diisi" }, 400);
   if (password.length < 6) return jsonRes({ error: "Password minimal 6 karakter" }, 400);
 
   const payload = await verifyJWT(token, env.JWT_SECRET || "laksa-default-secret");
-  if (!payload || payload.purpose !== "password_reset") {
-    return jsonRes({ error: "Link reset tidak valid atau sudah kedaluwarsa" }, 400);
+  if (!payload) {
+    return jsonRes({ error: "Sesi reset tidak valid atau sudah kedaluwarsa" }, 400);
   }
 
   const nowSec = Math.floor(Date.now() / 1000);
   if (!payload.reset_exp || nowSec > payload.reset_exp) {
-    return jsonRes({ error: "Link reset tidak valid atau sudah kedaluwarsa" }, 400);
+    return jsonRes({ error: "Sesi reset tidak valid atau sudah kedaluwarsa" }, 400);
+  }
+
+  if (payload.purpose === "otp_verification") {
+    if (!otp) return jsonRes({ error: "Kode OTP wajib diisi" }, 400);
+    if (payload.otp !== otp.trim()) {
+      return jsonRes({ error: "Kode OTP salah" }, 400);
+    }
+  } else if (payload.purpose !== "password_reset") {
+    return jsonRes({ error: "Sesi reset tidak valid" }, 400);
   }
 
   const userId = payload.sub;
