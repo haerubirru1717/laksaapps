@@ -318,7 +318,7 @@ async function handleForgotPassword(req, body, env) {
   }
 
   const emailPayload = {
-    from: "Laksa Apps <onboarding@resend.dev>",
+    from: "Laksa Apps <noreply@laksaapp.my.id>",
     to: [emailLower],
     subject: "Reset Password Akun Laksa",
     html: `
