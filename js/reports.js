@@ -73,7 +73,8 @@ async function renderReports() {
   // Restore saved chart type toggle state
   const toggleBtns = document.querySelectorAll('#page-reports .tgl-grp .tgl');
   toggleBtns.forEach(b => b.classList.remove('active'));
-  const typeIdx = repChartType === 'line' ? 1 : repChartType === 'area' ? 2 : 0;
+  if (repChartType === 'area') repChartType = 'line';
+  const typeIdx = repChartType === 'line' ? 1 : 0;
   if (toggleBtns[typeIdx]) toggleBtns[typeIdx].classList.add('active');
 
   upsert('mChart', buildRepChartCfg(repChartType, MONTHS, _repInc, _repExp));

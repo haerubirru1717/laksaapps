@@ -131,7 +131,6 @@ function renderAccList() {
         <div class="sett-item-info">
           <div class="sett-item-title" style="text-transform:uppercase">${esc(a.name)}</div>
           <div class="sett-item-sub">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><polyline points="12 12 16 14"/></svg>
             Saldo: ${fCur(a.balance)}
           </div>
         </div>

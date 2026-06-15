@@ -4513,6 +4513,37 @@ html[data-theme="dark"] .auth-tab {
   background: rgba(255,255,255,.05);
   color: rgba(255,255,255,.5);
 }
+.auth-error {
+  font-size: 0.75rem;
+  color: #ef4444;
+  background: rgba(239,68,68,.08);
+  border: 1px solid rgba(239,68,68,.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.auth-forgot-info {
+  margin-top: 1rem;
+  padding: 12px;
+  background: var(--bg2, rgba(0,0,0,.03));
+  border-radius: 10px;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--ink2, #666);
+}
+.auth-forgot-info p { margin: 0 0 6px; }
+.btn-forgot-wa {
+  display: inline-block;
+  background: #25d366;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  margin-top: 4px;
+}
 html[data-theme="dark"] .auth-tab.active {
   background: var(--accent, #3b82f6);
   color: #fff;
