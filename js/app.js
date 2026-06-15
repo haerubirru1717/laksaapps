@@ -101,11 +101,15 @@ async function api(method, path, body) {
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(url, opts);
   if (r.status === 401) {
-    // Token expired or invalid — redirect to login
     clearToken();
     localStorage.removeItem(PROFILE_KEY);
     showAuthPage();
     throw new Error('Sesi expired, silakan login kembali');
+  }
+  if (r.status === 429) {
+    const e = await r.json().catch(() => ({}));
+    if (e.upgrade) { showUpgradeModal(e.error); }
+    throw new Error(e.error || 'Batas harian tercapai');
   }
   if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || `HTTP ${r.status}`); }
   return r.json();
@@ -120,6 +124,73 @@ async function apiAuth(method, path, body) {
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
   return data;
+}
+
+// ── Usage Status (Premium) ──
+let _usageCache = null;
+async function fetchUsageStatus() {
+  try {
+    const data = await api('GET', '/usage/status');
+    _usageCache = data;
+    updateUsageBadges(data);
+    return data;
+  } catch (e) { return null; }
+}
+function getUsageStatus() { return _usageCache; }
+
+function updateUsageBadges(data) {
+  if (!data || data.plan === 'premium') {
+    document.querySelectorAll('.usage-badge').forEach(el => el.remove());
+    return;
+  }
+  const features = data.features || {};
+  Object.keys(features).forEach(key => {
+    const badge = document.getElementById(`usage-${key}`);
+    if (badge) {
+      const f = features[key];
+      const remaining = Math.max(0, f.limit - f.used);
+      badge.textContent = `${remaining}/${f.limit}`;
+      badge.classList.toggle('usage-exhausted', remaining === 0);
+    }
+  });
+}
+
+function showUpgradeModal(message) {
+  if (document.getElementById('upgrade-modal')) return;
+  const profile = getProfile();
+  const emailText = profile?.email || '-';
+  const overlay = document.createElement('div');
+  overlay.id = 'upgrade-modal';
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box upgrade-box">
+      <div class="upgrade-icon">&#9889;</div>
+      <h3>Batas Harian Tercapai</h3>
+      <p class="upgrade-msg">${message || 'Kamu sudah mencapai batas penggunaan gratis hari ini.'}</p>
+      <div class="upgrade-info">
+        <p>Upgrade ke <strong>Premium</strong> untuk akses <strong>unlimited</strong> semua fitur.</p>
+      </div>
+      <div class="upgrade-qris">
+        <p class="qris-placeholder">QRIS akan tersedia segera</p>
+      </div>
+      <div class="upgrade-contact">
+        <p>Silakan hubungi admin untuk konfirmasi pembayaran.</p>
+        <p>Sebutkan email akun kamu:</p>
+        <div class="upgrade-email">${emailText}</div>
+      </div>
+      <div class="upgrade-actions">
+        <button class="btn-upgrade-contact" onclick="window.open('https://t.me/haerubirru','_blank')">Hubungi Admin</button>
+        <button class="btn-upgrade-close" onclick="closeUpgradeModal()">Nanti Saja</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('show'));
+}
+
+function closeUpgradeModal() {
+  const m = document.getElementById('upgrade-modal');
+  if (m) { m.classList.remove('show'); setTimeout(() => m.remove(), 300); }
 }
 
 // ── Transactions ──
@@ -196,7 +267,7 @@ async function loadAll(month) {
   try {
     const uid = getUserId();
     if (!uid) return;
-    await Promise.all([fetchTx(month), fetchAccs(), fetchCats(), fetchBuds(), fetchGoals(), fetchBills(), fetchPiutang()]);
+    await Promise.all([fetchTx(month), fetchAccs(), fetchCats(), fetchBuds(), fetchGoals(), fetchBills(), fetchPiutang(), fetchUsageStatus()]);
   } catch (e) {
     console.error('loadAll error:', e);
     toast('Gagal memuat data: ' + e.message, 'err');

@@ -4518,3 +4518,163 @@ html[data-theme="dark"] .auth-tab.active {
   color: #fff;
 }
 
+/* ── UPGRADE MODAL ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0,0,0,.5);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity .3s;
+}
+.modal-overlay.show { opacity: 1; }
+.modal-box.upgrade-box {
+  background: var(--gs-bg, #fff);
+  border-radius: 20px;
+  padding: 28px 24px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  border: 1px solid var(--gs-border, rgba(0,0,0,.08));
+}
+.upgrade-icon {
+  font-size: 40px;
+  margin-bottom: 8px;
+}
+.upgrade-box h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink, #1a1a1a);
+}
+.upgrade-msg {
+  font-size: 13px;
+  color: var(--ink2, #666);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+.upgrade-info {
+  background: linear-gradient(135deg, rgba(99,102,241,.08), rgba(37,99,235,.08));
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+.upgrade-info p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink, #1a1a1a);
+}
+.upgrade-qris {
+  margin-bottom: 16px;
+}
+.qris-placeholder {
+  font-size: 12px;
+  color: var(--ink3, #999);
+  padding: 20px;
+  border: 2px dashed var(--gs-border, rgba(0,0,0,.12));
+  border-radius: 12px;
+  margin: 0;
+}
+.upgrade-contact {
+  margin-bottom: 16px;
+}
+.upgrade-contact p {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--ink2, #666);
+}
+.upgrade-email {
+  background: var(--gs-card, rgba(0,0,0,.03));
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent, #3b82f6);
+  margin-top: 8px;
+}
+.upgrade-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.btn-upgrade-contact {
+  background: linear-gradient(135deg, #6366f1, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+}
+.btn-upgrade-contact:active {
+  transform: scale(0.97);
+}
+.btn-upgrade-close {
+  background: transparent;
+  color: var(--ink2, #666);
+  border: none;
+  padding: 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+html[data-theme="dark"] .modal-box.upgrade-box {
+  background: rgba(20,22,35,.96);
+  border-color: rgba(255,255,255,.08);
+}
+html[data-theme="dark"] .upgrade-info {
+  background: rgba(99,102,241,.12);
+}
+html[data-theme="dark"] .qris-placeholder {
+  border-color: rgba(255,255,255,.12);
+}
+html[data-theme="dark"] .upgrade-email {
+  background: rgba(255,255,255,.06);
+}
+
+/* ── USAGE BADGE ── */
+.usage-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: rgba(99,102,241,.1);
+  color: var(--accent, #6366f1);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.usage-badge.usage-exhausted {
+  background: rgba(239,68,68,.1);
+  color: #ef4444;
+}
+
+/* ── PLAN BADGE ── */
+.plan-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  vertical-align: middle;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.plan-free {
+  background: rgba(107,114,128,.1);
+  color: #6b7280;
+  cursor: pointer;
+}
+.plan-premium {
+  background: linear-gradient(135deg, rgba(99,102,241,.15), rgba(168,85,247,.15));
+  color: #7c3aed;
+}
+

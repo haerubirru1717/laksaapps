@@ -51,6 +51,20 @@ function updateProfilePreview() {
   };
   const themeValEl = el('activeThemeVal');
   if (themeValEl) themeValEl.textContent = themeLabels[activeTheme] || activeTheme;
+
+  // Update plan badge
+  const planBadge = el('planBadge');
+  if (planBadge) {
+    const usage = getUsageStatus();
+    if (usage && usage.plan === 'premium') {
+      planBadge.textContent = 'Premium';
+      planBadge.className = 'plan-badge plan-premium';
+    } else {
+      planBadge.textContent = 'Free';
+      planBadge.className = 'plan-badge plan-free';
+      planBadge.onclick = () => showUpgradeModal();
+    }
+  }
 }
 
 function saveS() {

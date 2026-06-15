@@ -1446,6 +1446,11 @@ async function aiCallGroq() {
       headers: aiHeaders,
       body: JSON.stringify({ messages, models: AI_CHAT_CHAIN })
     });
+    if (resp.status === 429) {
+      const err = await resp.json().catch(() => ({}));
+      if (err.upgrade && typeof showUpgradeModal === 'function') showUpgradeModal(err.error);
+      throw new Error(err?.error || 'Batas harian tercapai');
+    }
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
       throw new Error(err?.error || 'AI error ' + resp.status);
