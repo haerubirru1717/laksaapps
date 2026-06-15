@@ -295,6 +295,98 @@ async function handleDeleteAccount(req, body, env) {
   return jsonRes({ status: "deleted", message: "Akun dan semua data berhasil dihapus." });
 }
 
+async function handleForgotPassword(req, body, env) {
+  const { email } = body || {};
+  if (!email) return jsonRes({ error: "Email wajib diisi" }, 400);
+  const emailLower = email.toLowerCase().trim();
+  const user = await env.DB.prepare("SELECT id, name FROM users WHERE email = ?").bind(emailLower).first();
+  
+  if (!user) return jsonRes({ error: "Email tidak terdaftar" }, 404);
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  const resetToken = await signJWT(
+    { sub: user.id, email: emailLower, purpose: "password_reset", reset_exp: nowSec + 3600 },
+    env.JWT_SECRET || "laksa-default-secret"
+  );
+
+  const origin = req.headers.get("Origin") || "https://haerubirru17.github.io/laksaapps";
+  const resetLink = `${origin}/?reset_token=${resetToken}`;
+
+  const resendApiKey = env.REESEND_API_KEY;
+  if (!resendApiKey) {
+    return jsonRes({ error: "Layanan email belum dikonfigurasi oleh admin." }, 500);
+  }
+
+  const emailPayload = {
+    from: "Laksa Apps <onboarding@resend.dev>",
+    to: [emailLower],
+    subject: "Reset Password Akun Laksa",
+    html: `
+      <div style="font-family:'Inter',system-ui,sans-serif;max-width:480px;margin:0 auto;padding:2rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;">
+        <h2 style="color:#1e293b;margin-top:0;font-weight:800;letter-spacing:-0.02em;">Reset Password Laksa</h2>
+        <p style="color:#475569;font-size:0.9rem;line-height:1.6;">Halo <strong>${user.name || 'Pengguna'}</strong>,</p>
+        <p style="color:#475569;font-size:0.9rem;line-height:1.6;">Kami menerima permintaan untuk mereset password akun Laksa Anda. Silakan klik tombol di bawah ini untuk membuat password baru Anda:</p>
+        <div style="text-align:center;margin:1.8rem 0;">
+          <a href="${resetLink}" style="background:#2563eb;color:#fff;padding:0.75rem 1.5rem;border-radius:10px;text-decoration:none;font-weight:700;font-size:0.88rem;display:inline-block;box-shadow:0 4px 12px rgba(37,99,235,0.25);">Reset Password Sekarang</a>
+        </div>
+        <p style="color:#475569;font-size:0.9rem;line-height:1.6;">Link ini hanya berlaku selama <strong>1 jam</strong>.</p>
+        <p style="color:#94a3b8;font-size:0.75rem;margin-top:2rem;border-top:1px solid #e2e8f0;padding-top:1rem;">Jika Anda tidak merasa meminta reset password ini, silakan abaikan email ini.</p>
+      </div>
+    `
+  };
+
+  try {
+    const resp = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(emailPayload)
+    });
+    
+    if (!resp.ok) {
+      const errText = await resp.text();
+      console.error("Resend API error:", errText);
+      return jsonRes({ error: "Gagal mengirim email pemulihan. Silakan coba lagi." }, 500);
+    }
+  } catch (e) {
+    console.error("Resend fetch error:", e);
+    return jsonRes({ error: "Koneksi ke server email gagal." }, 500);
+  }
+
+  return jsonRes({ message: "Link reset password telah dikirim ke email Anda!" });
+}
+
+async function handleResetPassword(req, body, env) {
+  const { token, password } = body || {};
+  if (!token || !password) return jsonRes({ error: "Token dan password baru wajib diisi" }, 400);
+  if (password.length < 6) return jsonRes({ error: "Password minimal 6 karakter" }, 400);
+
+  const payload = await verifyJWT(token, env.JWT_SECRET || "laksa-default-secret");
+  if (!payload || payload.purpose !== "password_reset") {
+    return jsonRes({ error: "Link reset tidak valid atau sudah kedaluwarsa" }, 400);
+  }
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (!payload.reset_exp || nowSec > payload.reset_exp) {
+    return jsonRes({ error: "Link reset tidak valid atau sudah kedaluwarsa" }, 400);
+  }
+
+  const userId = payload.sub;
+  const user = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(userId).first();
+  if (!user) return jsonRes({ error: "User tidak ditemukan" }, 404);
+
+  const salt = crypto.randomUUID();
+  const passwordHash = await hashPassword(password, salt);
+
+  await env.DB.prepare(
+    "UPDATE users SET password_hash = ?, salt = ? WHERE id = ?"
+  ).bind(passwordHash, salt, userId).run();
+
+  return jsonRes({ message: "Password berhasil diperbarui! Silakan login kembali dengan password baru." });
+}
+
 // ─────────────────────────────────────────────────────
 // RATE LIMITING (per-IP, in-memory with D1 fallback)
 // ─────────────────────────────────────────────────────
@@ -371,7 +463,7 @@ async function routeAPI(req, url, env) {
   if (path === "/setup")           return setupDatabase(env);
 
   // Auth routes (public — no token needed)
-  if ((path === "/auth/login" || path === "/auth/register") && m === "POST") {
+  if ((path === "/auth/login" || path === "/auth/register" || path === "/auth/forgot-password" || path === "/auth/reset-password") && m === "POST") {
     const ip = req.headers.get("CF-Connecting-IP") || req.headers.get("X-Forwarded-For") || "unknown";
     if (!checkRateLimit(ip)) {
       return jsonRes({ error: "Terlalu banyak percobaan. Coba lagi dalam 15 menit." }, 429);
@@ -383,6 +475,8 @@ async function routeAPI(req, url, env) {
   if (path === "/auth/refresh"  && m === "POST") return handleRefreshToken(req, env);
   if (path === "/auth/link-telegram" && m === "POST") return handleLinkTelegram(req, await req.json(), env);
   if (path === "/auth/delete-account" && m === "POST") return handleDeleteAccount(req, await req.json(), env);
+  if (path === "/auth/forgot-password" && m === "POST") return handleForgotPassword(req, await req.json(), env);
+  if (path === "/auth/reset-password" && m === "POST") return handleResetPassword(req, await req.json(), env);
 
   // Public pricing endpoint
   if (path === "/pricing" && m === "GET") {

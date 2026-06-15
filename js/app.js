@@ -630,21 +630,91 @@ async function handleAuthLogin() {
   }
 }
 
-function showForgotPassword() {
-  const existing = document.getElementById('forgot-pw-info');
-  if (existing) { existing.remove(); return; }
-  const div = document.createElement('div');
-  div.id = 'forgot-pw-info';
-  div.className = 'auth-forgot-info';
-  div.innerHTML = `
-    <p><strong>Lupa password?</strong></p>
-    <p>Hubungi admin untuk reset password:</p>
-    <a href="https://wa.me/6287785067348?text=${encodeURIComponent('Halo Admin, saya lupa password akun Laksa.\nEmail: ')}" target="_blank" class="btn-forgot-wa">Hubungi via WhatsApp</a>
-    <p style="margin-top:0.5rem;font-size:0.7rem;color:var(--ink3)">Sertakan email akun kamu.</p>
-  `;
-  const form = el('authLoginForm');
-  if (form) form.appendChild(div);
+function toggleForgotForm(show) {
+  const loginFormInputs = document.querySelectorAll('#authLoginForm .setup-field, #authLoginForm #authLoginBtn, #authLoginForm .auth-forgot');
+  const forgotForm = el('forgotPasswordForm');
+  if (!forgotForm) return;
+  if (show) {
+    loginFormInputs.forEach(el => el.style.display = 'none');
+    forgotForm.style.display = 'block';
+    el('authForgotEmail').value = el('authLoginEmail').value;
+    el('authForgotError').style.display = 'none';
+    el('authForgotSuccess').style.display = 'none';
+  } else {
+    loginFormInputs.forEach(el => el.style.display = '');
+    forgotForm.style.display = 'none';
+  }
 }
+
+function showForgotPassword() {
+  toggleForgotForm(true);
+}
+
+async function handleForgotPasswordSubmit() {
+  const email = (el('authForgotEmail')?.value || '').trim();
+  const errEl = el('authForgotError');
+  const succEl = el('authForgotSuccess');
+  if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+  if (succEl) { succEl.style.display = 'none'; succEl.textContent = ''; }
+  
+  if (!email) {
+    if (errEl) { errEl.textContent = 'Email wajib diisi'; errEl.style.display = 'block'; }
+    return;
+  }
+  
+  const btn = el('authForgotBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
+  
+  try {
+    const data = await apiAuth('POST', '/auth/forgot-password', { email });
+    if (succEl) {
+      succEl.textContent = data.message || 'Link reset password telah dikirim ke email Anda.';
+      succEl.style.display = 'block';
+    }
+  } catch (e) {
+    if (errEl) { errEl.textContent = e.message || 'Gagal mengirim email reset'; errEl.style.display = 'block'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Kirim Link'; }
+  }
+}
+
+async function handleResetPasswordSubmit() {
+  const password = el('authResetPassword')?.value || '';
+  const password2 = el('authResetPassword2')?.value || '';
+  const errEl = el('authResetError');
+  if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+  
+  if (!password) {
+    if (errEl) { errEl.textContent = 'Password baru wajib diisi'; errEl.style.display = 'block'; }
+    return;
+  }
+  if (password.length < 6) {
+    if (errEl) { errEl.textContent = 'Password minimal 6 karakter'; errEl.style.display = 'block'; }
+    return;
+  }
+  if (password !== password2) {
+    if (errEl) { errEl.textContent = 'Password tidak cocok'; errEl.style.display = 'block'; }
+    return;
+  }
+  
+  const token = el('resetPasswordOverlay').dataset.token;
+  const btn = el('authResetBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
+  
+  try {
+    const data = await apiAuth('POST', '/auth/reset-password', { token, password });
+    toast(data.message || 'Password berhasil diperbarui!', 'ok');
+    el('resetPasswordOverlay').style.display = 'none';
+    const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+    window.history.pushState({ path: newUrl }, '', newUrl);
+    showAuthPage();
+  } catch (e) {
+    if (errEl) { errEl.textContent = e.message || 'Gagal mereset password'; errEl.style.display = 'block'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Perbarui Password'; }
+  }
+}
+
 
 async function handleAuthRegister() {
   const name = (el('authRegisterName')?.value || '').trim();
@@ -705,18 +775,22 @@ async function saveSetupProfile() {
 }
 function updateProfileUI() {
   const p = getProfile();
-  const noProfile = el('sidebarNoProfile');
   const profileEl = el('sidebarProfile');
-  const nameEl = el('sidebarName');
-  const avatarEl = el('sidebarAvatar');
+  const nameEl = el('sidebarProfileName');
+  const avatarEl = el('sidebarProfileAva');
   if (!p || (!p.tgId && !p.id && !p.email)) {
-    if (noProfile) noProfile.style.display = '';
     if (profileEl) profileEl.style.display = 'none';
   } else {
-    if (noProfile) noProfile.style.display = 'none';
     if (profileEl) profileEl.style.display = '';
     if (nameEl) nameEl.textContent = p.name || 'Pengguna';
-    if (avatarEl) avatarEl.textContent = (p.name || '?')[0].toUpperCase();
+    if (avatarEl) {
+      const savedAvatar = localStorage.getItem('laksa_avatar');
+      if (savedAvatar) {
+        avatarEl.innerHTML = `<img src="${savedAvatar}" alt="Foto profil" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;" />`;
+      } else {
+        avatarEl.textContent = (p.name || '?')[0].toUpperCase();
+      }
+    }
   }
 }
 
@@ -825,6 +899,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Account scroll arrows listener
   const accsEl = document.getElementById('accsScroll');
   if (accsEl) { accsEl.addEventListener('scroll', updateAccArrows, { passive: true }); }
+
+  // Check for reset token in URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const resetToken = urlParams.get('reset_token');
+  if (resetToken) {
+    hideAuthPage();
+    hideSetupPage();
+    const resetOverlay = el('resetPasswordOverlay');
+    if (resetOverlay) {
+      resetOverlay.style.display = 'flex';
+      resetOverlay.dataset.token = resetToken;
+    }
+    go('dashboard');
+    return;
+  }
 
   // Cek auth: token exists = logged in, otherwise show auth page
   const profile = getProfile();

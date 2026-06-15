@@ -5,3 +5,4 @@ ui-ux-pro-max-skill/
 .env.*
 node_modules/
 dist/
+deploy.ps1
