@@ -424,11 +424,38 @@ async function routeAPI(req, url, env) {
   // Public pricing (no auth required)
   if (path === "/pricing/public" && m === "GET") {
     try {
-      const prices = await env.DB.prepare("SELECT id, duration_days, price, label FROM pricing WHERE active = 1 ORDER BY duration_days ASC").all();
+      const prices = await env.DB.prepare("SELECT id, duration_days, price, original_price, label FROM pricing WHERE active = 1 ORDER BY duration_days ASC").all();
       const qrisSetting = await env.DB.prepare("SELECT value FROM app_settings WHERE key = 'qris_image_url'").first();
-      return jsonRes({ pricing: prices.results || [], qris_url: qrisSetting?.value || null });
+      return jsonRes({ pricing: (prices.results || []).map(p => ({ ...p, original_price: p.original_price || null })), qris_url: qrisSetting?.value || null });
     } catch (e) {
       return jsonRes({ pricing: [], qris_url: null });
+    }
+  }
+
+  // Validate coupon
+  if (path === "/coupon/validate" && m === "POST") {
+    if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
+    const { code, pricing_id } = await req.json();
+    if (!code) return jsonRes({ error: "Kode kupon diperlukan" }, 400);
+    try {
+      const coupon = await env.DB.prepare(
+        "SELECT * FROM coupons WHERE code = ? AND active = 1"
+      ).bind(code.toUpperCase().trim()).first();
+      if (!coupon) return jsonRes({ error: "Kupon tidak valid atau sudah expired" }, 404);
+      if (coupon.max_uses > 0 && coupon.used_count >= coupon.max_uses) return jsonRes({ error: "Kupon sudah habis" }, 410);
+      if (coupon.expired_at && new Date(coupon.expired_at) < new Date()) return jsonRes({ error: "Kupon sudah expired" }, 410);
+      let discount_amount = 0;
+      if (pricing_id) {
+        const pr = await env.DB.prepare("SELECT price FROM pricing WHERE id = ?").bind(pricing_id).first();
+        if (pr) {
+          if (coupon.type === 'percent') discount_amount = Math.floor(pr.price * coupon.value / 100);
+          else discount_amount = coupon.value;
+          if (discount_amount > pr.price) discount_amount = pr.price;
+        }
+      }
+      return jsonRes({ valid: true, code: coupon.code, type: coupon.type, value: coupon.value, discount_amount, description: coupon.description });
+    } catch (e) {
+      return jsonRes({ error: "Gagal validasi kupon" }, 500);
     }
   }
 
@@ -1957,6 +1984,25 @@ async function setupDatabase(env) {
       )
     `).run();
 
+    // Coupons table
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS coupons (
+        id TEXT PRIMARY KEY,
+        code TEXT UNIQUE NOT NULL,
+        type TEXT NOT NULL DEFAULT 'percent',
+        value INTEGER NOT NULL,
+        description TEXT,
+        max_uses INTEGER DEFAULT 0,
+        used_count INTEGER DEFAULT 0,
+        expired_at DATETIME,
+        active INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+
+    // Add original_price column to pricing
+    await env.DB.prepare("ALTER TABLE pricing ADD COLUMN original_price INTEGER").run().catch(() => {});
+
     // App settings (QRIS image URL, etc)
     await env.DB.prepare(`
       CREATE TABLE IF NOT EXISTS app_settings (
@@ -2604,7 +2650,7 @@ async function handleAdminBot(body, env) {
 
   try {
     if (text === '/start' || text === '/help') {
-      await adminSend(chatId, `🔐 *Admin Panel Laksa*\n\n*Perintah tersedia:*\n\n📋 *User Management*\n/users — List semua user\n/search email — Cari user\n/user email — Detail user\n/ban email — Ban user\n/unban email — Unban user\n/resetpw email password — Reset password user\n/deleteuser email — Hapus akun permanen\n\n💎 *Premium Management*\n/approve email durasi — Aktifkan premium\n  Durasi: 30d, 90d, 365d, lifetime\n/extend email durasi — Perpanjang premium\n/revoke email — Cabut premium\n/pending — Request upgrade pending\n/receipt email — Generate bukti (copas WA)\n\n💰 *Pricing & QRIS*\n/pricing — Lihat harga saat ini\n/setprice id harga — Update harga\n  ID: p30, p90, p365, p0\n/setqris — Upload gambar QRIS (kirim foto)\n\n📊 *Statistik*\n/stats — Overview dashboard\n/revenue — Revenue summary\n\n📢 *Broadcast*\n/broadcast pesan — Kirim ke semua user\n\n_Contoh:_\n/approve andi@gmail.com 30d\n/setprice p30 29000\n/receipt budi@gmail.com`, ADMIN_TOKEN);
+      await adminSend(chatId, `🔐 *Admin Panel Laksa*\n\n*Perintah tersedia:*\n\n📋 *User Management*\n/users — List semua user\n/search email — Cari user\n/user email — Detail user\n/ban email — Ban user\n/unban email — Unban user\n/resetpw email password — Reset password user\n/deleteuser email — Hapus akun permanen\n\n💎 *Premium Management*\n/approve email durasi — Aktifkan premium\n  Durasi: 30d, 90d, 365d, lifetime\n/extend email durasi — Perpanjang premium\n/revoke email — Cabut premium\n/pending — Request upgrade pending\n/receipt email — Generate bukti (copas WA)\n\n💰 *Pricing & QRIS*\n/pricing — Lihat harga saat ini\n/setprice id harga — Update harga\n/setoriginal id harga — Set harga coret\n  ID: p30, p90, p365, p0\n/setqris — Upload gambar QRIS (kirim foto)\n\n🎫 *Kupon*\n/coupon list — Lihat semua kupon\n/coupon create KODE tipe nilai\n/coupon delete KODE — Hapus kupon\n\n📊 *Statistik*\n/stats — Overview dashboard\n/revenue — Revenue summary\n\n📢 *Broadcast*\n/broadcast pesan — Kirim ke semua user\n\n_Contoh:_\n/approve andi@gmail.com 30d\n/setprice p30 29000\n/receipt budi@gmail.com`, ADMIN_TOKEN);
       return;
     }
 
@@ -2794,9 +2840,10 @@ async function handleAdminBot(body, env) {
       let msg = `💰 *Pricing Saat Ini*\n\n`;
       prices.results.forEach(p => {
         const dur = p.duration_days === 0 ? 'Lifetime' : `${p.duration_days} hari`;
-        msg += `• *${p.label}* (${dur}): Rp ${p.price.toLocaleString('id-ID')}\n  ID: \`${p.id}\`\n\n`;
+        const origStr = p.original_price ? ` (coret: Rp ${p.original_price.toLocaleString('id-ID')})` : '';
+        msg += `• *${p.label}* (${dur}): Rp ${p.price.toLocaleString('id-ID')}${origStr}\n  ID: \`${p.id}\`\n\n`;
       });
-      msg += `\n_Update: /setprice p30 29000_`;
+      msg += `\n_Update: /setprice p30 29000_\n_Harga coret: /setoriginal p30 17000_`;
       await adminSend(chatId, msg, ADMIN_TOKEN);
       return;
     }
@@ -2811,6 +2858,68 @@ async function handleAdminBot(body, env) {
       if (!existing) { await adminSend(chatId, `❌ Pricing ID "${priceId}" tidak ditemukan.\nID yang valid: p30, p90, p365, p0`, ADMIN_TOKEN); return; }
       await env.DB.prepare("UPDATE pricing SET price = ? WHERE id = ?").bind(price, priceId).run();
       await adminSend(chatId, `✅ *Harga diupdate!*\n\n*${existing.label}:* Rp ${price.toLocaleString('id-ID')}`, ADMIN_TOKEN);
+      return;
+    }
+
+    if (text === '/setoriginal') { await adminSend(chatId, "📝 Format: /setoriginal id harga_asli\nContoh: /setoriginal p30 17000\n\nHarga asli ditampilkan dicoret di modal upgrade.", ADMIN_TOKEN); return; }
+    if (text.startsWith('/setoriginal ')) {
+      const parts = text.slice(13).trim().split(/\s+/);
+      const priceId = parts[0];
+      const origPrice = parseInt(parts[1]);
+      if (!priceId || isNaN(origPrice)) { await adminSend(chatId, "📝 Format: /setoriginal id harga_asli\nContoh: /setoriginal p30 17000", ADMIN_TOKEN); return; }
+      const existing = await env.DB.prepare("SELECT * FROM pricing WHERE id = ?").bind(priceId).first();
+      if (!existing) { await adminSend(chatId, `❌ Pricing ID "${priceId}" tidak ditemukan.`, ADMIN_TOKEN); return; }
+      await env.DB.prepare("UPDATE pricing SET original_price = ? WHERE id = ?").bind(origPrice, priceId).run();
+      await adminSend(chatId, `✅ *Harga coret diupdate!*\n\n*${existing.label}:* ~~Rp ${origPrice.toLocaleString('id-ID')}~~ → Rp ${existing.price.toLocaleString('id-ID')}`, ADMIN_TOKEN);
+      return;
+    }
+
+    if (text === '/coupon') { await adminSend(chatId, "📝 *Kelola Kupon Diskon*\n\n/coupon list — Lihat semua kupon\n/coupon create KODE persen/nominal nilai [max_uses] [expired_at]\n/coupon delete KODE — Hapus kupon\n\nContoh:\n/coupon create NEWYEAR percent 20 100 2026-12-31\n/coupon create DISKON10K fixed 10000 50\n/coupon create VIP percent 50 1", ADMIN_TOKEN); return; }
+    if (text === '/coupon list') {
+      const coupons = await env.DB.prepare("SELECT * FROM coupons ORDER BY created_at DESC").all().catch(() => ({ results: [] }));
+      if (!coupons.results?.length) { await adminSend(chatId, "📭 Belum ada kupon.", ADMIN_TOKEN); return; }
+      let msg = `🎫 *Kupon Aktif*\n\n`;
+      coupons.results.forEach((c, i) => {
+        const val = c.type === 'percent' ? `${c.value}%` : `Rp ${c.value.toLocaleString('id-ID')}`;
+        const uses = c.max_uses > 0 ? `${c.used_count}/${c.max_uses}` : `${c.used_count}/∞`;
+        const status = c.active ? '✅' : '❌';
+        const exp = c.expired_at ? c.expired_at.slice(0, 10) : '-';
+        msg += `${i+1}. ${status} *${c.code}* — ${val}\n   Terpakai: ${uses} | Exp: ${exp}\n   ${c.description || ''}\n\n`;
+      });
+      await adminSend(chatId, msg, ADMIN_TOKEN);
+      return;
+    }
+    if (text.startsWith('/coupon create ')) {
+      const parts = text.slice(15).trim().split(/\s+/);
+      const code = parts[0]?.toUpperCase();
+      const type = parts[1]; // percent or fixed
+      const value = parseInt(parts[2]);
+      const maxUses = parseInt(parts[3]) || 0;
+      const expiredAt = parts[4] || null;
+      if (!code || !type || isNaN(value) || !['percent', 'fixed'].includes(type)) {
+        await adminSend(chatId, "📝 Format: /coupon create KODE percent/fixed nilai [max_uses] [expired_at]\n\nContoh: /coupon create NEWYEAR percent 20 100 2026-12-31", ADMIN_TOKEN);
+        return;
+      }
+      if (type === 'percent' && (value < 1 || value > 100)) { await adminSend(chatId, "❌ Persen harus antara 1-100.", ADMIN_TOKEN); return; }
+      const id = 'cpn_' + Date.now();
+      const desc = type === 'percent' ? `Diskon ${value}%` : `Potongan Rp ${value.toLocaleString('id-ID')}`;
+      try {
+        await env.DB.prepare(
+          "INSERT INTO coupons (id, code, type, value, description, max_uses, expired_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        ).bind(id, code, type, value, desc, maxUses, expiredAt).run();
+        await adminSend(chatId, `✅ *Kupon dibuat!*\n\n*Kode:* \`${code}\`\n*Diskon:* ${desc}\n*Maks pakai:* ${maxUses || '∞'}\n*Expired:* ${expiredAt || '-'}`, ADMIN_TOKEN);
+      } catch (e) {
+        if (e.message?.includes('UNIQUE')) { await adminSend(chatId, `❌ Kode "${code}" sudah ada.`, ADMIN_TOKEN); }
+        else { await adminSend(chatId, `❌ Error: ${e.message}`, ADMIN_TOKEN); }
+      }
+      return;
+    }
+    if (text.startsWith('/coupon delete ')) {
+      const code = text.slice(15).trim().toUpperCase();
+      if (!code) { await adminSend(chatId, "📝 Format: /coupon delete KODE", ADMIN_TOKEN); return; }
+      const result = await env.DB.prepare("DELETE FROM coupons WHERE code = ?").bind(code).run();
+      if (result.meta?.changes > 0) { await adminSend(chatId, `🗑️ Kupon *${code}* dihapus.`, ADMIN_TOKEN); }
+      else { await adminSend(chatId, `❌ Kupon "${code}" tidak ditemukan.`, ADMIN_TOKEN); }
       return;
     }
 

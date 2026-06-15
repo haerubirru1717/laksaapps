@@ -4637,6 +4637,57 @@ html[data-theme="dark"] .auth-tab.active {
   font-weight: 700;
   color: var(--accent, #3b82f6);
 }
+.pricing-original {
+  text-decoration: line-through;
+  color: var(--ink3, #999);
+  font-weight: 400;
+  font-size: 11px;
+  margin-right: 4px;
+}
+.pricing-discounted {
+  color: #ef4444;
+  font-weight: 700;
+}
+.coupon-section {
+  margin-bottom: 14px;
+}
+.coupon-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.coupon-input {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid var(--gs-border, rgba(0,0,0,.12));
+  border-radius: 8px;
+  font-size: 12px;
+  background: var(--gs-bg, #fff);
+  color: var(--ink, #1a1a1a);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.coupon-btn {
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent, #3b82f6);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.coupon-btn:disabled { opacity: .5; }
+.coupon-status {
+  font-size: 11px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.coupon-status.error { color: #ef4444; background: rgba(239,68,68,.06); }
+.coupon-status.success { color: #22c55e; background: rgba(34,197,94,.06); }
+.coupon-ok b { font-weight: 700; }
 .upgrade-qris {
   margin-bottom: 16px;
   text-align: center;
