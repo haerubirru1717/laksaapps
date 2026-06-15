@@ -631,13 +631,13 @@ async function handleAuthLogin() {
 }
 
 function toggleForgotForm(show) {
-  const loginFormInputs = document.querySelectorAll('#authLoginForm .setup-field, #authLoginForm #authLoginBtn, #authLoginForm .auth-forgot');
+  const loginFormInputs = document.querySelectorAll('#authLoginForm > .setup-field, #authLoginForm > #authLoginBtn, #authLoginForm > .auth-forgot, #authLoginForm > #authLoginError');
   const forgotForm = el('forgotPasswordForm');
   if (!forgotForm) return;
   if (show) {
     loginFormInputs.forEach(el => el.style.display = 'none');
     forgotForm.style.display = 'block';
-    el('authForgotEmail').value = el('authLoginEmail').value;
+    el('authForgotEmail').value = (el('authLoginEmail')?.value || '');
     el('authForgotError').style.display = 'none';
     el('authForgotSuccess').style.display = 'none';
   } else {

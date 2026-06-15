@@ -348,7 +348,18 @@ async function handleForgotPassword(req, body, env) {
     if (!resp.ok) {
       const errText = await resp.text();
       console.error("Resend API error:", errText);
-      return jsonRes({ error: "Gagal mengirim email pemulihan. Silakan coba lagi." }, 500);
+      let errMsg = "Gagal mengirim email pemulihan. ";
+      try {
+        const errJson = JSON.parse(errText);
+        if (errJson && errJson.message) {
+          errMsg += `Detail: ${errJson.message}`;
+        } else {
+          errMsg += `(HTTP ${resp.status})`;
+        }
+      } catch (e) {
+        errMsg += `(HTTP ${resp.status})`;
+      }
+      return jsonRes({ error: errMsg }, 500);
     }
   } catch (e) {
     console.error("Resend fetch error:", e);
