@@ -2120,6 +2120,10 @@ async function setupDatabase(env) {
     // Create indexes for usage_logs
     await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_usage_user_feature_date ON usage_logs (user_id, feature, used_at)").run();
 
+    // Add idempotency_key column to transactions (idempotent migration)
+    await env.DB.prepare("ALTER TABLE transactions ADD COLUMN idempotency_key TEXT").run().catch(() => {});
+    await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_tx_idempotency ON transactions (idempotency_key) WHERE idempotency_key IS NOT NULL").run().catch(() => {});
+
     // Payment requests table
     await env.DB.prepare(`
       CREATE TABLE IF NOT EXISTS payment_requests (
@@ -2358,6 +2362,34 @@ async function getTransactions(uid, url, env) {
 async function createTransaction(uid, body, env) {
   const id = body.id || randomId();
   const date = body.date || todayStr();
+  const idempotencyKey = body.idempotency_key || null;
+
+  if (idempotencyKey) {
+    // Idempotent insert: silently ignores if this key was already used
+    const result = await env.DB.prepare(`
+      INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id, uid, date, body.type, body.amount,
+      body.note || "", body.store || null,
+      body.account_id, body.category_id || null,
+      body.raw_text || null, body.source || "web",
+      idempotencyKey
+    ).run();
+
+    if (!result.meta?.changes || result.meta.changes === 0) {
+      // Duplicate — return the existing row id without touching balance
+      const existing = await env.DB.prepare(
+        "SELECT id FROM transactions WHERE idempotency_key = ? AND user_id = ?"
+      ).bind(idempotencyKey, uid).first();
+      return jsonRes({ id: existing?.id || id, status: "duplicate" });
+    }
+
+    await adjustBalance(body.account_id, body.type, body.amount, +1, env);
+    return jsonRes({ id, status: "created" });
+  }
+
+  // Legacy path (no idempotency key — still works)
   await env.DB.prepare(`
     INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
