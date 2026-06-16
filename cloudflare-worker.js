@@ -442,16 +442,21 @@ export default {
           }
         }
         const body = await request.json();
-        // Deduplication: skip already-processed updates
+        // Deduplication: skip already-processed updates using atomic UNIQUE insert
         const updateId = body.update_id;
         if (updateId) {
-          const existing = await env.DB.prepare(
-            "SELECT update_id FROM processed_updates WHERE update_id = ?"
-          ).bind(updateId).first().catch(() => null);
-          if (existing) return new Response("OK");
-          await env.DB.prepare(
-            "INSERT OR IGNORE INTO processed_updates (update_id) VALUES (?)"
-          ).bind(updateId).run().catch(() => {});
+          try {
+            await env.DB.prepare(
+              "INSERT INTO processed_updates (update_id) VALUES (?)"
+            ).bind(updateId).run();
+          } catch (e) {
+            const msg = String(e.message || "");
+            if (msg.includes("UNIQUE") || msg.includes("constraint") || msg.includes("PRIMARY KEY")) {
+              return new Response("OK");
+            }
+            // Proceed if table doesn't exist yet (setup phase)
+            console.warn("Deduplication insert warning:", msg);
+          }
         }
         ctx.waitUntil(handleTelegram(body, env));
         return new Response("OK");
@@ -1553,7 +1558,7 @@ async function groqChat(messages, env, { models = PARSE_MODELS, maxTokens = 300,
       const data = await res.json();
       if (data.error) { lastError = `${model}: ${data.error.message}`; continue; }
       if (data.choices?.[0]?.message?.content) {
-        data.choices[0].message.content = data.choices[0].message.content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+        data.choices[0].message.content = data.choices[0].message.content.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
       }
       return { data, model };
     } catch (e) { lastError = `${model}: ${e.message}`; continue; }
@@ -1757,8 +1762,8 @@ async function handleAiChat(uid, body, env) {
       temperature: 0.8,
     });
     let content = data.choices?.[0]?.message?.content || "";
-    // Strip Qwen3 <think>...</think> reasoning blocks
-    content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    // Strip Qwen3 <think>...</think> reasoning blocks (handles missing closing tag safely)
+    content = content.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
     return jsonRes({ content, model });
   } catch (e) {
     return jsonRes({ error: "Semua model AI sedang sibuk. Coba lagi sebentar." }, 503);
