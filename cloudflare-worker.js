@@ -862,6 +862,9 @@ async function handleFreeText(chatId, userId, text, env) {
   const processingMid = await tgSend(chatId, "⏳ Memproses...", env);
   await trackBotMsg(chatId, processingMid, env);
 
+  // Generate idempotency key early (tied to user + text content)
+  const idemKey = crypto.randomUUID();
+
   // 1. Parse dengan AI
   const parsed = await parseWithGroq(text, env);
   if (!parsed || parsed._error) {
@@ -892,6 +895,9 @@ async function handleFreeText(chatId, userId, text, env) {
     accs = await dbAccounts(userId, env);
     await tgSend(chatId, `✅ Rekening *${accName}* dibuat otomatis.`, env);
   }
+
+  // Attach idempotency key to parsed object
+  parsed._idempotency_key = idemKey;
 
   // 3a. Transfer antar rekening — branch terpisah
   if (parsed.type === "transfer") {
@@ -933,16 +939,18 @@ async function handleAccPick(chatId, userId, accId, env) {
 async function saveTx(chatId, userId, parsed, acc, cat, rawText, env) {
   const id   = randomId();
   const date = parsed.date || todayStr();
+  const idemKey = parsed._idempotency_key || crypto.randomUUID();
 
-  await env.DB.prepare(`
-    INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'telegram')
+  const result = await env.DB.prepare(`
+    INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'telegram', ?)
   `).bind(
     id, userId, date, parsed.type, parsed.amount,
     parsed.note || "", parsed.store || null,
-    acc.id, cat?.id || null, rawText
+    acc.id, cat?.id || null, rawText, idemKey
   ).run();
 
+  if (!result.meta?.changes || result.meta.changes === 0) return;
   await adjustBalance(acc.id, parsed.type, parsed.amount, +1, env);
 
   const tx    = await getTxFull(id, env);
@@ -995,19 +1003,20 @@ async function saveTransfer(chatId, userId, parsed, fromAcc, toAcc, rawText, env
   const note    = parsed.note || `Transfer ${fromAcc.name} → ${toAcc.name}`;
   const idOut   = randomId();
   const idIn    = randomId();
+  const idemKey = parsed._idempotency_key || crypto.randomUUID();
 
-  await env.DB.prepare(`
-    INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
-    VALUES (?, ?, ?, 'expense', ?, ?, null, ?, null, ?, 'telegram')
-  `).bind(idOut, userId, date, parsed.amount, note, fromAcc.id, rawText).run();
+  const r1 = await env.DB.prepare(`
+    INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
+    VALUES (?, ?, ?, 'expense', ?, ?, null, ?, null, ?, 'telegram', ?)
+  `).bind(idOut, userId, date, parsed.amount, note, fromAcc.id, rawText, idemKey).run();
 
-  await env.DB.prepare(`
-    INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
-    VALUES (?, ?, ?, 'income', ?, ?, null, ?, null, ?, 'telegram')
-  `).bind(idIn, userId, date, parsed.amount, note, toAcc.id, rawText).run();
+  const r2 = await env.DB.prepare(`
+    INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
+    VALUES (?, ?, ?, 'income', ?, ?, null, ?, null, ?, 'telegram', ?)
+  `).bind(idIn, userId, date, parsed.amount, note, toAcc.id, rawText, idemKey + '_in').run();
 
-  await adjustBalance(fromAcc.id, "expense", parsed.amount, +1, env);
-  await adjustBalance(toAcc.id,   "income",  parsed.amount, +1, env);
+  if (r1.meta?.changes > 0) await adjustBalance(fromAcc.id, "expense", parsed.amount, +1, env);
+  if (r2.meta?.changes > 0) await adjustBalance(toAcc.id,   "income",  parsed.amount, +1, env);
 
   await tgSend(chatId,
     `🔄 *Transfer Tersimpan!*\n\n` +
@@ -1101,12 +1110,13 @@ async function handlePhoto(msg, chatId, userId, env) {
         const cat = resolveCategory(null, result.note || "topup", result.store, "income", filteredCats);
         const id = randomId();
         const date = result.date || todayStr();
-        await env.DB.prepare(`
-          INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
-          VALUES (?, ?, ?, 'income', ?, ?, ?, ?, ?, '[foto struk]', 'telegram')
-        `).bind(id, userId, date, result.total, "Top-up " + targetAcc.name, result.store || null, targetAcc.id, cat?.id || null).run();
+        const idemKey = crypto.randomUUID();
+        const insResult = await env.DB.prepare(`
+          INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
+          VALUES (?, ?, ?, 'income', ?, ?, ?, ?, ?, '[foto struk]', 'telegram', ?)
+        `).bind(id, userId, date, result.total, "Top-up " + targetAcc.name, result.store || null, targetAcc.id, cat?.id || null, idemKey).run();
         await saveTransactionItems(id, result.items, env);
-        await adjustBalance(targetAcc.id, "income", result.total, +1, env);
+        if (insResult.meta?.changes > 0) await adjustBalance(targetAcc.id, "income", result.total, +1, env);
 
         const mid = await tgSend(chatId,
           `💚 *Top-up Berhasil Dicatat!*\n\n` +
@@ -1139,13 +1149,14 @@ async function handlePhoto(msg, chatId, userId, env) {
     if (matchedAcc) {
       const id = randomId();
       const date = parsed.date || todayStr();
-      await env.DB.prepare(`
-        INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
-        VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, '[foto struk]', 'telegram')
-      `).bind(id, userId, date, parsed.amount, parsed.note || "", parsed.store || null, matchedAcc.id, cat?.id || null).run();
+      const idemKey = crypto.randomUUID();
+      const insResult = await env.DB.prepare(`
+        INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
+        VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, '[foto struk]', 'telegram', ?)
+      `).bind(id, userId, date, parsed.amount, parsed.note || "", parsed.store || null, matchedAcc.id, cat?.id || null, idemKey).run();
 
       await saveTransactionItems(id, result.items, env);
-      await adjustBalance(matchedAcc.id, "expense", parsed.amount, +1, env);
+      if (insResult.meta?.changes > 0) await adjustBalance(matchedAcc.id, "expense", parsed.amount, +1, env);
 
       let successMsg = `✅ *Tersimpan Otomatis!*\n`;
       successMsg += `_(Mencocokkan caption: *${matchedAcc.name}*)_\n\n`;
@@ -1226,13 +1237,14 @@ async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId
 
     // Simpan transaksi
     const txId = randomId();
-    await env.DB.prepare(`
-      INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
-      VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, '[foto struk]', 'telegram')
-    `).bind(txId, userId, draft.date, amount, draftNote, draft.store, accountId, cat?.id || null).run();
+    const idemKey = 'receipt_' + pendingId;
+    const insResult = await env.DB.prepare(`
+      INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
+      VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, '[foto struk]', 'telegram', ?)
+    `).bind(txId, userId, draft.date, amount, draftNote, draft.store, accountId, cat?.id || null, idemKey).run();
 
     await saveTransactionItems(txId, items, env);
-    await adjustBalance(accountId, "expense", amount, +1, env);
+    if (insResult.meta?.changes > 0) await adjustBalance(accountId, "expense", amount, +1, env);
     await env.DB.prepare("DELETE FROM pending_scans WHERE id = ?").bind(pendingId).run();
 
     // Hapus pesan rincian struk (Pesan 1) agar chat tetap bersih

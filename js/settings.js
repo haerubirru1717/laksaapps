@@ -278,7 +278,8 @@ async function doRestore(ev) {
         api('POST', '/transactions', {
           type: tx.type, amount: tx.amount, date: tx.date,
           account_id: tx.account_id, category_id: tx.category_id,
-          note: tx.note || '', store: tx.store || null, source: 'restore'
+          note: tx.note || '', store: tx.store || null, source: 'restore',
+          idempotency_key: tx.id || crypto.randomUUID()
         })
       ));
       results.forEach(r => r.status === 'fulfilled' ? txOk++ : txFail++);
