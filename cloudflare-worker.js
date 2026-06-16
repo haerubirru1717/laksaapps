@@ -456,7 +456,6 @@ export default {
             return new Response("Unauthorized", { status: 403 });
           }
         }
-        const body = await request.json();
         // Deduplication: skip already-processed updates using atomic UNIQUE insert
         const updateId = body.update_id;
         if (updateId) {
@@ -931,7 +930,13 @@ async function handleAccPick(chatId, userId, accId, env) {
   if (!pending) { await tgSend(chatId, "⏰ *Sesi input habis.*\n\nKirim ulang transaksimu, ya! Ketik langsung atau kirim /menu.", env); return; }
   const acc = await env.DB.prepare(`SELECT * FROM accounts WHERE id = ? AND user_id = ?`).bind(accId, userId).first();
   if (!acc) { await tgSend(chatId, "⚠️ *Rekening tidak ditemukan.*\n\nPastikan nama rekening sudah benar. Ketik /saldo untuk lihat daftar rekeningmu.", env); return; }
-  await clearPendingText(chatId, env);
+
+  // Gating check: attempt to delete the pending text first to prevent concurrent duplicate inserts
+  const delRes = await env.DB.prepare("DELETE FROM pending_texts WHERE chat_id = ?").bind(String(chatId)).run().catch(() => null);
+  if (!delRes || delRes.meta.changes === 0) {
+    return;
+  }
+
   const { parsed, rawText, cat } = pending;
   await saveTx(chatId, userId, parsed, acc, cat, rawText, env);
 }
@@ -1223,6 +1228,12 @@ async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId
       return;
     }
 
+    // Gating check: attempt to delete the draft first to prevent concurrent duplicate inserts
+    const delRes = await env.DB.prepare("DELETE FROM pending_scans WHERE id = ?").bind(pendingId).run().catch(() => null);
+    if (!delRes || delRes.meta.changes === 0) {
+      return;
+    }
+
     const { note: draftNote, rincianMsgId, items } = parseDraftNote(draft.note);
     const account = await env.DB.prepare("SELECT name, balance FROM accounts WHERE id = ? AND user_id = ?").bind(accountId, userId).first();
     if (!account) throw new Error("Rekening tidak ditemukan.");
@@ -1245,7 +1256,6 @@ async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId
 
     await saveTransactionItems(txId, items, env);
     if (insResult.meta?.changes > 0) await adjustBalance(accountId, "expense", amount, +1, env);
-    await env.DB.prepare("DELETE FROM pending_scans WHERE id = ?").bind(pendingId).run();
 
     // Hapus pesan rincian struk (Pesan 1) agar chat tetap bersih
     if (rincianMsgId) await deleteTgMessage(chatId, rincianMsgId, env);

@@ -37,24 +37,25 @@ function openModal(type, data = null) {
       form.addEventListener('submit', async e => {
         e.preventDefault();
         if (isSubmitting) return;
-        isSubmitting = true;
-        const subBtn = form.querySelector('button[type="submit"]');
-        let origText = '';
-        if (subBtn) {
-          subBtn.disabled = true;
-          origText = subBtn.textContent;
-          subBtn.textContent = '⏳ ...';
-        }
-        try {
-          await onSubmit();
-        } catch (err) {
-          console.error(err);
-        } finally {
-          isSubmitting = false;
-          if (subBtn) {
-            subBtn.disabled = false;
-            subBtn.textContent = origText;
+        const btn = form.querySelector('button[type="submit"]');
+        if (btn) {
+          isSubmitting = true;
+          btn.disabled = true;
+          const origText = btn.innerHTML;
+          btn.innerHTML = '⏳ Menyimpan…';
+          try {
+            await onSubmit();
+          } finally {
+            isSubmitting = false;
+            const overlay = el('moverlay');
+            if (overlay && overlay.classList.contains('open') && document.body.contains(form)) {
+              btn.disabled = false;
+              btn.innerHTML = origText;
+            }
           }
+        } else {
+          onSubmit();
+>>>>>>> origin/main
         }
       });
     }
@@ -145,7 +146,7 @@ function buildBillForm(bill = null) {
         notes: el('billNotes').value.trim() || null,
         status: 'unpaid'
       };
-      if (!payload.name) { toast('Nama tagihan tidak boleh kosong', 'err'); return; }
+      if (!payload.name) { toast('Nama tagihan tidak boleh kosong', 'err'); throw new Error('Nama tagihan tidak boleh kosong'); }
       if (isEdit) return saveBill({ ...payload, id: bill.id }, true);
       else return saveBill(payload, false);
     }
@@ -323,7 +324,7 @@ function buildTxForm(data) {
   return {
     t: isEdit ? 'Edit Transaksi' : 'Tambah Transaksi', html, onSubmit: () => {
       const payload = { type: el('txT').value, amount: getRawAmt('txAmt'), date: el('txDt').value, category_id: el('txC').value, account_id: el('txA').value, to_acc_id: el('txTA')?.value || '', note: el('txN').value.trim(), store: el('txS').value.trim() || null };
-      if (!payload.amount || payload.amount <= 0) { toast('Jumlah harus >0', 'err'); return; }
+      if (!payload.amount || payload.amount <= 0) { toast('Jumlah harus >0', 'err'); throw new Error('Jumlah harus >0'); }
       const id = el('txEid').value; if (id) return updateTx(id, payload); else return addTx(payload);
     }
   };
@@ -520,8 +521,8 @@ function buildPiutangForm(piutang = null) {
         note: el('ptgNote').value.trim() || null,
         status: getRawAmt('ptgReturned') >= getRawAmt('ptgAmt') ? 'paid' : 'active'
       };
-      if (!payload.borrower_name) { toast('Nama peminjam tidak boleh kosong', 'err'); return; }
-      if (payload.amount <= 0) { toast('Nominal pinjaman harus lebih dari 0', 'err'); return; }
+      if (!payload.borrower_name) { toast('Nama peminjam tidak boleh kosong', 'err'); throw new Error('Nama peminjam tidak boleh kosong'); }
+      if (payload.amount <= 0) { toast('Nominal pinjaman harus lebih dari 0', 'err'); throw new Error('Nominal pinjaman harus lebih dari 0'); }
       if (isEdit) return savePiutang({ ...payload, id: piutang.id }, true);
       else return savePiutang(payload, false);
     }
@@ -565,7 +566,7 @@ function buildReturnPiutangForm(piutang) {
     html,
     onSubmit: () => {
       const returnAmt = getRawAmt('ptgReturnAmt') || 0;
-      if (returnAmt <= 0) { toast('Nominal harus lebih dari 0', 'err'); return; }
+      if (returnAmt <= 0) { toast('Nominal harus lebih dari 0', 'err'); throw new Error('Nominal harus lebih dari 0'); }
       const createTx = el('ptgCreateTx').checked;
       const accId = el('ptgPayAcc')?.value || null;
       return payReturnPiutang(piutang.id, returnAmt, createTx, accId);
