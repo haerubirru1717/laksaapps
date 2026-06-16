@@ -30,7 +30,32 @@ function openModal(type, data = null) {
   const build = builders[type]; if (!build) return;
   const { t, html, onSubmit } = build();
   title.textContent = t; body.innerHTML = html;
-  if (onSubmit) { const form = body.querySelector('form'); if (form) form.addEventListener('submit', e => { e.preventDefault(); onSubmit(); }); }
+  if (onSubmit) {
+    const form = body.querySelector('form');
+    if (form) {
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const btn = form.querySelector('button[type="submit"]');
+        if (btn) {
+          if (btn.disabled) return;
+          btn.disabled = true;
+          const origText = btn.innerHTML;
+          btn.innerHTML = '⏳ Menyimpan…';
+          try {
+            await onSubmit();
+          } finally {
+            const overlay = el('moverlay');
+            if (overlay && overlay.classList.contains('open') && document.body.contains(form)) {
+              btn.disabled = false;
+              btn.innerHTML = origText;
+            }
+          }
+        } else {
+          onSubmit();
+        }
+      });
+    }
+  }
   overlay.classList.add('open');
   // Sembunyikan AI FAB saat modal terbuka
   const fab = el('aiFab');
@@ -117,9 +142,9 @@ function buildBillForm(bill = null) {
         notes: el('billNotes').value.trim() || null,
         status: 'unpaid'
       };
-      if (!payload.name) { toast('Nama tagihan tidak boleh kosong', 'err'); return; }
-      if (isEdit) saveBill({ ...payload, id: bill.id }, true);
-      else saveBill(payload, false);
+      if (!payload.name) { toast('Nama tagihan tidak boleh kosong', 'err'); throw new Error('Nama tagihan tidak boleh kosong'); }
+      if (isEdit) return saveBill({ ...payload, id: bill.id }, true);
+      else return saveBill(payload, false);
     }
   };
 }
@@ -164,7 +189,7 @@ function buildPayBillForm(bill) {
       const createTx = el('billCreateTx').checked;
       const accId = el('billPayAcc')?.value || null;
       const payDate = el('billPayDate')?.value || today();
-      payBill(bill.id, createTx, accId, payDate);
+      return payBill(bill.id, createTx, accId, payDate);
     }
   };
 }
@@ -295,8 +320,8 @@ function buildTxForm(data) {
   return {
     t: isEdit ? 'Edit Transaksi' : 'Tambah Transaksi', html, onSubmit: () => {
       const payload = { type: el('txT').value, amount: getRawAmt('txAmt'), date: el('txDt').value, category_id: el('txC').value, account_id: el('txA').value, to_acc_id: el('txTA')?.value || '', note: el('txN').value.trim(), store: el('txS').value.trim() || null };
-      if (!payload.amount || payload.amount <= 0) { toast('Jumlah harus >0', 'err'); return; }
-      const id = el('txEid').value; if (id) updateTx(id, payload); else addTx(payload);
+      if (!payload.amount || payload.amount <= 0) { toast('Jumlah harus >0', 'err'); throw new Error('Jumlah harus >0'); }
+      const id = el('txEid').value; if (id) return updateTx(id, payload); else return addTx(payload);
     }
   };
 }
@@ -492,10 +517,10 @@ function buildPiutangForm(piutang = null) {
         note: el('ptgNote').value.trim() || null,
         status: getRawAmt('ptgReturned') >= getRawAmt('ptgAmt') ? 'paid' : 'active'
       };
-      if (!payload.borrower_name) { toast('Nama peminjam tidak boleh kosong', 'err'); return; }
-      if (payload.amount <= 0) { toast('Nominal pinjaman harus lebih dari 0', 'err'); return; }
-      if (isEdit) savePiutang({ ...payload, id: piutang.id }, true);
-      else savePiutang(payload, false);
+      if (!payload.borrower_name) { toast('Nama peminjam tidak boleh kosong', 'err'); throw new Error('Nama peminjam tidak boleh kosong'); }
+      if (payload.amount <= 0) { toast('Nominal pinjaman harus lebih dari 0', 'err'); throw new Error('Nominal pinjaman harus lebih dari 0'); }
+      if (isEdit) return savePiutang({ ...payload, id: piutang.id }, true);
+      else return savePiutang(payload, false);
     }
   };
 }
@@ -537,10 +562,10 @@ function buildReturnPiutangForm(piutang) {
     html,
     onSubmit: () => {
       const returnAmt = getRawAmt('ptgReturnAmt') || 0;
-      if (returnAmt <= 0) { toast('Nominal harus lebih dari 0', 'err'); return; }
+      if (returnAmt <= 0) { toast('Nominal harus lebih dari 0', 'err'); throw new Error('Nominal harus lebih dari 0'); }
       const createTx = el('ptgCreateTx').checked;
       const accId = el('ptgPayAcc')?.value || null;
-      payReturnPiutang(piutang.id, returnAmt, createTx, accId);
+      return payReturnPiutang(piutang.id, returnAmt, createTx, accId);
     }
   };
 }
