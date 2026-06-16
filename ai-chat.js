@@ -1657,6 +1657,10 @@ function aiAppendTxConfirm(tx) {
 }
 
 async function aiConfirmTx(tx, bubbleId) {
+  if (!window.aiProcessingBubbles) window.aiProcessingBubbles = new Set();
+  if (window.aiProcessingBubbles.has(bubbleId)) return;
+  window.aiProcessingBubbles.add(bubbleId);
+
   const bubble = el(bubbleId);
   if (bubble) {
     const btns = bubble.querySelectorAll('.ai-tx-confirm-btns button');
@@ -1676,6 +1680,7 @@ async function aiConfirmTx(tx, bubbleId) {
     const accFrom = accs.find(a => a.name.toLowerCase().includes((tx.from_account_name || '').toLowerCase()));
     const accTo = accs.find(a => a.name.toLowerCase().includes((tx.to_account_name || '').toLowerCase()));
     if (!accFrom) {
+      window.aiProcessingBubbles.delete(bubbleId);
       if (bubble) {
         const btns = bubble.querySelector('.ai-tx-confirm-btns');
         if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done" style="color:var(--expense)">❌ Gagal: Rekening asal tidak ditemukan.</div>';
@@ -1684,6 +1689,7 @@ async function aiConfirmTx(tx, bubbleId) {
       return;
     }
     if (amt > (accFrom.balance || 0)) {
+      window.aiProcessingBubbles.delete(bubbleId);
       if (bubble) {
         const btns = bubble.querySelector('.ai-tx-confirm-btns');
         if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done" style="color:var(--expense)">❌ Gagal: Saldo rekening asal tidak cukup.</div>';
@@ -1714,6 +1720,7 @@ async function aiConfirmTx(tx, bubbleId) {
     const acc = accs.find(a => a.name.toLowerCase().includes((tx.account_name || '').toLowerCase())) || accs[0];
     const cat = cats.find(c => c.name.toLowerCase().includes((tx.category_name || '').toLowerCase())) || cats[cats.length - 1];
     if (!acc) {
+      window.aiProcessingBubbles.delete(bubbleId);
       if (bubble) {
         const btns = bubble.querySelector('.ai-tx-confirm-btns');
         if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done" style="color:var(--expense)">❌ Gagal: Rekening tidak ditemukan.</div>';
@@ -1723,6 +1730,7 @@ async function aiConfirmTx(tx, bubbleId) {
     }
 
     if (txType === 'expense' && amt > (acc.balance || 0)) {
+      window.aiProcessingBubbles.delete(bubbleId);
       if (bubble) {
         const btns = bubble.querySelector('.ai-tx-confirm-btns');
         if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done" style="color:var(--expense)">❌ Gagal: Saldo tidak cukup.</div>';
@@ -1754,6 +1762,7 @@ async function aiConfirmTx(tx, bubbleId) {
     }
     toast('Transaksi dicatat via Laksa.na!', 'ok');
   } catch (e) {
+    window.aiProcessingBubbles.delete(bubbleId);
     if (bubble) {
       const btns = bubble.querySelector('.ai-tx-confirm-btns');
       if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done" style="color:var(--expense)">❌ Gagal: ' + esc(e.message) + '</div>';
@@ -1885,6 +1894,10 @@ window.aiAppendBillsConfirm = function(bills) {
 };
 
 window.aiConfirmBills = async function(bills, bubbleId) {
+  if (!window.aiProcessingBubbles) window.aiProcessingBubbles = new Set();
+  if (window.aiProcessingBubbles.has(bubbleId)) return;
+  window.aiProcessingBubbles.add(bubbleId);
+
   const bubble = el(bubbleId);
   if (bubble) {
     const btnsList = bubble.querySelectorAll('.ai-tx-confirm-btns button');
@@ -1926,6 +1939,7 @@ window.aiConfirmBills = async function(bills, bubbleId) {
     }
     toast(`${successCount} tagihan dicatat!`, 'ok');
   } catch(e) {
+    window.aiProcessingBubbles.delete(bubbleId);
     if (bubble) {
       const btns = bubble.querySelector('.ai-tx-confirm-btns');
       if (btns) btns.innerHTML = `<div class="ai-tx-confirm-done" style="color:var(--expense)">❌ Gagal: ${esc(e.message)}</div>`;
