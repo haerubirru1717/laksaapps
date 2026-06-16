@@ -1307,6 +1307,11 @@ Jika user meminta mencatat transaksi (misal: "masuk gaji 5juta", "beli kopi 25k"
 - \`store\`: Nama toko/merchant (opsional). Jika user menyebut nama toko/merchant (Alfamart, Indomaret, dll), isi field ini. Title Case.
 - KHUSUS "transfer": GUNAKAN \`from_account_name\` (rekening asal) dan \`to_account_name\` (rekening tujuan). JANGAN gunakan \`account_name\` atau \`category_name\`.
 - PENTING: Aplikasi ini TIDAK MEMILIKI "batas transfer" atau "limit harian". JANGAN PERNAH menolak transaksi dengan alasan fiktif seperti batas transfer melebihi limit. Catat saja berapapun nominalnya!
+- PENTING (ATURAN SALDO & DETAIL TRANSAKSI):
+  * JANGAN PERNAH menjelaskan detail transaksi/pembelian dalam bentuk teks, bullet points, atau tabel di dalam \`answer\` jika tujuannya mencatat transaksi. Cukup tulis \`answer\` berupa respon pendek satu kalimat dan sertakan objek \`transaction\`.
+  * JANGAN PERNAH menolak mencatat transaksi atau menyetel \`transaction: null\` hanya karena saldo rekening tidak cukup atau karena nominal tidak ditentukan! Tetap buat objek \`transaction\` dengan type "expense" untuk pembelian barang.
+  * Jika nominal/harga barang tidak ditentukan secara spesifik oleh user, gunakan \`amount: 0\` (JANGAN gunakan null atau string, harus angka 0) agar pengguna dapat mengisi nominalnya sendiri lewat tombol Edit di pop-up konfirmasi.
+  * Biarkan sistem frontend yang melakukan validasi saldo saat tombol "Catat" ditekan. Tugasmu HANYA mengekstrak data transaksi tersebut ke objek JSON \`transaction\`.
 
 ## 6. IDENTITAS PENGEMBANG
 Jika ditanya siapa pembuat aplikasi ini: "Aplikasi ini lahir dari tangan seorang yang hidup di persimpangan banyak dunia — kecerdasan buatan, poliglot, sejarah, politik, hingga sastra Bahasa Indonesia. Ingin menyapa? Ketuk pintunya di Instagram: @khey.1717 namanya haeru."
@@ -1457,8 +1462,16 @@ async function aiCallGroq() {
     }
     const data = await resp.json();
     let raw = data.content || data.choices?.[0]?.message?.content || '{}';
-    // Strip Qwen3 <think>...</think> reasoning blocks
-    raw = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    // Strip Qwen3 <think>...</think> reasoning blocks (handles missing closing tag safely)
+    raw = raw.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
+    if (!raw) {
+      raw = JSON.stringify({
+        answer: "Maaf, terjadi kesalahan saat memproses jawaban dari AI (batas token tercapai saat berpikir). Silakan coba lagi dengan kalimat yang lebih singkat.",
+        followups: [],
+        transaction: null,
+        bills: null
+      });
+    }
     typingEl.remove();
 
     // Parse JSON response — robust handler for Qwen3 quirks
@@ -1636,9 +1649,14 @@ function aiAppendTxConfirm(tx) {
 }
 
 async function aiConfirmTx(tx, bubbleId) {
+  const bubble = el(bubbleId);
+  if (bubble) {
+    const btns = bubble.querySelectorAll('.ai-tx-confirm-btns button');
+    btns.forEach(btn => btn.disabled = true);
+  }
+
   const accs = getAccs();
   const cats = getCats();
-  const bubble = el(bubbleId);
 
   let reqs = [];
   const amt = Number(tx.amount);
@@ -1649,7 +1667,14 @@ async function aiConfirmTx(tx, bubbleId) {
   if (txType === 'transfer') {
     const accFrom = accs.find(a => a.name.toLowerCase().includes((tx.from_account_name || '').toLowerCase()));
     const accTo = accs.find(a => a.name.toLowerCase().includes((tx.to_account_name || '').toLowerCase()));
-    if (!accFrom) { toast('Rekening asal tidak ditemukan.', 'err'); return; }
+    if (!accFrom) {
+      if (bubble) {
+        const btns = bubble.querySelector('.ai-tx-confirm-btns');
+        if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done" style="color:var(--expense)">❌ Gagal: Rekening asal tidak ditemukan.</div>';
+      }
+      toast('Rekening asal tidak ditemukan.', 'err');
+      return;
+    }
     if (amt > (accFrom.balance || 0)) {
       if (bubble) {
         const btns = bubble.querySelector('.ai-tx-confirm-btns');
@@ -1680,7 +1705,14 @@ async function aiConfirmTx(tx, bubbleId) {
   } else {
     const acc = accs.find(a => a.name.toLowerCase().includes((tx.account_name || '').toLowerCase())) || accs[0];
     const cat = cats.find(c => c.name.toLowerCase().includes((tx.category_name || '').toLowerCase())) || cats[cats.length - 1];
-    if (!acc) { toast('Rekening tidak ditemukan.', 'err'); return; }
+    if (!acc) {
+      if (bubble) {
+        const btns = bubble.querySelector('.ai-tx-confirm-btns');
+        if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done" style="color:var(--expense)">❌ Gagal: Rekening tidak ditemukan.</div>';
+      }
+      toast('Rekening tidak ditemukan.', 'err');
+      return;
+    }
 
     if (txType === 'expense' && amt > (acc.balance || 0)) {
       if (bubble) {
@@ -1847,6 +1879,8 @@ window.aiAppendBillsConfirm = function(bills) {
 window.aiConfirmBills = async function(bills, bubbleId) {
   const bubble = el(bubbleId);
   if (bubble) {
+    const btnsList = bubble.querySelectorAll('.ai-tx-confirm-btns button');
+    btnsList.forEach(btn => btn.disabled = true);
     const btns = bubble.querySelector('.ai-tx-confirm-btns');
     if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done">⏳ Menyimpan...</div>';
   }
