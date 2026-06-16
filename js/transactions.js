@@ -101,7 +101,10 @@ function goPg(p) { txPg = p; filterTx(); }
 function sortTx(f) { if (sortF === f) sortA = !sortA; else { sortF = f; sortA = false; } ['date', 'amount'].forEach(k => { const ic = el('s' + k[0]); if (ic) ic.textContent = k === f ? (sortA ? '↑' : '↓') : '↕'; }); filterTx(); }
 
 // ── TX CRUD ──
+let _addTxLock = false;
 async function addTx(data, silent = false) {
+  if (_addTxLock && !silent) return;
+  _addTxLock = true;
   try {
     // Mapping field lama (categoryId/accountId) ke field baru (category_id/account_id)
     const body = {
@@ -112,7 +115,8 @@ async function addTx(data, silent = false) {
       category_id: data.category_id || data.categoryId,
       note: data.note || '',
       store: data.store || null,
-      source: 'website'
+      source: 'website',
+      idempotency_key: data.idempotency_key || crypto.randomUUID()
     };
     await api('POST', '/transactions', body);
     // Refresh cache
@@ -121,6 +125,8 @@ async function addTx(data, silent = false) {
     if (!silent) { closeModal(); toast('Transaksi ditambahkan!', 'ok'); refresh(); }
   } catch (e) {
     toast('Gagal simpan: ' + e.message, 'err');
+  } finally {
+    _addTxLock = false;
   }
 }
 function updBal() { }// Tidak diperlukan — D1 yang urus saldo

@@ -1621,9 +1621,13 @@ function aiAppendTxConfirm(tx) {
     }
   }
 
+  // Pre-generate idempotency key at render time so retries use the same key
+  const idemKey = crypto.randomUUID();
+
   const div = document.createElement('div');
   div.className = 'ai-msg bot';
   div.id = txId;
+  div.dataset.idempotencyKey = idemKey;
   div.innerHTML = `
     <div class="ai-tx-confirm">
       <div class="ai-tx-confirm-title">
@@ -1667,8 +1671,11 @@ async function aiConfirmTx(tx, bubbleId) {
   const bubble = el(bubbleId);
   if (bubble) {
     const btns = bubble.querySelectorAll('.ai-tx-confirm-btns button');
-    btns.forEach(btn => btn.disabled = true);
+    btns.forEach(btn => { btn.disabled = true; btn.style.pointerEvents = 'none'; });
   }
+
+  // Use pre-generated idempotency key from render time (stable across retries)
+  const preKey = bubble?.dataset?.idempotencyKey || null;
 
   const accs = getAccs();
   const cats = getCats();
@@ -1715,11 +1722,11 @@ async function aiConfirmTx(tx, bubbleId) {
 
     const destName = accTo ? accTo.name : (tx.to_account_name || 'Lainnya');
     const noteFrom = nt ? nt + ' (Transfer ke ' + destName + ')' : '(Transfer ke ' + destName + ')';
-    reqs.push({ type: 'expense', amount: amt, date: dt, account_id: accFrom.id, category_id: tfCat.id, note: noteFrom, source: 'ai-chat', idempotency_key: crypto.randomUUID() });
+    reqs.push({ type: 'expense', amount: amt, date: dt, account_id: accFrom.id, category_id: tfCat.id, note: noteFrom, source: 'ai-chat', idempotency_key: preKey || crypto.randomUUID() });
     
     if (accTo) {
       const noteTo = nt ? nt + ' (Transfer dari ' + accFrom.name + ')' : '(Transfer dari ' + accFrom.name + ')';
-      reqs.push({ type: 'income', amount: amt, date: dt, account_id: accTo.id, category_id: tfCat.id, note: noteTo, source: 'ai-chat', idempotency_key: crypto.randomUUID() });
+      reqs.push({ type: 'income', amount: amt, date: dt, account_id: accTo.id, category_id: tfCat.id, note: noteTo, source: 'ai-chat', idempotency_key: (preKey ? preKey + '_in' : crypto.randomUUID()) });
     }
   } else {
     const targetAcc = (tx.account_name || '').trim().toLowerCase();
@@ -1750,7 +1757,7 @@ async function aiConfirmTx(tx, bubbleId) {
       return;
     }
     const st = tx.store || '';
-    reqs.push({ type: txType, amount: amt, date: dt, account_id: acc.id, category_id: cat.id, note: nt, store: st || undefined, source: 'ai-chat', idempotency_key: crypto.randomUUID() });
+    reqs.push({ type: txType, amount: amt, date: dt, account_id: acc.id, category_id: cat.id, note: nt, store: st || undefined, source: 'ai-chat', idempotency_key: preKey || crypto.randomUUID() });
   }
 
   if (bubble) {
@@ -1833,6 +1840,9 @@ async function aiSubmitEdit(inputId, originalTx, bubbleId) {
 function aiCancelEdit(bubbleId, tx) {
   const bubble = el(bubbleId);
   if (!bubble) return;
+  // Reset processing state so re-confirm works, and generate fresh idempotency key
+  if (window.aiProcessingBubbles) window.aiProcessingBubbles.delete(bubbleId);
+  bubble.dataset.idempotencyKey = crypto.randomUUID();
   const editArea = bubble.querySelector('.ai-tx-edit-inline');
   if (editArea) {
     const txId = bubbleId;
