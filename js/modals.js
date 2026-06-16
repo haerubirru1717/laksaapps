@@ -33,17 +33,20 @@ function openModal(type, data = null) {
   if (onSubmit) {
     const form = body.querySelector('form');
     if (form) {
+      let isSubmitting = false;
       form.addEventListener('submit', async e => {
         e.preventDefault();
+        if (isSubmitting) return;
         const btn = form.querySelector('button[type="submit"]');
         if (btn) {
-          if (btn.disabled) return;
+          isSubmitting = true;
           btn.disabled = true;
           const origText = btn.innerHTML;
           btn.innerHTML = '⏳ Menyimpan…';
           try {
             await onSubmit();
           } finally {
+            isSubmitting = false;
             const overlay = el('moverlay');
             if (overlay && overlay.classList.contains('open') && document.body.contains(form)) {
               btn.disabled = false;
@@ -52,6 +55,7 @@ function openModal(type, data = null) {
           }
         } else {
           onSubmit();
+>>>>>>> origin/main
         }
       });
     }

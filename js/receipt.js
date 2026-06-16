@@ -68,37 +68,60 @@ function updSP() {
   else if (mode === 'peritem') pv.textContent = '→ ' + items.length + ' transaksi terpisah';
   else pv.textContent = '→ ' + new Set(items.map(i => i.category || 'Lainnya')).size + ' transaksi per kategori';
 }
-function saveR() {
+let isSavingReceipt = false;
+async function saveR() {
+  if (isSavingReceipt) return;
   if (!rData) { toast('Tidak ada data struk.', 'err'); return; }
-  const mode = document.querySelector('input[name="smode"]:checked')?.value || 'single';
-  const accId = el('rAcc')?.value, date = el('rDate')?.value || today(), note = el('rNote')?.value.trim() || '';
-  const store = rData.store_name || 'Struk', rId = uid(), items = rData.items || [], cats = getCats();
-  const fCat = n => { const f = cats.find(c => c.name.toLowerCase().includes((n || '').toLowerCase())); return f ? f.id : 'c12'; };
-  if (mode === 'single') {
-    addTx({ type: 'expense', amount: Number(rData.total) || 0, date, category_id: fCat(items[0]?.category), account_id: accId, note: store + (note ? ' — ' + note : ''), receiptId: rId }, true);
-    toast('Tersimpan!', 'ok');
-  } else if (mode === 'peritem') {
-    items.forEach(it => { 
-      const price = Number(it.total_price) || 0;
-      if (price < 0 || isNaN(price)) return; 
-      addTx({ type: 'expense', amount: price, date, category_id: fCat(it.category), account_id: accId, note: it.name, receiptId: rId }, true); 
-    });
-    toast(items.length + ' transaksi tersimpan!', 'ok');
-  } else {
-    const grp = {}; 
-    items.forEach(it => { 
-      const k = it.category || 'Lainnya'; 
-      grp[k] = (grp[k] || 0) + (Number(it.total_price) || 0); 
-    });
-    Object.entries(grp).forEach(([cn, t]) => { 
-      if (t < 0 || isNaN(t)) return; 
-      addTx({ type: 'expense', amount: t, date, category_id: fCat(cn), account_id: accId, note: store + ' — ' + cn, receiptId: rId }, true); 
-    });
-    toast('Tersimpan per kategori!', 'ok');
+  isSavingReceipt = true;
+
+  const saveBtn = document.querySelector('button[onclick="saveR()"]');
+  let origText = '';
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    origText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '⏳ Menyimpan...';
   }
-  const txMon = el('txMonth'); if (txMon) txMon.value = date.slice(0, 7);
-  clrR();
-  if (curPage === 'transactions') filterTx(); else refresh();
+
+  try {
+    const mode = document.querySelector('input[name="smode"]:checked')?.value || 'single';
+    const accId = el('rAcc')?.value, date = el('rDate')?.value || today(), note = el('rNote')?.value.trim() || '';
+    const store = rData.store_name || 'Struk', rId = uid(), items = rData.items || [], cats = getCats();
+    const fCat = n => { const f = cats.find(c => c.name.toLowerCase().includes((n || '').toLowerCase())); return f ? f.id : 'c12'; };
+    
+    if (mode === 'single') {
+      await addTx({ type: 'expense', amount: Number(rData.total) || 0, date, category_id: fCat(items[0]?.category), account_id: accId, note: store + (note ? ' — ' + note : ''), receiptId: rId }, true);
+      toast('Tersimpan!', 'ok');
+    } else if (mode === 'peritem') {
+      for (const it of items) {
+        const price = Number(it.total_price) || 0;
+        if (price < 0 || isNaN(price)) continue;
+        await addTx({ type: 'expense', amount: price, date, category_id: fCat(it.category), account_id: accId, note: it.name, receiptId: rId }, true);
+      }
+      toast(items.length + ' transaksi tersimpan!', 'ok');
+    } else {
+      const grp = {}; 
+      items.forEach(it => { 
+        const k = it.category || 'Lainnya'; 
+        grp[k] = (grp[k] || 0) + (Number(it.total_price) || 0); 
+      });
+      for (const [cn, t] of Object.entries(grp)) {
+        if (t < 0 || isNaN(t)) continue;
+        await addTx({ type: 'expense', amount: t, date, category_id: fCat(cn), account_id: accId, note: store + ' — ' + cn, receiptId: rId }, true);
+      }
+      toast('Tersimpan per kategori!', 'ok');
+    }
+    const txMon = el('txMonth'); if (txMon) txMon.value = date.slice(0, 7);
+    clrR();
+    if (curPage === 'transactions') filterTx(); else refresh();
+  } catch (e) {
+    toast('Gagal menyimpan: ' + e.message, 'err');
+  } finally {
+    isSavingReceipt = false;
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = origText;
+    }
+  }
 }
 function svRHist(data) { const r = getRec(); r.unshift({ id: uid(), store: data.store_name, date: data.date || today(), total: data.total || 0, itemCount: (data.items || []).length }); sv(K.rec, r.slice(0, 50)); }
 function renderRHist() {

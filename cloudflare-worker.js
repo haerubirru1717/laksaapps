@@ -251,7 +251,22 @@ async function handleLinkTelegram(req, body, env) {
   if (!payload) return jsonRes({ error: "Token tidak valid" }, 401);
   const { telegram_id } = body || {};
   if (!telegram_id) return jsonRes({ error: "telegram_id diperlukan" }, 400);
-  await env.DB.prepare("UPDATE users SET telegram_id = ? WHERE id = ?").bind(String(telegram_id), payload.sub).run();
+  
+  const webUid = payload.sub;
+  const tgStr = String(telegram_id);
+
+  await env.DB.prepare("UPDATE users SET telegram_id = ? WHERE id = ?").bind(tgStr, webUid).run();
+
+  // Migrate existing data from Telegram ID (unlinked user context) to Web ID
+  const tables = ['transactions', 'accounts', 'categories', 'budgets', 'goals', 'bills', 'piutang', 'pending_scans', 'pending_texts', 'usage_logs', 'bot_messages'];
+  for (const table of tables) {
+    try {
+      await env.DB.prepare(`UPDATE ${table} SET user_id = ? WHERE user_id = ?`).bind(webUid, tgStr).run();
+    } catch (_) {
+      // Ignore unique/primary key conflicts (e.g. for seed categories like 'c1')
+    }
+  }
+
   return jsonRes({ status: "linked", telegram_id });
 }
 
@@ -441,8 +456,7 @@ export default {
             return new Response("Unauthorized", { status: 403 });
           }
         }
-        const body = await request.json();
-        // Deduplication: skip already-processed updates via atomic insert
+        // Deduplication: skip already-processed updates using atomic UNIQUE insert
         const updateId = body.update_id;
         if (updateId) {
           try {
@@ -450,8 +464,14 @@ export default {
               "INSERT INTO processed_updates (update_id) VALUES (?)"
             ).bind(updateId).run();
           } catch (e) {
-            // Already processed or processing (unique constraint violation)
-            return new Response("OK");
+            const msg = String(e.message || e || "").toUpperCase();
+            if (msg.includes("NO SUCH TABLE")) {
+              // Proceed if table doesn't exist yet (setup phase)
+              console.warn("Deduplication insert warning:", msg);
+            } else {
+              // Any other error (e.g. UNIQUE constraint failed or duplicate) means it is a duplicate
+              return new Response("OK");
+            }
           }
         }
         ctx.waitUntil(handleTelegram(body, env));
@@ -625,6 +645,7 @@ async function routeAPI(req, url, env) {
   if (path === "/accounts") {
     if (m === "GET")  return getAccounts(uid, env);
     if (m === "POST") return createAccount(uid, await req.json(), env);
+    if (m === "DELETE") return deleteAllAccounts(uid, env);
   }
   const accM = path.match(/^\/accounts\/([^/]+)$/);
   if (accM) {
@@ -636,6 +657,7 @@ async function routeAPI(req, url, env) {
   if (path === "/categories") {
     if (m === "GET")  return getCategories(uid, env);
     if (m === "POST") return createCategory(uid, await req.json(), env);
+    if (m === "DELETE") return deleteAllCategories(uid, env);
   }
   const catM = path.match(/^\/categories\/([^/]+)$/);
   if (catM && m === "DELETE") return deleteCategory(uid, catM[1], env);
@@ -644,6 +666,7 @@ async function routeAPI(req, url, env) {
   if (path === "/transactions") {
     if (m === "GET")  return getTransactions(uid, url, env);
     if (m === "POST") return createTransaction(uid, await req.json(), env);
+    if (m === "DELETE") return deleteAllTransactions(uid, env);
   }
   const txM = path.match(/^\/transactions\/([^/]+)$/);
   if (txM) {
@@ -713,7 +736,8 @@ async function handleTelegram(body, env) {
     const msg = body?.message;
     if (!msg) return;
 
-    const userId = String(msg.from.id);
+    const rawTgId = String(msg.from.id);
+    const userId = await resolveUserByTelegramId(rawTgId, env);
     const text   = (msg.text || "").trim();
 
     // Foto → scan struk
@@ -726,7 +750,7 @@ async function handleTelegram(body, env) {
     }
 
     if (text === "/start" || text === "/menu") { await sendMenu(chatId, userId, env); return; }
-    if (text === "/myid")    { await sendMyId(chatId, userId, msg.from.first_name, env); return; }
+    if (text === "/myid")    { await sendMyId(chatId, rawTgId, msg.from.first_name, env); return; }
     if (text === "/saldo")   { await sendSaldo(chatId, userId, env); return; }
     if (text === "/riwayat") { await sendRiwayat(chatId, userId, env); return; }
     if (text === "/tagihan") { await sendTagihan(chatId, userId, env); return; }
@@ -755,7 +779,8 @@ async function handleTelegram(body, env) {
 // ─────────────────────────────────────────────────────
 async function handleCallback(cb, env) {
   const chatId = cb.message.chat.id;
-  const userId = String(cb.from.id);
+  const rawTgId = String(cb.from.id);
+  const userId = await resolveUserByTelegramId(rawTgId, env);
   const data   = cb.data;
 
   const TOKEN = env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN;
@@ -774,7 +799,7 @@ async function handleCallback(cb, env) {
   if (data === "saldo")   { await sendSaldo(chatId, userId, env); return; }
   if (data === "riwayat") { await sendRiwayat(chatId, userId, env); return; }
   if (data === "tagihan") { await sendTagihan(chatId, userId, env); return; }
-  if (data === "myid")    { await sendMyId(chatId, userId, cb.from.first_name, env); return; }
+  if (data === "myid")    { await sendMyId(chatId, rawTgId, cb.from.first_name, env); return; }
 
   // Pilih rekening (fallback keyboard)
   if (data.startsWith("acc:")) { await handleAccPick(chatId, userId, data.slice(4), env); return; }
@@ -836,6 +861,9 @@ async function handleFreeText(chatId, userId, text, env) {
   const processingMid = await tgSend(chatId, "⏳ Memproses...", env);
   await trackBotMsg(chatId, processingMid, env);
 
+  // Generate idempotency key early (tied to user + text content)
+  const idemKey = crypto.randomUUID();
+
   // 1. Parse dengan AI
   const parsed = await parseWithGroq(text, env);
   if (!parsed || parsed._error) {
@@ -866,6 +894,9 @@ async function handleFreeText(chatId, userId, text, env) {
     accs = await dbAccounts(userId, env);
     await tgSend(chatId, `✅ Rekening *${accName}* dibuat otomatis.`, env);
   }
+
+  // Attach idempotency key to parsed object
+  parsed._idempotency_key = idemKey;
 
   // 3a. Transfer antar rekening — branch terpisah
   if (parsed.type === "transfer") {
@@ -913,16 +944,18 @@ async function handleAccPick(chatId, userId, accId, env) {
 async function saveTx(chatId, userId, parsed, acc, cat, rawText, env) {
   const id   = randomId();
   const date = parsed.date || todayStr();
+  const idemKey = parsed._idempotency_key || crypto.randomUUID();
 
-  await env.DB.prepare(`
-    INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'telegram')
+  const result = await env.DB.prepare(`
+    INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'telegram', ?)
   `).bind(
     id, userId, date, parsed.type, parsed.amount,
     parsed.note || "", parsed.store || null,
-    acc.id, cat?.id || null, rawText
+    acc.id, cat?.id || null, rawText, idemKey
   ).run();
 
+  if (!result.meta?.changes || result.meta.changes === 0) return;
   await adjustBalance(acc.id, parsed.type, parsed.amount, +1, env);
 
   const tx    = await getTxFull(id, env);
@@ -975,19 +1008,20 @@ async function saveTransfer(chatId, userId, parsed, fromAcc, toAcc, rawText, env
   const note    = parsed.note || `Transfer ${fromAcc.name} → ${toAcc.name}`;
   const idOut   = randomId();
   const idIn    = randomId();
+  const idemKey = parsed._idempotency_key || crypto.randomUUID();
 
-  await env.DB.prepare(`
-    INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
-    VALUES (?, ?, ?, 'expense', ?, ?, null, ?, null, ?, 'telegram')
-  `).bind(idOut, userId, date, parsed.amount, note, fromAcc.id, rawText).run();
+  const r1 = await env.DB.prepare(`
+    INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
+    VALUES (?, ?, ?, 'expense', ?, ?, null, ?, null, ?, 'telegram', ?)
+  `).bind(idOut, userId, date, parsed.amount, note, fromAcc.id, rawText, idemKey).run();
 
-  await env.DB.prepare(`
-    INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
-    VALUES (?, ?, ?, 'income', ?, ?, null, ?, null, ?, 'telegram')
-  `).bind(idIn, userId, date, parsed.amount, note, toAcc.id, rawText).run();
+  const r2 = await env.DB.prepare(`
+    INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
+    VALUES (?, ?, ?, 'income', ?, ?, null, ?, null, ?, 'telegram', ?)
+  `).bind(idIn, userId, date, parsed.amount, note, toAcc.id, rawText, idemKey + '_in').run();
 
-  await adjustBalance(fromAcc.id, "expense", parsed.amount, +1, env);
-  await adjustBalance(toAcc.id,   "income",  parsed.amount, +1, env);
+  if (r1.meta?.changes > 0) await adjustBalance(fromAcc.id, "expense", parsed.amount, +1, env);
+  if (r2.meta?.changes > 0) await adjustBalance(toAcc.id,   "income",  parsed.amount, +1, env);
 
   await tgSend(chatId,
     `🔄 *Transfer Tersimpan!*\n\n` +
@@ -1081,12 +1115,13 @@ async function handlePhoto(msg, chatId, userId, env) {
         const cat = resolveCategory(null, result.note || "topup", result.store, "income", filteredCats);
         const id = randomId();
         const date = result.date || todayStr();
-        await env.DB.prepare(`
-          INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
-          VALUES (?, ?, ?, 'income', ?, ?, ?, ?, ?, '[foto struk]', 'telegram')
-        `).bind(id, userId, date, result.total, "Top-up " + targetAcc.name, result.store || null, targetAcc.id, cat?.id || null).run();
+        const idemKey = crypto.randomUUID();
+        const insResult = await env.DB.prepare(`
+          INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
+          VALUES (?, ?, ?, 'income', ?, ?, ?, ?, ?, '[foto struk]', 'telegram', ?)
+        `).bind(id, userId, date, result.total, "Top-up " + targetAcc.name, result.store || null, targetAcc.id, cat?.id || null, idemKey).run();
         await saveTransactionItems(id, result.items, env);
-        await adjustBalance(targetAcc.id, "income", result.total, +1, env);
+        if (insResult.meta?.changes > 0) await adjustBalance(targetAcc.id, "income", result.total, +1, env);
 
         const mid = await tgSend(chatId,
           `💚 *Top-up Berhasil Dicatat!*\n\n` +
@@ -1119,13 +1154,14 @@ async function handlePhoto(msg, chatId, userId, env) {
     if (matchedAcc) {
       const id = randomId();
       const date = parsed.date || todayStr();
-      await env.DB.prepare(`
-        INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
-        VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, '[foto struk]', 'telegram')
-      `).bind(id, userId, date, parsed.amount, parsed.note || "", parsed.store || null, matchedAcc.id, cat?.id || null).run();
+      const idemKey = crypto.randomUUID();
+      const insResult = await env.DB.prepare(`
+        INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
+        VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, '[foto struk]', 'telegram', ?)
+      `).bind(id, userId, date, parsed.amount, parsed.note || "", parsed.store || null, matchedAcc.id, cat?.id || null, idemKey).run();
 
       await saveTransactionItems(id, result.items, env);
-      await adjustBalance(matchedAcc.id, "expense", parsed.amount, +1, env);
+      if (insResult.meta?.changes > 0) await adjustBalance(matchedAcc.id, "expense", parsed.amount, +1, env);
 
       let successMsg = `✅ *Tersimpan Otomatis!*\n`;
       successMsg += `_(Mencocokkan caption: *${matchedAcc.name}*)_\n\n`;
@@ -1212,13 +1248,14 @@ async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId
 
     // Simpan transaksi
     const txId = randomId();
-    await env.DB.prepare(`
-      INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
-      VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, '[foto struk]', 'telegram')
-    `).bind(txId, userId, draft.date, amount, draftNote, draft.store, accountId, cat?.id || null).run();
+    const idemKey = 'receipt_' + pendingId;
+    const insResult = await env.DB.prepare(`
+      INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
+      VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, '[foto struk]', 'telegram', ?)
+    `).bind(txId, userId, draft.date, amount, draftNote, draft.store, accountId, cat?.id || null, idemKey).run();
 
     await saveTransactionItems(txId, items, env);
-    await adjustBalance(accountId, "expense", amount, +1, env);
+    if (insResult.meta?.changes > 0) await adjustBalance(accountId, "expense", amount, +1, env);
 
     // Hapus pesan rincian struk (Pesan 1) agar chat tetap bersih
     if (rincianMsgId) await deleteTgMessage(chatId, rincianMsgId, env);
@@ -1565,7 +1602,7 @@ async function groqChat(messages, env, { models = PARSE_MODELS, maxTokens = 300,
       const data = await res.json();
       if (data.error) { lastError = `${model}: ${data.error.message}`; continue; }
       if (data.choices?.[0]?.message?.content) {
-        data.choices[0].message.content = data.choices[0].message.content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+        data.choices[0].message.content = data.choices[0].message.content.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
       }
       return { data, model };
     } catch (e) { lastError = `${model}: ${e.message}`; continue; }
@@ -1769,8 +1806,8 @@ async function handleAiChat(uid, body, env) {
       temperature: 0.8,
     });
     let content = data.choices?.[0]?.message?.content || "";
-    // Strip Qwen3 <think>...</think> reasoning blocks
-    content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    // Strip Qwen3 <think>...</think> reasoning blocks (handles missing closing tag safely)
+    content = content.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
     return jsonRes({ content, model });
   } catch (e) {
     return jsonRes({ error: "Semua model AI sedang sibuk. Coba lagi sebentar." }, 503);
@@ -2105,6 +2142,10 @@ async function setupDatabase(env) {
     // Create indexes for usage_logs
     await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_usage_user_feature_date ON usage_logs (user_id, feature, used_at)").run();
 
+    // Add idempotency_key column to transactions (idempotent migration)
+    await env.DB.prepare("ALTER TABLE transactions ADD COLUMN idempotency_key TEXT").run().catch(() => {});
+    await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_tx_idempotency ON transactions (idempotency_key) WHERE idempotency_key IS NOT NULL").run().catch(() => {});
+
     // Payment requests table
     await env.DB.prepare(`
       CREATE TABLE IF NOT EXISTS payment_requests (
@@ -2343,6 +2384,34 @@ async function getTransactions(uid, url, env) {
 async function createTransaction(uid, body, env) {
   const id = body.id || randomId();
   const date = body.date || todayStr();
+  const idempotencyKey = body.idempotency_key || null;
+
+  if (idempotencyKey) {
+    // Idempotent insert: silently ignores if this key was already used
+    const result = await env.DB.prepare(`
+      INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id, uid, date, body.type, body.amount,
+      body.note || "", body.store || null,
+      body.account_id, body.category_id || null,
+      body.raw_text || null, body.source || "web",
+      idempotencyKey
+    ).run();
+
+    if (!result.meta?.changes || result.meta.changes === 0) {
+      // Duplicate — return the existing row id without touching balance
+      const existing = await env.DB.prepare(
+        "SELECT id FROM transactions WHERE idempotency_key = ? AND user_id = ?"
+      ).bind(idempotencyKey, uid).first();
+      return jsonRes({ id: existing?.id || id, status: "duplicate" });
+    }
+
+    await adjustBalance(body.account_id, body.type, body.amount, +1, env);
+    return jsonRes({ id, status: "created" });
+  }
+
+  // Legacy path (no idempotency key — still works)
   await env.DB.prepare(`
     INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -2388,6 +2457,27 @@ async function deleteTransaction(uid, id, env) {
     await env.DB.prepare("DELETE FROM transaction_items WHERE transaction_id = ?").bind(id).run().catch(() => {});
     await env.DB.prepare("DELETE FROM transactions WHERE id = ? AND user_id = ?").bind(id, uid).run();
   }
+  return jsonRes({ status: "deleted" });
+}
+
+async function deleteAllTransactions(uid, env) {
+  // Reverse balance adjustments for all transactions
+  const { results: txs } = await env.DB.prepare("SELECT * FROM transactions WHERE user_id = ?").bind(uid).all();
+  for (const tx of txs) {
+    await adjustBalance(tx.account_id, tx.type, tx.amount, -1, env).catch(() => {});
+  }
+  await env.DB.prepare("DELETE FROM transaction_items WHERE transaction_id IN (SELECT id FROM transactions WHERE user_id = ?)").bind(uid).run().catch(() => {});
+  await env.DB.prepare("DELETE FROM transactions WHERE user_id = ?").bind(uid).run();
+  return jsonRes({ status: "deleted", count: txs.length });
+}
+
+async function deleteAllAccounts(uid, env) {
+  await env.DB.prepare("DELETE FROM accounts WHERE user_id = ?").bind(uid).run();
+  return jsonRes({ status: "deleted" });
+}
+
+async function deleteAllCategories(uid, env) {
+  await env.DB.prepare("DELETE FROM categories WHERE user_id = ?").bind(uid).run();
   return jsonRes({ status: "deleted" });
 }
 
@@ -2755,11 +2845,24 @@ async function handleAdminBot(body, env) {
 
   const chatId = msg.chat.id;
   const fromId = String(msg.from.id);
-  const text = (msg.text || '').trim();
+  const rawText = (msg.text || '').trim();
   const ADMIN_TOKEN = env.ADMIN_BOT_TOKEN;
   const ADMIN_ID = env.ADMIN_TELEGRAM_ID;
 
   if (!ADMIN_TOKEN) return;
+
+  // Normalize command: strip bot username suffix (e.g. /command@botname) and lowercase command prefix
+  let text = rawText;
+  if (text.startsWith('/')) {
+    const spaceIndex = text.indexOf(' ');
+    let cmd = spaceIndex === -1 ? text : text.slice(0, spaceIndex);
+    const rest = spaceIndex === -1 ? '' : text.slice(spaceIndex);
+    const atIndex = cmd.indexOf('@');
+    if (atIndex !== -1) {
+      cmd = cmd.slice(0, atIndex);
+    }
+    text = (cmd.toLowerCase() + rest).trim();
+  }
 
   // Whitelist: only admin can use this bot
   if (ADMIN_ID && fromId !== ADMIN_ID) {
@@ -2786,7 +2889,7 @@ async function handleAdminBot(body, env) {
 
   try {
     if (text === '/start' || text === '/help') {
-      await adminSend(chatId, `🔐 *Admin Panel Laksa*\n\n*Perintah tersedia:*\n\n📋 *User Management*\n/users — List semua user\n/search email — Cari user\n/user email — Detail user\n/ban email — Ban user\n/unban email — Unban user\n/resetpw email password — Reset password user\n/deleteuser email — Hapus akun permanen\n\n💎 *Premium Management*\n/approve email durasi — Aktifkan premium\n  Durasi: 30d, 90d, 365d, lifetime\n/extend email durasi — Perpanjang premium\n/revoke email — Cabut premium\n/pending — Request upgrade pending\n/receipt email — Generate bukti (copas WA)\n\n💰 *Pricing & QRIS*\n/pricing — Lihat harga saat ini\n/setprice id harga — Update harga\n/setoriginal id harga — Set harga coret\n  ID: p30, p90, p365, p0\n/setqris — Upload gambar QRIS (kirim foto)\n\n🎫 *Kupon*\n/coupon list — Lihat semua kupon\n/coupon create KODE tipe nilai\n/coupon delete KODE — Hapus kupon\n\n📊 *Statistik*\n/stats — Overview dashboard\n/revenue — Revenue summary\n\n📢 *Broadcast*\n/broadcast pesan — Kirim ke semua user\n\n_Contoh:_\n/approve andi@gmail.com 30d\n/setprice p30 29000\n/receipt budi@gmail.com`, ADMIN_TOKEN);
+      await adminSend(chatId, `🔐 *Admin Panel Laksa*\n\n*Perintah tersedia:*\n\n📋 *User Management*\n/users — List semua user\n/search email — Cari user\n/user email — Detail user\n/ban email — Ban user\n/unban email — Unban user\n/resetpw email password — Reset password user\n/deleteuser email — Hapus akun permanen\n\n💎 *Premium Management*\n/approve email durasi — Aktifkan premium\n  Durasi: 30d, 90d, 365d, lifetime\n/extend email durasi — Perpanjang premium\n/revoke email — Cabut premium\n/pending — Request upgrade pending\n/receipt email — Generate bukti (copas WA)\n\n💰 *Pricing & QRIS*\n/pricing — Lihat harga saat ini\n/setprice id harga — Update harga\n/setoriginal id harga — Set harga coret\n  ID: p30, p90, p365, p0\n/setqris — Upload gambar QRIS (kirim foto)\n\n🎫 *Kupon*\n/coupon list — Lihat semua kupon\n/coupon create KODE tipe nilai\n/coupon delete KODE — Hapus kupon\n\n📊 *Statistik*\n/stats — Overview dashboard\n/revenue — Revenue summary\n\n_Contoh:_\n/approve andi@gmail.com 30d\n/setprice p30 29000\n/receipt budi@gmail.com`, ADMIN_TOKEN);
       return;
     }
 
@@ -3087,26 +3190,7 @@ async function handleAdminBot(body, env) {
       return;
     }
 
-    if (text === '/broadcast') { await adminSend(chatId, "📝 Format: /broadcast pesan yang ingin dikirim", ADMIN_TOKEN); return; }
-    if (text.startsWith('/broadcast ')) {
-      const message = text.slice(11).trim();
-      if (!message) { await adminSend(chatId, "📝 Format: /broadcast pesan yang ingin dikirim", ADMIN_TOKEN); return; }
-      const users = await env.DB.prepare("SELECT telegram_id FROM users WHERE telegram_id IS NOT NULL AND is_banned = 0").all();
-      const mainToken = env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN;
-      if (!mainToken) { await adminSend(chatId, "❌ TELEGRAM_TOKEN tidak tersedia.", ADMIN_TOKEN); return; }
-      let sent = 0;
-      for (const u of (users.results || [])) {
-        try {
-          await fetch(`https://api.telegram.org/bot${mainToken}/sendMessage`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: u.telegram_id, text: message, parse_mode: 'Markdown' })
-          });
-          sent++;
-        } catch (_) {}
-      }
-      await adminSend(chatId, `📢 *Broadcast terkirim!*\n\nBerhasil: ${sent}/${users.results?.length || 0} user`, ADMIN_TOKEN);
-      return;
-    }
+
 
     // /setqris — admin sends photo to set QRIS image
     if (text === '/setqris') {

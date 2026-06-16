@@ -278,7 +278,8 @@ async function doRestore(ev) {
         api('POST', '/transactions', {
           type: tx.type, amount: tx.amount, date: tx.date,
           account_id: tx.account_id, category_id: tx.category_id,
-          note: tx.note || '', store: tx.store || null, source: 'restore'
+          note: tx.note || '', store: tx.store || null, source: 'restore',
+          idempotency_key: tx.id || crypto.randomUUID()
         })
       ));
       results.forEach(r => r.status === 'fulfilled' ? txOk++ : txFail++);
@@ -346,21 +347,10 @@ async function resetAll() {
   }
   showLoadingOverlay(true);
   try {
-    // Hapus semua transaksi di D1
-    const txs = getTx();
-    for (const tx of txs) {
-      try { await api('DELETE', `/transactions/${tx.id}`); } catch (e) { }
-    }
-    // Hapus semua rekening di D1
-    const accs = getAccs();
-    for (const a of accs) {
-      try { await api('DELETE', `/accounts/${a.id}`); } catch (e) { }
-    }
-    // Hapus semua kategori di D1
-    const cats = getCats();
-    for (const c of cats) {
-      try { await api('DELETE', `/categories/${c.id}`); } catch (e) { }
-    }
+    // Bulk delete semua data di D1 (server-side) — termasuk bulan lama
+    await api('DELETE', '/transactions');
+    await api('DELETE', '/accounts');
+    await api('DELETE', '/categories');
     // Hapus semua data lokal
     Object.values(K).forEach(k => localStorage.removeItem(k));
     toast('Semua data dihapus.', 'info');

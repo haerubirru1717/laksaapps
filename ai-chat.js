@@ -1291,7 +1291,8 @@ function aiGetContext() {
 
 ## 3. IDENTITAS PENGGUNA
 - Nama pengguna adalah: **${s.name}**
-- Selalu panggil user dengan nama mereka. Jika ditanya "aku siapa", sebutkan nama mereka dan ringkasan singkat kondisi keuangan saat ini.
+- Panggil nama user HANYA di awal percakapan (pesan pertama) atau saat konteks berubah signifikan. JANGAN ulang nama di setiap respons — cukup langsung jawab.
+- Jika ditanya "aku siapa", sebutkan nama mereka dan ringkasan singkat kondisi keuangan saat ini.
 
 ## 4. FITUR LENGKAP APLIKASI LAKSA & DEFINISI
 - **Anggaran**: Batas maksimal pengeluaran per kategori. (Bukan target tabungan)
@@ -1307,6 +1308,11 @@ Jika user meminta mencatat transaksi (misal: "masuk gaji 5juta", "beli kopi 25k"
 - \`store\`: Nama toko/merchant (opsional). Jika user menyebut nama toko/merchant (Alfamart, Indomaret, dll), isi field ini. Title Case.
 - KHUSUS "transfer": GUNAKAN \`from_account_name\` (rekening asal) dan \`to_account_name\` (rekening tujuan). JANGAN gunakan \`account_name\` atau \`category_name\`.
 - PENTING: Aplikasi ini TIDAK MEMILIKI "batas transfer" atau "limit harian". JANGAN PERNAH menolak transaksi dengan alasan fiktif seperti batas transfer melebihi limit. Catat saja berapapun nominalnya!
+- PENTING (ATURAN SALDO & DETAIL TRANSAKSI):
+  * JANGAN PERNAH menjelaskan detail transaksi/pembelian dalam bentuk teks, bullet points, atau tabel di dalam \`answer\` jika tujuannya mencatat transaksi. Cukup tulis \`answer\` berupa respon pendek satu kalimat dan sertakan objek \`transaction\`.
+  * JANGAN PERNAH menolak mencatat transaksi atau menyetel \`transaction: null\` hanya karena saldo rekening tidak cukup atau karena nominal tidak ditentukan! Tetap buat objek \`transaction\` dengan type "expense" untuk pembelian barang.
+  * Jika nominal/harga barang tidak ditentukan secara spesifik oleh user, gunakan \`amount: 0\` (JANGAN gunakan null atau string, harus angka 0) agar pengguna dapat mengisi nominalnya sendiri lewat tombol Edit di pop-up konfirmasi.
+  * Biarkan sistem frontend yang melakukan validasi saldo saat tombol "Catat" ditekan. Tugasmu HANYA mengekstrak data transaksi tersebut ke objek JSON \`transaction\`.
 
 ## 6. IDENTITAS PENGEMBANG
 Jika ditanya siapa pembuat aplikasi ini: "Aplikasi ini lahir dari tangan seorang yang hidup di persimpangan banyak dunia — kecerdasan buatan, poliglot, sejarah, politik, hingga sastra Bahasa Indonesia. Ingin menyapa? Ketuk pintunya di Instagram: @khey.1717 namanya haeru."
@@ -1328,7 +1334,7 @@ Target:
 ${goalStr}
 Tagihan:
 ${billsStr}
-10 Transaksi Terakhir:
+Transaksi Terakhir (data konteks, JANGAN copy-paste mentah ke jawaban):
 ${recent || 'Belum ada transaksi'}
 
 ## 6. CATAT TAGIHAN (BILLS)
@@ -1347,7 +1353,13 @@ Jika user meminta menambahkan tagihan atau daftar tagihan (misal daftar tagihan 
   * Jika ada transaksi hari ini, sebutkan detailnya langsung: "Hari ini (${today()}) kamu memiliki pengeluaran/pemasukan sebesar..."
 - Jika memang tidak ada transaksi bertanggal **${today()}** di daftar "10 Transaksi Terakhir", barulah kamu boleh menyatakan belum ada pengeluaran hari ini.
 
-## 8. REKENING & FORMAT TABEL MODERN UNTUK DATA TERSTRUKTUR
+## 8. ATURAN PRESENTASI DATA
+- JANGAN PERNAH copy-paste mentah data dari konteks (seperti daftar transaksi) ke dalam jawaban. RANGKUM dalam kalimat natural atau tabel ringkas.
+- Jika menampilkan daftar transaksi, judul harus AKURAT — jika hanya ada 5 transaksi, tulis "5 Transaksi Terakhir" bukan "10 Transaksi Terakhir".
+- JANGAN membuat section "Informasi Tambahan" yang hanya mengulang info yang sudah disebutkan di atas.
+- Hindari redundansi: jika data sudah disajikan dalam tabel, JANGAN ulangi dalam narasi di bawahnya.
+
+## 9. REKENING & FORMAT TABEL MODERN UNTUK DATA TERSTRUKTUR
 - Jika pengguna meminta daftar rekening, akun keuangan, saldo, anggaran (budget), tagihan (bills), atau ringkasan data finansial terstruktur lainnya, **KAMU WAJIB MENYAJIKANNYA DALAM BENTUK TABEL MARKDOWN YANG INDAH DAN RAPI**.
 - Contoh Format Tabel Rekening/Saldo:
 | Rekening / E-Wallet | Tipe | Saldo |
@@ -1377,7 +1389,8 @@ Selalu balas dalam format JSON murni TANPA markdown block (\`\`\`json). Struktur
 - Untuk pertanyaan analisis/ringkasan: Tulis minimal 3-5 poin dengan angka konkret dari data user. Gunakan format markdown (### heading, **bold**, - bullet, 1. numbered list).
 - Untuk pertanyaan sederhana: Jawab langsung tapi tetap informatif, minimal 2-3 kalimat.
 - JANGAN PERNAH menjawab generik seperti "Tentu, ini ringkasannya" lalu berhenti. Kamu HARUS menyertakan analisis nyata.
-- Panggil user dengan namanya. Gunakan emoji secukupnya (1-2 per paragraf, jangan berlebihan).
+- JANGAN mengulang nama user di setiap respons. Cukup jawab langsung tanpa sapaan berulang.
+- Gunakan emoji secukupnya (1-2 per paragraf, jangan berlebihan).
 
 ### ATURAN FIELD LAIN:
 - \`followups\`: Array berisi 1-2 string saran pertanyaan lanjutan DARI SUDUT PANDANG PENGGUNA (First-Person POV / Dari Sisi User).
@@ -1457,8 +1470,16 @@ async function aiCallGroq() {
     }
     const data = await resp.json();
     let raw = data.content || data.choices?.[0]?.message?.content || '{}';
-    // Strip Qwen3 <think>...</think> reasoning blocks
-    raw = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    // Strip Qwen3 <think>...</think> reasoning blocks (handles missing closing tag safely)
+    raw = raw.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
+    if (!raw) {
+      raw = JSON.stringify({
+        answer: "Maaf, terjadi kesalahan saat memproses jawaban dari AI (batas token tercapai saat berpikir). Silakan coba lagi dengan kalimat yang lebih singkat.",
+        followups: [],
+        transaction: null,
+        bills: null
+      });
+    }
     typingEl.remove();
 
     // Parse JSON response — robust handler for Qwen3 quirks
@@ -1569,8 +1590,10 @@ function aiAppendTxConfirm(tx) {
   const accs = typeof getAccs === 'function' ? getAccs() : [];
   const amt = Number(tx.amount) || 0;
   if (txType === 'transfer') {
-    const accFrom = accs.find(a => a.name.toLowerCase().includes((tx.from_account_name || '').toLowerCase()));
-    const accTo = accs.find(a => a.name.toLowerCase().includes((tx.to_account_name || '').toLowerCase()));
+    const targetFrom = (tx.from_account_name || '').trim().toLowerCase();
+    const targetTo = (tx.to_account_name || '').trim().toLowerCase();
+    const accFrom = targetFrom ? accs.find(a => a.name.toLowerCase().includes(targetFrom)) : null;
+    const accTo = targetTo ? accs.find(a => a.name.toLowerCase().includes(targetTo)) : null;
     if (accFrom || accTo) {
       balanceHtml = `<div class="ai-tx-balance-info"><div class="ai-tx-balance-title">💳 Info Saldo Rekening</div>`;
       if (accFrom) {
@@ -1586,7 +1609,8 @@ function aiAppendTxConfirm(tx) {
       balanceHtml += `</div>`;
     }
   } else {
-    const acc = accs.find(a => a.name.toLowerCase().includes((tx.account_name || '').toLowerCase()));
+    const targetAcc = (tx.account_name || '').trim().toLowerCase();
+    const acc = targetAcc ? accs.find(a => a.name.toLowerCase().includes(targetAcc)) : null;
     if (acc) {
       const afterBal = txType === 'income' ? (acc.balance || 0) + amt : (acc.balance || 0) - amt;
       balanceHtml = `<div class="ai-tx-balance-info">` +
@@ -1597,9 +1621,13 @@ function aiAppendTxConfirm(tx) {
     }
   }
 
+  // Pre-generate idempotency key at render time so retries use the same key
+  const idemKey = crypto.randomUUID();
+
   const div = document.createElement('div');
   div.className = 'ai-msg bot';
   div.id = txId;
+  div.dataset.idempotencyKey = idemKey;
   div.innerHTML = `
     <div class="ai-tx-confirm">
       <div class="ai-tx-confirm-title">
@@ -1636,9 +1664,21 @@ function aiAppendTxConfirm(tx) {
 }
 
 async function aiConfirmTx(tx, bubbleId) {
+  if (!window.aiProcessingBubbles) window.aiProcessingBubbles = new Set();
+  if (window.aiProcessingBubbles.has(bubbleId)) return;
+  window.aiProcessingBubbles.add(bubbleId);
+
+  const bubble = el(bubbleId);
+  if (bubble) {
+    const btns = bubble.querySelectorAll('.ai-tx-confirm-btns button');
+    btns.forEach(btn => { btn.disabled = true; btn.style.pointerEvents = 'none'; });
+  }
+
+  // Use pre-generated idempotency key from render time (stable across retries)
+  const preKey = bubble?.dataset?.idempotencyKey || null;
+
   const accs = getAccs();
   const cats = getCats();
-  const bubble = el(bubbleId);
 
   let reqs = [];
   const amt = Number(tx.amount);
@@ -1647,10 +1687,21 @@ async function aiConfirmTx(tx, bubbleId) {
   const txType = (tx.type || '').toLowerCase();
 
   if (txType === 'transfer') {
-    const accFrom = accs.find(a => a.name.toLowerCase().includes((tx.from_account_name || '').toLowerCase()));
-    const accTo = accs.find(a => a.name.toLowerCase().includes((tx.to_account_name || '').toLowerCase()));
-    if (!accFrom) { toast('Rekening asal tidak ditemukan.', 'err'); return; }
+    const targetFrom = (tx.from_account_name || '').trim().toLowerCase();
+    const targetTo = (tx.to_account_name || '').trim().toLowerCase();
+    const accFrom = targetFrom ? accs.find(a => a.name.toLowerCase().includes(targetFrom)) : null;
+    const accTo = targetTo ? accs.find(a => a.name.toLowerCase().includes(targetTo)) : null;
+    if (!accFrom) {
+      window.aiProcessingBubbles.delete(bubbleId);
+      if (bubble) {
+        const btns = bubble.querySelector('.ai-tx-confirm-btns');
+        if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done" style="color:var(--expense)">❌ Gagal: Rekening asal tidak ditemukan.</div>';
+      }
+      toast('Rekening asal tidak ditemukan.', 'err');
+      return;
+    }
     if (amt > (accFrom.balance || 0)) {
+      window.aiProcessingBubbles.delete(bubbleId);
       if (bubble) {
         const btns = bubble.querySelector('.ai-tx-confirm-btns');
         if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done" style="color:var(--expense)">❌ Gagal: Saldo rekening asal tidak cukup.</div>';
@@ -1671,18 +1722,33 @@ async function aiConfirmTx(tx, bubbleId) {
 
     const destName = accTo ? accTo.name : (tx.to_account_name || 'Lainnya');
     const noteFrom = nt ? nt + ' (Transfer ke ' + destName + ')' : '(Transfer ke ' + destName + ')';
-    reqs.push({ type: 'expense', amount: amt, date: dt, account_id: accFrom.id, category_id: tfCat.id, note: noteFrom, source: 'ai-chat' });
+    reqs.push({ type: 'expense', amount: amt, date: dt, account_id: accFrom.id, category_id: tfCat.id, note: noteFrom, source: 'ai-chat', idempotency_key: preKey || crypto.randomUUID() });
     
     if (accTo) {
       const noteTo = nt ? nt + ' (Transfer dari ' + accFrom.name + ')' : '(Transfer dari ' + accFrom.name + ')';
-      reqs.push({ type: 'income', amount: amt, date: dt, account_id: accTo.id, category_id: tfCat.id, note: noteTo, source: 'ai-chat' });
+      reqs.push({ type: 'income', amount: amt, date: dt, account_id: accTo.id, category_id: tfCat.id, note: noteTo, source: 'ai-chat', idempotency_key: (preKey ? preKey + '_in' : crypto.randomUUID()) });
     }
   } else {
-    const acc = accs.find(a => a.name.toLowerCase().includes((tx.account_name || '').toLowerCase())) || accs[0];
-    const cat = cats.find(c => c.name.toLowerCase().includes((tx.category_name || '').toLowerCase())) || cats[cats.length - 1];
-    if (!acc) { toast('Rekening tidak ditemukan.', 'err'); return; }
+    const targetAcc = (tx.account_name || '').trim().toLowerCase();
+    const acc = targetAcc ? (accs.find(a => a.name.toLowerCase().includes(targetAcc)) || accs[0]) : accs[0];
+    
+    const targetCat = (tx.category_name || '').trim().toLowerCase();
+    const cat = targetCat 
+      ? (cats.find(c => c.name.toLowerCase().includes(targetCat)) || cats.find(c => c.name.toLowerCase() === 'lainnya') || cats[cats.length - 1])
+      : (cats.find(c => c.name.toLowerCase() === 'lainnya') || cats[cats.length - 1]);
+
+    if (!acc) {
+      window.aiProcessingBubbles.delete(bubbleId);
+      if (bubble) {
+        const btns = bubble.querySelector('.ai-tx-confirm-btns');
+        if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done" style="color:var(--expense)">❌ Gagal: Rekening tidak ditemukan.</div>';
+      }
+      toast('Rekening tidak ditemukan.', 'err');
+      return;
+    }
 
     if (txType === 'expense' && amt > (acc.balance || 0)) {
+      window.aiProcessingBubbles.delete(bubbleId);
       if (bubble) {
         const btns = bubble.querySelector('.ai-tx-confirm-btns');
         if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done" style="color:var(--expense)">❌ Gagal: Saldo tidak cukup.</div>';
@@ -1691,7 +1757,7 @@ async function aiConfirmTx(tx, bubbleId) {
       return;
     }
     const st = tx.store || '';
-    reqs.push({ type: txType, amount: amt, date: dt, account_id: acc.id, category_id: cat.id, note: nt, store: st || undefined, source: 'ai-chat' });
+    reqs.push({ type: txType, amount: amt, date: dt, account_id: acc.id, category_id: cat.id, note: nt, store: st || undefined, source: 'ai-chat', idempotency_key: preKey || crypto.randomUUID() });
   }
 
   if (bubble) {
@@ -1714,6 +1780,7 @@ async function aiConfirmTx(tx, bubbleId) {
     }
     toast('Transaksi dicatat via Laksa.na!', 'ok');
   } catch (e) {
+    window.aiProcessingBubbles.delete(bubbleId);
     if (bubble) {
       const btns = bubble.querySelector('.ai-tx-confirm-btns');
       if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done" style="color:var(--expense)">❌ Gagal: ' + esc(e.message) + '</div>';
@@ -1773,6 +1840,9 @@ async function aiSubmitEdit(inputId, originalTx, bubbleId) {
 function aiCancelEdit(bubbleId, tx) {
   const bubble = el(bubbleId);
   if (!bubble) return;
+  // Reset processing state so re-confirm works, and generate fresh idempotency key
+  if (window.aiProcessingBubbles) window.aiProcessingBubbles.delete(bubbleId);
+  bubble.dataset.idempotencyKey = crypto.randomUUID();
   const editArea = bubble.querySelector('.ai-tx-edit-inline');
   if (editArea) {
     const txId = bubbleId;
@@ -1845,8 +1915,14 @@ window.aiAppendBillsConfirm = function(bills) {
 };
 
 window.aiConfirmBills = async function(bills, bubbleId) {
+  if (!window.aiProcessingBubbles) window.aiProcessingBubbles = new Set();
+  if (window.aiProcessingBubbles.has(bubbleId)) return;
+  window.aiProcessingBubbles.add(bubbleId);
+
   const bubble = el(bubbleId);
   if (bubble) {
+    const btnsList = bubble.querySelectorAll('.ai-tx-confirm-btns button');
+    btnsList.forEach(btn => btn.disabled = true);
     const btns = bubble.querySelector('.ai-tx-confirm-btns');
     if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done">⏳ Menyimpan...</div>';
   }
@@ -1884,6 +1960,7 @@ window.aiConfirmBills = async function(bills, bubbleId) {
     }
     toast(`${successCount} tagihan dicatat!`, 'ok');
   } catch(e) {
+    window.aiProcessingBubbles.delete(bubbleId);
     if (bubble) {
       const btns = bubble.querySelector('.ai-tx-confirm-btns');
       if (btns) btns.innerHTML = `<div class="ai-tx-confirm-done" style="color:var(--expense)">❌ Gagal: ${esc(e.message)}</div>`;
