@@ -251,7 +251,22 @@ async function handleLinkTelegram(req, body, env) {
   if (!payload) return jsonRes({ error: "Token tidak valid" }, 401);
   const { telegram_id } = body || {};
   if (!telegram_id) return jsonRes({ error: "telegram_id diperlukan" }, 400);
-  await env.DB.prepare("UPDATE users SET telegram_id = ? WHERE id = ?").bind(String(telegram_id), payload.sub).run();
+  
+  const webUid = payload.sub;
+  const tgStr = String(telegram_id);
+
+  await env.DB.prepare("UPDATE users SET telegram_id = ? WHERE id = ?").bind(tgStr, webUid).run();
+
+  // Migrate existing data from Telegram ID (unlinked user context) to Web ID
+  const tables = ['transactions', 'accounts', 'categories', 'budgets', 'goals', 'bills', 'piutang', 'pending_scans', 'pending_texts', 'usage_logs', 'bot_messages'];
+  for (const table of tables) {
+    try {
+      await env.DB.prepare(`UPDATE ${table} SET user_id = ? WHERE user_id = ?`).bind(webUid, tgStr).run();
+    } catch (_) {
+      // Ignore unique/primary key conflicts (e.g. for seed categories like 'c1')
+    }
+  }
+
   return jsonRes({ status: "linked", telegram_id });
 }
 
@@ -717,7 +732,8 @@ async function handleTelegram(body, env) {
     const msg = body?.message;
     if (!msg) return;
 
-    const userId = String(msg.from.id);
+    const rawTgId = String(msg.from.id);
+    const userId = await resolveUserByTelegramId(rawTgId, env);
     const text   = (msg.text || "").trim();
 
     // Foto → scan struk
@@ -730,7 +746,7 @@ async function handleTelegram(body, env) {
     }
 
     if (text === "/start" || text === "/menu") { await sendMenu(chatId, userId, env); return; }
-    if (text === "/myid")    { await sendMyId(chatId, userId, msg.from.first_name, env); return; }
+    if (text === "/myid")    { await sendMyId(chatId, rawTgId, msg.from.first_name, env); return; }
     if (text === "/saldo")   { await sendSaldo(chatId, userId, env); return; }
     if (text === "/riwayat") { await sendRiwayat(chatId, userId, env); return; }
     if (text === "/tagihan") { await sendTagihan(chatId, userId, env); return; }
@@ -759,7 +775,8 @@ async function handleTelegram(body, env) {
 // ─────────────────────────────────────────────────────
 async function handleCallback(cb, env) {
   const chatId = cb.message.chat.id;
-  const userId = String(cb.from.id);
+  const rawTgId = String(cb.from.id);
+  const userId = await resolveUserByTelegramId(rawTgId, env);
   const data   = cb.data;
 
   const TOKEN = env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN;
@@ -778,7 +795,7 @@ async function handleCallback(cb, env) {
   if (data === "saldo")   { await sendSaldo(chatId, userId, env); return; }
   if (data === "riwayat") { await sendRiwayat(chatId, userId, env); return; }
   if (data === "tagihan") { await sendTagihan(chatId, userId, env); return; }
-  if (data === "myid")    { await sendMyId(chatId, userId, cb.from.first_name, env); return; }
+  if (data === "myid")    { await sendMyId(chatId, rawTgId, cb.from.first_name, env); return; }
 
   // Pilih rekening (fallback keyboard)
   if (data.startsWith("acc:")) { await handleAccPick(chatId, userId, data.slice(4), env); return; }
@@ -2748,11 +2765,24 @@ async function handleAdminBot(body, env) {
 
   const chatId = msg.chat.id;
   const fromId = String(msg.from.id);
-  const text = (msg.text || '').trim();
+  const rawText = (msg.text || '').trim();
   const ADMIN_TOKEN = env.ADMIN_BOT_TOKEN;
   const ADMIN_ID = env.ADMIN_TELEGRAM_ID;
 
   if (!ADMIN_TOKEN) return;
+
+  // Normalize command: strip bot username suffix (e.g. /command@botname) and lowercase command prefix
+  let text = rawText;
+  if (text.startsWith('/')) {
+    const spaceIndex = text.indexOf(' ');
+    let cmd = spaceIndex === -1 ? text : text.slice(0, spaceIndex);
+    const rest = spaceIndex === -1 ? '' : text.slice(spaceIndex);
+    const atIndex = cmd.indexOf('@');
+    if (atIndex !== -1) {
+      cmd = cmd.slice(0, atIndex);
+    }
+    text = (cmd.toLowerCase() + rest).trim();
+  }
 
   // Whitelist: only admin can use this bot
   if (ADMIN_ID && fromId !== ADMIN_ID) {
@@ -2779,7 +2809,7 @@ async function handleAdminBot(body, env) {
 
   try {
     if (text === '/start' || text === '/help') {
-      await adminSend(chatId, `🔐 *Admin Panel Laksa*\n\n*Perintah tersedia:*\n\n📋 *User Management*\n/users — List semua user\n/search email — Cari user\n/user email — Detail user\n/ban email — Ban user\n/unban email — Unban user\n/resetpw email password — Reset password user\n/deleteuser email — Hapus akun permanen\n\n💎 *Premium Management*\n/approve email durasi — Aktifkan premium\n  Durasi: 30d, 90d, 365d, lifetime\n/extend email durasi — Perpanjang premium\n/revoke email — Cabut premium\n/pending — Request upgrade pending\n/receipt email — Generate bukti (copas WA)\n\n💰 *Pricing & QRIS*\n/pricing — Lihat harga saat ini\n/setprice id harga — Update harga\n/setoriginal id harga — Set harga coret\n  ID: p30, p90, p365, p0\n/setqris — Upload gambar QRIS (kirim foto)\n\n🎫 *Kupon*\n/coupon list — Lihat semua kupon\n/coupon create KODE tipe nilai\n/coupon delete KODE — Hapus kupon\n\n📊 *Statistik*\n/stats — Overview dashboard\n/revenue — Revenue summary\n\n📢 *Broadcast*\n/broadcast pesan — Kirim ke semua user\n\n_Contoh:_\n/approve andi@gmail.com 30d\n/setprice p30 29000\n/receipt budi@gmail.com`, ADMIN_TOKEN);
+      await adminSend(chatId, `🔐 *Admin Panel Laksa*\n\n*Perintah tersedia:*\n\n📋 *User Management*\n/users — List semua user\n/search email — Cari user\n/user email — Detail user\n/ban email — Ban user\n/unban email — Unban user\n/resetpw email password — Reset password user\n/deleteuser email — Hapus akun permanen\n\n💎 *Premium Management*\n/approve email durasi — Aktifkan premium\n  Durasi: 30d, 90d, 365d, lifetime\n/extend email durasi — Perpanjang premium\n/revoke email — Cabut premium\n/pending — Request upgrade pending\n/receipt email — Generate bukti (copas WA)\n\n💰 *Pricing & QRIS*\n/pricing — Lihat harga saat ini\n/setprice id harga — Update harga\n/setoriginal id harga — Set harga coret\n  ID: p30, p90, p365, p0\n/setqris — Upload gambar QRIS (kirim foto)\n\n🎫 *Kupon*\n/coupon list — Lihat semua kupon\n/coupon create KODE tipe nilai\n/coupon delete KODE — Hapus kupon\n\n📊 *Statistik*\n/stats — Overview dashboard\n/revenue — Revenue summary\n\n_Contoh:_\n/approve andi@gmail.com 30d\n/setprice p30 29000\n/receipt budi@gmail.com`, ADMIN_TOKEN);
       return;
     }
 
@@ -3080,26 +3110,7 @@ async function handleAdminBot(body, env) {
       return;
     }
 
-    if (text === '/broadcast') { await adminSend(chatId, "📝 Format: /broadcast pesan yang ingin dikirim", ADMIN_TOKEN); return; }
-    if (text.startsWith('/broadcast ')) {
-      const message = text.slice(11).trim();
-      if (!message) { await adminSend(chatId, "📝 Format: /broadcast pesan yang ingin dikirim", ADMIN_TOKEN); return; }
-      const users = await env.DB.prepare("SELECT telegram_id FROM users WHERE telegram_id IS NOT NULL AND is_banned = 0").all();
-      const mainToken = env.TELEGRAM_TOKEN || env.TELEGRAM_BOT_TOKEN;
-      if (!mainToken) { await adminSend(chatId, "❌ TELEGRAM_TOKEN tidak tersedia.", ADMIN_TOKEN); return; }
-      let sent = 0;
-      for (const u of (users.results || [])) {
-        try {
-          await fetch(`https://api.telegram.org/bot${mainToken}/sendMessage`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: u.telegram_id, text: message, parse_mode: 'Markdown' })
-          });
-          sent++;
-        } catch (_) {}
-      }
-      await adminSend(chatId, `📢 *Broadcast terkirim!*\n\nBerhasil: ${sent}/${users.results?.length || 0} user`, ADMIN_TOKEN);
-      return;
-    }
+
 
     // /setqris — admin sends photo to set QRIS image
     if (text === '/setqris') {
