@@ -45,6 +45,8 @@ function openModal(type, data = null) {
           btn.innerHTML = '⏳ Menyimpan…';
           try {
             await onSubmit();
+          } catch (err) {
+            console.error(err);
           } finally {
             isSubmitting = false;
             const overlay = el('moverlay');
@@ -54,8 +56,11 @@ function openModal(type, data = null) {
             }
           }
         } else {
-          onSubmit();
->>>>>>> origin/main
+          try {
+            await onSubmit();
+          } catch (err) {
+            console.error(err);
+          }
         }
       });
     }
