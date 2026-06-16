@@ -465,12 +465,14 @@ export default {
               "INSERT INTO processed_updates (update_id) VALUES (?)"
             ).bind(updateId).run();
           } catch (e) {
-            const msg = String(e.message || "");
-            if (msg.includes("UNIQUE") || msg.includes("constraint") || msg.includes("PRIMARY KEY")) {
+            const msg = String(e.message || e || "").toUpperCase();
+            if (msg.includes("NO SUCH TABLE")) {
+              // Proceed if table doesn't exist yet (setup phase)
+              console.warn("Deduplication insert warning:", msg);
+            } else {
+              // Any other error (e.g. UNIQUE constraint failed or duplicate) means it is a duplicate
               return new Response("OK");
             }
-            // Proceed if table doesn't exist yet (setup phase)
-            console.warn("Deduplication insert warning:", msg);
           }
         }
         ctx.waitUntil(handleTelegram(body, env));
