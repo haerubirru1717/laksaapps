@@ -1590,8 +1590,10 @@ function aiAppendTxConfirm(tx) {
   const accs = typeof getAccs === 'function' ? getAccs() : [];
   const amt = Number(tx.amount) || 0;
   if (txType === 'transfer') {
-    const accFrom = accs.find(a => a.name.toLowerCase().includes((tx.from_account_name || '').toLowerCase()));
-    const accTo = accs.find(a => a.name.toLowerCase().includes((tx.to_account_name || '').toLowerCase()));
+    const targetFrom = (tx.from_account_name || '').trim().toLowerCase();
+    const targetTo = (tx.to_account_name || '').trim().toLowerCase();
+    const accFrom = targetFrom ? accs.find(a => a.name.toLowerCase().includes(targetFrom)) : null;
+    const accTo = targetTo ? accs.find(a => a.name.toLowerCase().includes(targetTo)) : null;
     if (accFrom || accTo) {
       balanceHtml = `<div class="ai-tx-balance-info"><div class="ai-tx-balance-title">💳 Info Saldo Rekening</div>`;
       if (accFrom) {
@@ -1607,7 +1609,8 @@ function aiAppendTxConfirm(tx) {
       balanceHtml += `</div>`;
     }
   } else {
-    const acc = accs.find(a => a.name.toLowerCase().includes((tx.account_name || '').toLowerCase()));
+    const targetAcc = (tx.account_name || '').trim().toLowerCase();
+    const acc = targetAcc ? accs.find(a => a.name.toLowerCase().includes(targetAcc)) : null;
     if (acc) {
       const afterBal = txType === 'income' ? (acc.balance || 0) + amt : (acc.balance || 0) - amt;
       balanceHtml = `<div class="ai-tx-balance-info">` +
@@ -1677,8 +1680,10 @@ async function aiConfirmTx(tx, bubbleId) {
   const txType = (tx.type || '').toLowerCase();
 
   if (txType === 'transfer') {
-    const accFrom = accs.find(a => a.name.toLowerCase().includes((tx.from_account_name || '').toLowerCase()));
-    const accTo = accs.find(a => a.name.toLowerCase().includes((tx.to_account_name || '').toLowerCase()));
+    const targetFrom = (tx.from_account_name || '').trim().toLowerCase();
+    const targetTo = (tx.to_account_name || '').trim().toLowerCase();
+    const accFrom = targetFrom ? accs.find(a => a.name.toLowerCase().includes(targetFrom)) : null;
+    const accTo = targetTo ? accs.find(a => a.name.toLowerCase().includes(targetTo)) : null;
     if (!accFrom) {
       window.aiProcessingBubbles.delete(bubbleId);
       if (bubble) {
@@ -1717,8 +1722,14 @@ async function aiConfirmTx(tx, bubbleId) {
       reqs.push({ type: 'income', amount: amt, date: dt, account_id: accTo.id, category_id: tfCat.id, note: noteTo, source: 'ai-chat' });
     }
   } else {
-    const acc = accs.find(a => a.name.toLowerCase().includes((tx.account_name || '').toLowerCase())) || accs[0];
-    const cat = cats.find(c => c.name.toLowerCase().includes((tx.category_name || '').toLowerCase())) || cats[cats.length - 1];
+    const targetAcc = (tx.account_name || '').trim().toLowerCase();
+    const acc = targetAcc ? (accs.find(a => a.name.toLowerCase().includes(targetAcc)) || accs[0]) : accs[0];
+    
+    const targetCat = (tx.category_name || '').trim().toLowerCase();
+    const cat = targetCat 
+      ? (cats.find(c => c.name.toLowerCase().includes(targetCat)) || cats.find(c => c.name.toLowerCase() === 'lainnya') || cats[cats.length - 1])
+      : (cats.find(c => c.name.toLowerCase() === 'lainnya') || cats[cats.length - 1]);
+
     if (!acc) {
       window.aiProcessingBubbles.delete(bubbleId);
       if (bubble) {
