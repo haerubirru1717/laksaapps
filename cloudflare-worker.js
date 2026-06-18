@@ -448,7 +448,7 @@ export default {
     if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
     try {
       if (request.method === "POST" && (url.pathname === "/webhook" || url.pathname === "/telegram-webhook")) {
-        // Webhook secret verification
+        // Webhook secret verification (security guard — harus sebelum parse body)
         const secret = env.TELEGRAM_WEBHOOK_SECRET;
         if (secret) {
           const headerSecret = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
@@ -456,8 +456,13 @@ export default {
             return new Response("Unauthorized", { status: 403 });
           }
         }
-        // Deduplication: skip already-processed updates using atomic UNIQUE insert
-        const updateId = body.update_id;
+
+        const body = await request.json(); // parse body setelah auth check
+
+        // ── Deduplication: cegah triple insert dari Telegram webhook retry ──
+        // Telegram retry webhook jika Worker tidak balas dalam 5 detik.
+        // Guard 1: update_id (setiap update Telegram punya ID unik, disimpan di D1)
+        const updateId = body?.update_id;
         if (updateId) {
           try {
             await env.DB.prepare(
@@ -466,16 +471,39 @@ export default {
           } catch (e) {
             const msg = String(e.message || e || "").toUpperCase();
             if (msg.includes("NO SUCH TABLE")) {
-              // Proceed if table doesn't exist yet (setup phase)
-              console.warn("Deduplication insert warning:", msg);
+              // Tabel belum ada (setup awal) — lanjut proses
+              console.warn("Deduplication table not found, skipping:", msg);
             } else {
-              // Any other error (e.g. UNIQUE constraint failed or duplicate) means it is a duplicate
+              // UNIQUE constraint failed = update ini sudah pernah diproses → skip
+              console.log("Duplicate update_id ignored:", updateId);
               return new Response("OK");
             }
           }
         }
+
+        // Guard 2: message_id berbasis chatId (fallback jika update_id tidak ada)
+        const msgId   = body?.message?.message_id;
+        const chatId2 = body?.message?.chat?.id;
+        if (msgId && chatId2 && !updateId) {
+          const dedupKey = `tg_${chatId2}_${msgId}`;
+          try {
+            await env.DB.prepare(
+              "INSERT INTO processed_updates (update_id) VALUES (?)"
+            ).bind(dedupKey).run();
+          } catch (e) {
+            const msg = String(e.message || e || "").toUpperCase();
+            if (!msg.includes("NO SUCH TABLE")) {
+              console.log("Duplicate message_id ignored:", dedupKey);
+              return new Response("OK");
+            }
+          }
+        }
+
+        // Balas Telegram SEGERA sebelum processing dimulai (cegah timeout → retry)
+        // ctx.waitUntil() memastikan handleTelegram tetap berjalan di background
         ctx.waitUntil(handleTelegram(body, env));
         return new Response("OK");
+
       }
       // Admin bot webhook
       if (request.method === "POST" && url.pathname === "/admin-webhook") {
