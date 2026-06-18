@@ -301,7 +301,7 @@ function updatePricingPrices() {
   });
 }
 
-let _appliedCoupon = null;
+// Bug #1 fix: _appliedCoupon dikelola via window._appliedCoupon di seluruh fungsi (applyCoupon, updatePricingPrices, closeUpgradeModal)
 async function applyCoupon() {
   const input = document.getElementById('couponInput');
   const status = document.getElementById('couponStatus');
@@ -409,7 +409,7 @@ async function loadAll(month) {
   showSkeletons();
   try {
     const uid = getUserId();
-    if (!uid) return;
+    if (!uid) { _cache.loading = false; return; } // Bug #6 fix: reset flag agar loadAll bisa dipanggil ulang
     await Promise.all([fetchTx(month), fetchAccs(), fetchCats(), fetchBuds(), fetchGoals(), fetchBills(), fetchPiutang(), fetchUsageStatus()]);
   } catch (e) {
     console.error('loadAll error:', e);
@@ -500,6 +500,12 @@ function applyTheme(theme, btn, save = true) {
 
 // ── NAVIGATION ──
 function go(page) {
+  // Bug #3 fix: handle alias pages SEBELUM DOM manipulation agar tidak ada flash blank screen
+  if (page === 'budget')  { if (curPage !== 'keuangan') go('keuangan'); setKeuTab('budget', null);  return; }
+  if (page === 'goals')   { if (curPage !== 'keuangan') go('keuangan'); setKeuTab('goals', null);   return; }
+  if (page === 'bills')   { if (curPage !== 'keuangan') go('keuangan'); setKeuTab('bills', null);   return; }
+  if (page === 'piutang') { if (curPage !== 'keuangan') go('keuangan'); setKeuTab('piutang', null); return; }
+
   if (curPage === page) return;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item,.bnav-item').forEach(n => n.classList.remove('active'));
@@ -511,10 +517,6 @@ function go(page) {
     else if (page === 'transactions') renderTxPage();
     else if (page === 'receipt') renderRecPage();
     else if (page === 'keuangan') renderKeuangan();
-    else if (page === 'budget') { go('keuangan'); setKeuTab('budget', null); return; }
-    else if (page === 'goals') { go('keuangan'); setKeuTab('goals', null); return; }
-    else if (page === 'bills') { go('keuangan'); setKeuTab('bills', null); return; }
-    else if (page === 'piutang') { go('keuangan'); setKeuTab('piutang', null); return; }
     else if (page === 'reports') renderReports();
     else if (page === 'settings') renderSettings();
   });
@@ -674,7 +676,7 @@ function toggleForgotForm(show) {
   const forgotForm = el('forgotPasswordForm');
   if (!forgotForm) return;
   if (show) {
-    loginFormInputs.forEach(el => el.style.display = 'none');
+    loginFormInputs.forEach(item => item.style.display = 'none'); // Bug #4 fix: ganti 'el' → 'item' agar tidak shadow fungsi global el()
     forgotForm.style.display = 'block';
     
     // Show step 1, hide step 2
@@ -689,7 +691,7 @@ function toggleForgotForm(show) {
     el('authForgotError').style.display = 'none';
     el('authForgotSuccess').style.display = 'none';
   } else {
-    loginFormInputs.forEach(el => el.style.display = '');
+    loginFormInputs.forEach(item => item.style.display = ''); // Bug #4 fix: sama
     forgotForm.style.display = 'none';
   }
 }
@@ -818,6 +820,9 @@ async function handleAuthRegister() {
   const password = el('authRegisterPassword')?.value || '';
   const password2 = el('authRegisterPassword2')?.value || '';
   if (!name || !email || !password) { toast('Semua field wajib diisi', 'err'); return; }
+  // Bug #5 fix: validasi format email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) { toast('Format email tidak valid (contoh: nama@email.com)', 'err'); return; }
   if (password.length < 6) { toast('Password minimal 6 karakter', 'err'); return; }
   if (password !== password2) { toast('Password tidak cocok', 'err'); return; }
   const btn = el('authRegisterBtn');
@@ -951,8 +956,7 @@ function updateAccArrows() {
     rE.disabled = elE.scrollLeft + elE.clientWidth >= elE.scrollWidth - 4;
   }
 }
-document.getElementById('accsScroll')?.addEventListener('scroll', updateAccArrows);
-document.getElementById('ewalletScroll')?.addEventListener('scroll', updateAccArrows);
+// Bug #9 fix: listener scroll hanya didaftarkan di DOMContentLoaded (baris ~997) — hapus duplikat di scope global ini
 
 // ── SIDEBAR PROFILE CHIP ──
 function updateSidebarProfile() {

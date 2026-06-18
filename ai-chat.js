@@ -1840,9 +1840,11 @@ async function aiSubmitEdit(inputId, originalTx, bubbleId) {
 function aiCancelEdit(bubbleId, tx) {
   const bubble = el(bubbleId);
   if (!bubble) return;
-  // Reset processing state so re-confirm works, and generate fresh idempotency key
+  // Bug #11 fix: JANGAN generate UUID baru saat Edit dibatalkan.
+  // Pertahankan idempotencyKey asli agar server mengenali ini transaksi yang sama
+  // (mencegah triple insert jika user berulang kali Edit → Batal → Catat)
   if (window.aiProcessingBubbles) window.aiProcessingBubbles.delete(bubbleId);
-  bubble.dataset.idempotencyKey = crypto.randomUUID();
+  // bubble.dataset.idempotencyKey = crypto.randomUUID(); ← DIHAPUS (penyebab triple insert)
   const editArea = bubble.querySelector('.ai-tx-edit-inline');
   if (editArea) {
     const txId = bubbleId;

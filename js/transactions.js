@@ -122,6 +122,8 @@ async function addTx(data, silent = false) {
     // Refresh cache
     const m = (data.date || today()).slice(0, 7);
     await Promise.all([fetchTx(m), fetchAccs()]);
+    // Bug #13 fix: invalidasi cache tahun agar halaman Laporan tidak stale
+    if (typeof _cache !== 'undefined') _cache.txYear = null;
     if (!silent) { closeModal(); toast('Transaksi ditambahkan!', 'ok'); refresh(); }
   } catch (e) {
     toast('Gagal simpan: ' + e.message, 'err');
@@ -136,6 +138,8 @@ async function delTx(id, silent = false) {
     await api('DELETE', `/transactions/${id}`);
     const m = curTxMonth || thisMon();
     await Promise.all([fetchTx(m), fetchAccs()]);
+    // Bug #13 fix: invalidasi cache tahun agar halaman Laporan tidak stale
+    if (typeof _cache !== 'undefined') _cache.txYear = null;
     if (!silent) { toast('Dihapus.', 'info'); refresh(); }
   } catch (e) {
     toast('Gagal hapus: ' + e.message, 'err');
@@ -155,6 +159,8 @@ async function updateTx(id, data) {
     await api('PATCH', `/transactions/${id}`, body);
     const m = (data.date || today()).slice(0, 7);
     await Promise.all([fetchTx(m), fetchAccs()]);
+    // Bug #13 fix: invalidasi cache tahun agar halaman Laporan tidak stale
+    if (typeof _cache !== 'undefined') _cache.txYear = null;
     closeModal(); toast('Diperbarui!', 'ok'); refresh();
   } catch (e) {
     toast('Gagal update: ' + e.message, 'err');

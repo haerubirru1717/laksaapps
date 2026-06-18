@@ -221,11 +221,18 @@ async function submitLinkTelegram() {
 // ── SCAN STRUK ──
 
 // ── Backup & Restore ──
-function doBackup() {
+// Bug #7 fix: doBackup kini async dan menggunakan getTxYear() agar backup mencakup seluruh transaksi tahun ini, bukan hanya bulan aktif
+async function doBackup() {
+  try {
+    // Paksa fetch tahun penuh agar backup tidak berhenti di bulan ini saja
+    const year = new Date().getFullYear().toString();
+    await fetchTxYear(year);
+  } catch(_) {}
+  const txBackup = getTxYear().length > getTx().length ? getTxYear() : getTx();
   const d = {
     v: 2,
     date: new Date().toISOString(),
-    transactions: getTx(),
+    transactions: txBackup,
     accounts: getAccs(),
     categories: getCats(),
     budgets: getBud(),
@@ -235,7 +242,7 @@ function doBackup() {
     receipts: getRec()
   };
   dlF(JSON.stringify(d, null, 2), 'laksa_backup_' + today() + '.json', 'application/json');
-  toast('Backup berhasil!', 'ok');
+  toast('Backup berhasil! (' + txBackup.length + ' transaksi)', 'ok');
 }
 async function doRestore(ev) {
   const file = ev.target.files[0]; if (!file) return;
@@ -332,7 +339,9 @@ async function doRestore(ev) {
   setTimeout(() => location.reload(), 1200);
 }
 function expCSV() {
-  const year = el('repYear').value;
+  // Bug #2 fix: el('repYear') bisa null jika dipanggil dari halaman Settings (bukan Reports)
+  const yearEl = el('repYear');
+  const year = yearEl ? yearEl.value : new Date().getFullYear().toString();
   const MFULL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
   const txs = (typeof getTxYear === 'function' ? getTxYear() : getTx()).filter(t => t.date.startsWith(year));
   const rows = [['Bulan', 'Pemasukan', 'Pengeluaran', 'Selisih', 'Tabungan%']];
@@ -413,9 +422,8 @@ function renderAccSheet() {
   else if (nm2.includes('shopee') || nm2.includes('spay')) ewDarkImg2 = 'ewallet/shopeepay-dark.jpg';
   
   const ewSheetImg  = ewDarkImg2;
-  const sheetAvaBg  = (isEwalletAcc && ewSheetImg)
-    ? `background:linear-gradient(135deg,${c1},${c2})`
-    : `background:linear-gradient(135deg,${c1},${c2})`;
+  // Bug #8 fix: kedua cabang ternary identik — sederhanakan jadi satu nilai
+  const sheetAvaBg  = `background:linear-gradient(135deg,${c1},${c2})`;
   
   const sheetInit = (acc.name.replace(/[^a-zA-Z0-9]/g,'').slice(0,2)||'?').toUpperCase();
   const logoHtml = (isEwalletAcc && ewSheetImg)
@@ -468,6 +476,18 @@ function renderAccSheet() {
 }
 function renderAccSheetBody() {
   const body = el('accSheetBody'); if (!body) return;
+  // Bug #12 fix: guard jika sheet sudah ditutup (accSheetId null)
+  if (!accSheetId) return;
+
+  // Bug #12 fix: jika bulan yang dipilih bukan bulan cache, fetch dulu dari API
+  const cachedTxForMon = getTx().filter(t => mKey(t.date) === accSheetMon);
+  if (cachedTxForMon.length === 0 && accSheetMon !== thisMon()) {
+    // Fetch bulan yang dipilih, lalu render ulang
+    fetchTx(accSheetMon).then(() => renderAccSheetBody()).catch(() => {});
+    body.innerHTML = `<div class="empty" style="padding:2rem"><p>Memuat data...</p></div>`;
+    return;
+  }
+
   const allTx = getTx().filter(t => mKey(t.date) === accSheetMon);
   let txs = allTx.filter(t => t.account_id === accSheetId || t.to_acc_id === accSheetId);
   if (accSheetTab === 'in') txs = txs.filter(t => (t.type === 'income' && t.account_id === accSheetId) || (t.type === 'transfer' && t.to_acc_id === accSheetId));
