@@ -440,6 +440,28 @@ function checkRateLimit(ip) {
 }
 
 // ─────────────────────────────────────────────────────
+// DEDUP INFRASTRUCTURE (lazy migration — auto-creates on first webhook)
+// ─────────────────────────────────────────────────────
+let _dedupReady = false;
+async function ensureDedup(env) {
+  if (_dedupReady) return;
+  try {
+    await env.DB.prepare(
+      "CREATE TABLE IF NOT EXISTS processed_updates (update_id TEXT PRIMARY KEY, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
+    ).run();
+    await env.DB.prepare(
+      "ALTER TABLE transactions ADD COLUMN idempotency_key TEXT"
+    ).run().catch(() => {});
+    await env.DB.prepare(
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_tx_idempotency ON transactions (idempotency_key) WHERE idempotency_key IS NOT NULL"
+    ).run().catch(() => {});
+  } catch (e) {
+    console.warn("ensureDedup:", e.message);
+  }
+  _dedupReady = true;
+}
+
+// ─────────────────────────────────────────────────────
 // ENTRY POINT
 // ─────────────────────────────────────────────────────
 export default {
@@ -459,49 +481,26 @@ export default {
 
         const body = await request.json(); // parse body setelah auth check
 
+        // ── Auto-ensure dedup infrastructure exists (lazy migration) ──
+        await ensureDedup(env);
+
         // ── Deduplication: cegah triple insert dari Telegram webhook retry ──
-        // Telegram retry webhook jika Worker tidak balas dalam 5 detik.
-        // Guard 1: update_id (setiap update Telegram punya ID unik, disimpan di D1)
         const updateId = body?.update_id;
         if (updateId) {
           try {
             await env.DB.prepare(
               "INSERT INTO processed_updates (update_id) VALUES (?)"
-            ).bind(updateId).run();
+            ).bind(String(updateId)).run();
           } catch (e) {
-            const msg = String(e.message || e || "").toUpperCase();
-            if (msg.includes("NO SUCH TABLE")) {
-              // Tabel belum ada (setup awal) — lanjut proses
-              console.warn("Deduplication table not found, skipping:", msg);
-            } else {
-              // UNIQUE constraint failed = update ini sudah pernah diproses → skip
-              console.log("Duplicate update_id ignored:", updateId);
-              return new Response("OK");
-            }
-          }
-        }
-
-        // Guard 2: message_id berbasis chatId (fallback jika update_id tidak ada)
-        const msgId   = body?.message?.message_id;
-        const chatId2 = body?.message?.chat?.id;
-        if (msgId && chatId2 && !updateId) {
-          const dedupKey = `tg_${chatId2}_${msgId}`;
-          try {
-            await env.DB.prepare(
-              "INSERT INTO processed_updates (update_id) VALUES (?)"
-            ).bind(dedupKey).run();
-          } catch (e) {
-            const msg = String(e.message || e || "").toUpperCase();
-            if (!msg.includes("NO SUCH TABLE")) {
-              console.log("Duplicate message_id ignored:", dedupKey);
-              return new Response("OK");
-            }
+            // UNIQUE constraint or any insert error = already processed → skip
+            console.log("Duplicate update_id ignored:", updateId);
+            return new Response("OK");
           }
         }
 
         // Balas Telegram SEGERA sebelum processing dimulai (cegah timeout → retry)
         // ctx.waitUntil() memastikan handleTelegram tetap berjalan di background
-        ctx.waitUntil(handleTelegram(body, env));
+        ctx.waitUntil(handleTelegram(body, env, updateId));
         return new Response("OK");
 
       }
@@ -756,10 +755,10 @@ async function routeAPI(req, url, env) {
 // ─────────────────────────────────────────────────────
 // TELEGRAM DISPATCHER
 // ─────────────────────────────────────────────────────
-async function handleTelegram(body, env) {
+async function handleTelegram(body, env, updateId) {
   const chatId = body?.callback_query?.message?.chat?.id || body?.message?.chat?.id;
   try {
-    if (body.callback_query) { await handleCallback(body.callback_query, env); return; }
+    if (body.callback_query) { await handleCallback(body.callback_query, env, updateId); return; }
 
     const msg = body?.message;
     if (!msg) return;
@@ -769,7 +768,7 @@ async function handleTelegram(body, env) {
     const text   = (msg.text || "").trim();
 
     // Foto → scan struk
-    if (msg.photo) { await handlePhoto(msg, chatId, userId, env); return; }
+    if (msg.photo) { await handlePhoto(msg, chatId, userId, env, updateId); return; }
     if (!text) return;
 
     // Perintah — hapus history bot sebelumnya agar chat bersih
@@ -791,7 +790,7 @@ async function handleTelegram(body, env) {
     }
 
     // Teks bebas → catat transaksi
-    if (!text.startsWith("/")) { await handleFreeText(chatId, userId, text, env); return; }
+    if (!text.startsWith("/")) { await handleFreeText(chatId, userId, text, env, updateId); return; }
 
     await sendMenu(chatId, userId, env);
   } catch (e) {
@@ -805,7 +804,7 @@ async function handleTelegram(body, env) {
 // ─────────────────────────────────────────────────────
 // CALLBACK HANDLER
 // ─────────────────────────────────────────────────────
-async function handleCallback(cb, env) {
+async function handleCallback(cb, env, updateId) {
   const chatId = cb.message.chat.id;
   const rawTgId = String(cb.from.id);
   const userId = await resolveUserByTelegramId(rawTgId, env);
@@ -875,7 +874,7 @@ async function handleCallback(cb, env) {
 // ─────────────────────────────────────────────────────
 // TEKS BEBAS → CATAT TRANSAKSI (FULLY AUTO)
 // ─────────────────────────────────────────────────────
-async function handleFreeText(chatId, userId, text, env) {
+async function handleFreeText(chatId, userId, text, env, updateId) {
   if (!likelyTx(text)) { await sendMenu(chatId, userId, env); return; }
 
   // Freemium limit check
@@ -889,8 +888,8 @@ async function handleFreeText(chatId, userId, text, env) {
   const processingMid = await tgSend(chatId, "⏳ Memproses...", env);
   await trackBotMsg(chatId, processingMid, env);
 
-  // Generate idempotency key early (tied to user + text content)
-  const idemKey = crypto.randomUUID();
+  // Stable idempotency key derived from Telegram update_id (survives retries)
+  const idemKey = updateId ? `tg_ft_${updateId}` : crypto.randomUUID();
 
   // 1. Parse dengan AI
   const parsed = await parseWithGroq(text, env);
@@ -1068,7 +1067,7 @@ async function saveTransfer(chatId, userId, parsed, fromAcc, toAcc, rawText, env
 // ─────────────────────────────────────────────────────
 // FOTO → INTERACTIVE OCR STRUK
 // ─────────────────────────────────────────────────────
-async function handlePhoto(msg, chatId, userId, env) {
+async function handlePhoto(msg, chatId, userId, env, updateId) {
   // Freemium limit check
   const usage = await checkTelegramUsage(userId, 'scan_receipt', env);
   if (!usage.allowed) {
@@ -1143,7 +1142,7 @@ async function handlePhoto(msg, chatId, userId, env) {
         const cat = resolveCategory(null, result.note || "topup", result.store, "income", filteredCats);
         const id = randomId();
         const date = result.date || todayStr();
-        const idemKey = crypto.randomUUID();
+        const idemKey = updateId ? `tg_ph_topup_${updateId}` : crypto.randomUUID();
         const insResult = await env.DB.prepare(`
           INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
           VALUES (?, ?, ?, 'income', ?, ?, ?, ?, ?, '[foto struk]', 'telegram', ?)
@@ -1182,7 +1181,7 @@ async function handlePhoto(msg, chatId, userId, env) {
     if (matchedAcc) {
       const id = randomId();
       const date = parsed.date || todayStr();
-      const idemKey = crypto.randomUUID();
+      const idemKey = updateId ? `tg_ph_caption_${updateId}` : crypto.randomUUID();
       const insResult = await env.DB.prepare(`
         INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
         VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, '[foto struk]', 'telegram', ?)
@@ -2412,43 +2411,30 @@ async function getTransactions(uid, url, env) {
 async function createTransaction(uid, body, env) {
   const id = body.id || randomId();
   const date = body.date || todayStr();
-  const idempotencyKey = body.idempotency_key || null;
+  // Always use idempotency key — generate server-side if client didn't send one
+  const idempotencyKey = body.idempotency_key || `web_${id}`;
 
-  if (idempotencyKey) {
-    // Idempotent insert: silently ignores if this key was already used
-    const result = await env.DB.prepare(`
-      INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      id, uid, date, body.type, body.amount,
-      body.note || "", body.store || null,
-      body.account_id, body.category_id || null,
-      body.raw_text || null, body.source || "web",
-      idempotencyKey
-    ).run();
+  // Ensure dedup infrastructure exists (handles case where /setup wasn't run)
+  await ensureDedup(env);
 
-    if (!result.meta?.changes || result.meta.changes === 0) {
-      // Duplicate — return the existing row id without touching balance
-      const existing = await env.DB.prepare(
-        "SELECT id FROM transactions WHERE idempotency_key = ? AND user_id = ?"
-      ).bind(idempotencyKey, uid).first();
-      return jsonRes({ id: existing?.id || id, status: "duplicate" });
-    }
-
-    await adjustBalance(body.account_id, body.type, body.amount, +1, env);
-    return jsonRes({ id, status: "created" });
-  }
-
-  // Legacy path (no idempotency key — still works)
-  await env.DB.prepare(`
-    INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  const result = await env.DB.prepare(`
+    INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id, uid, date, body.type, body.amount,
     body.note || "", body.store || null,
     body.account_id, body.category_id || null,
-    body.raw_text || null, body.source || "web"
+    body.raw_text || null, body.source || "web",
+    idempotencyKey
   ).run();
+
+  if (!result.meta?.changes || result.meta.changes === 0) {
+    // Duplicate — return the existing row id without touching balance
+    const existing = await env.DB.prepare(
+      "SELECT id FROM transactions WHERE idempotency_key = ? AND user_id = ?"
+    ).bind(idempotencyKey, uid).first();
+    return jsonRes({ id: existing?.id || id, status: "duplicate" });
+  }
 
   await adjustBalance(body.account_id, body.type, body.amount, +1, env);
   return jsonRes({ id, status: "created" });
