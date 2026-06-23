@@ -455,10 +455,61 @@ async function ensureDedup(env) {
     await env.DB.prepare(
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_tx_idempotency ON transactions (idempotency_key) WHERE idempotency_key IS NOT NULL"
     ).run().catch(() => {});
+    _dedupReady = true;
   } catch (e) {
     console.warn("ensureDedup:", e.message);
+    // Don't set _dedupReady — retry on next request
   }
-  _dedupReady = true;
+}
+
+// Content-based dedup: reject if identical tx exists within time window
+const DEDUP_WINDOW_SEC = 10;
+async function isDuplicateTx(userId, type, amount, accountId, date, env) {
+  try {
+    const row = await env.DB.prepare(
+      `SELECT id FROM transactions
+       WHERE user_id = ? AND type = ? AND amount = ? AND account_id = ? AND date = ?
+         AND created_at > datetime('now', '-${DEDUP_WINDOW_SEC} seconds')
+       LIMIT 1`
+    ).bind(userId, type, amount, accountId, date).first();
+    return row ? row.id : null;
+  } catch { return null; }
+}
+
+// Diagnostic endpoint — check dedup infrastructure health
+async function debugDedup(env) {
+  const checks = {};
+  try {
+    const tbl = await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='processed_updates'"
+    ).first();
+    checks.processed_updates_table = tbl ? "exists" : "MISSING";
+  } catch (e) { checks.processed_updates_table = "ERROR: " + e.message; }
+  try {
+    const col = await env.DB.prepare(
+      "SELECT 1 FROM pragma_table_info('transactions') WHERE name='idempotency_key'"
+    ).first();
+    checks.idempotency_key_column = col ? "exists" : "MISSING";
+  } catch (e) { checks.idempotency_key_column = "ERROR: " + e.message; }
+  try {
+    const idx = await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_tx_idempotency'"
+    ).first();
+    checks.idx_tx_idempotency = idx ? "exists" : "MISSING";
+  } catch (e) { checks.idx_tx_idempotency = "ERROR: " + e.message; }
+  try {
+    const dupes = await env.DB.prepare(
+      `SELECT date, type, amount, account_id, COUNT(*) as cnt
+       FROM transactions
+       GROUP BY user_id, date, type, amount, account_id
+       HAVING cnt > 1
+       ORDER BY date DESC LIMIT 10`
+    ).all();
+    checks.recent_duplicates = dupes.results || [];
+  } catch (e) { checks.recent_duplicates = "ERROR: " + e.message; }
+  checks.version = "3.1.0";
+  checks._dedupReady = _dedupReady;
+  return jsonRes(checks);
 }
 
 // ─────────────────────────────────────────────────────
@@ -525,8 +576,9 @@ async function routeAPI(req, url, env) {
   const m    = req.method;
   const path = url.pathname;
 
-  if (path === "/" && m === "GET") return jsonRes({ status: "ok", version: "3.0.0" });
+  if (path === "/" && m === "GET") return jsonRes({ status: "ok", version: "3.1.0" });
   if (path === "/setup")           return setupDatabase(env);
+  if (path === "/debug/dedup" && m === "GET") return debugDedup(env);
 
   // Auth routes (public — no token needed)
   if ((path === "/auth/login" || path === "/auth/register" || path === "/auth/forgot-password" || path === "/auth/reset-password") && m === "POST") {
@@ -973,6 +1025,10 @@ async function saveTx(chatId, userId, parsed, acc, cat, rawText, env) {
   const date = parsed.date || todayStr();
   const idemKey = parsed._idempotency_key || crypto.randomUUID();
 
+  // Content-based time-window dedup (belt-and-suspenders)
+  const dupId = await isDuplicateTx(userId, parsed.type, parsed.amount, acc.id, date, env);
+  if (dupId) return;
+
   const result = await env.DB.prepare(`
     INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'telegram', ?)
@@ -1036,6 +1092,10 @@ async function saveTransfer(chatId, userId, parsed, fromAcc, toAcc, rawText, env
   const idOut   = randomId();
   const idIn    = randomId();
   const idemKey = parsed._idempotency_key || crypto.randomUUID();
+
+  // Content-based time-window dedup
+  const dupId = await isDuplicateTx(userId, 'expense', parsed.amount, fromAcc.id, date, env);
+  if (dupId) return;
 
   const r1 = await env.DB.prepare(`
     INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
@@ -1143,6 +1203,9 @@ async function handlePhoto(msg, chatId, userId, env, updateId) {
         const id = randomId();
         const date = result.date || todayStr();
         const idemKey = updateId ? `tg_ph_topup_${updateId}` : crypto.randomUUID();
+        // Content-based time-window dedup
+        const dupIdTopup = await isDuplicateTx(userId, 'income', result.total, targetAcc.id, date, env);
+        if (dupIdTopup) { await tgSend(chatId, "⚠️ Transaksi serupa sudah dicatat baru-baru ini.", env); return; }
         const insResult = await env.DB.prepare(`
           INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
           VALUES (?, ?, ?, 'income', ?, ?, ?, ?, ?, '[foto struk]', 'telegram', ?)
@@ -1182,6 +1245,9 @@ async function handlePhoto(msg, chatId, userId, env, updateId) {
       const id = randomId();
       const date = parsed.date || todayStr();
       const idemKey = updateId ? `tg_ph_caption_${updateId}` : crypto.randomUUID();
+      // Content-based time-window dedup
+      const dupIdCap = await isDuplicateTx(userId, 'expense', parsed.amount, matchedAcc.id, date, env);
+      if (dupIdCap) { await tgSend(chatId, "⚠️ Transaksi serupa sudah dicatat baru-baru ini.", env); return; }
       const insResult = await env.DB.prepare(`
         INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
         VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, '[foto struk]', 'telegram', ?)
@@ -1276,6 +1342,9 @@ async function handleReceiptKeyboardConfirm(chatId, userId, messageId, pendingId
     // Simpan transaksi
     const txId = randomId();
     const idemKey = 'receipt_' + pendingId;
+    // Content-based time-window dedup
+    const dupIdReceipt = await isDuplicateTx(userId, 'expense', amount, accountId, draft.date, env);
+    if (dupIdReceipt) { await editTgMessage(chatId, messageId, "⚠️ *Transaksi serupa sudah dicatat baru-baru ini.*", env); return; }
     const insResult = await env.DB.prepare(`
       INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
       VALUES (?, ?, ?, 'expense', ?, ?, ?, ?, ?, '[foto struk]', 'telegram', ?)
@@ -2411,12 +2480,15 @@ async function getTransactions(uid, url, env) {
 async function createTransaction(uid, body, env) {
   const id = body.id || randomId();
   const date = body.date || todayStr();
-  // Always use idempotency key — generate server-side if client didn't send one
   const idempotencyKey = body.idempotency_key || `web_${id}`;
 
-  // Ensure dedup infrastructure exists (handles case where /setup wasn't run)
   await ensureDedup(env);
 
+  // Layer 1: Content-based time-window dedup (works even without idempotency key index)
+  const dupId = await isDuplicateTx(uid, body.type, body.amount, body.account_id, date, env);
+  if (dupId) return jsonRes({ id: dupId, status: "duplicate" });
+
+  // Layer 2: Idempotency key dedup (INSERT OR IGNORE + UNIQUE index)
   const result = await env.DB.prepare(`
     INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -2429,7 +2501,6 @@ async function createTransaction(uid, body, env) {
   ).run();
 
   if (!result.meta?.changes || result.meta.changes === 0) {
-    // Duplicate — return the existing row id without touching balance
     const existing = await env.DB.prepare(
       "SELECT id FROM transactions WHERE idempotency_key = ? AND user_id = ?"
     ).bind(idempotencyKey, uid).first();
