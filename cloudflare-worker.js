@@ -528,7 +528,7 @@ async function debugDedup(env) {
     ).all();
     checks.recent_duplicates = dupes.results || [];
   } catch (e) { checks.recent_duplicates = "ERROR: " + e.message; }
-  checks.version = "3.3.0";
+  checks.version = "3.4.0";
   checks._dedupReady = _dedupReady;
   return jsonRes(checks);
 }
@@ -665,7 +665,7 @@ async function routeAPI(req, url, env) {
   const m    = req.method;
   const path = url.pathname;
 
-  if (path === "/" && m === "GET") return jsonRes({ status: "ok", version: "3.3.0" });
+  if (path === "/" && m === "GET") return jsonRes({ status: "ok", version: "3.4.0" });
   if (path === "/setup")           return setupDatabase(env);
   if (path === "/debug/dedup" && m === "GET") return debugDedup(env);
   if (path === "/debug/test-dedup" && m === "GET") return debugTestDedup(env);
@@ -1663,7 +1663,7 @@ async function sendRiwayat(chatId, userId, env) {
     SELECT t.*, a.name AS account_name, c.name AS category_name, c.emoji AS category_emoji
     FROM transactions t
     LEFT JOIN accounts a ON t.account_id = a.id
-    LEFT JOIN categories c ON t.category_id = c.id
+    LEFT JOIN categories c ON t.category_id = c.id AND c.user_id = t.user_id
     WHERE t.user_id = ? ORDER BY t.date DESC, t.created_at DESC LIMIT 10
   `).bind(userId).all();
 
@@ -2485,7 +2485,7 @@ async function getTxFull(id, env) {
     SELECT t.*, a.name AS account_name, c.name AS category_name, c.emoji AS category_emoji
     FROM transactions t
     LEFT JOIN accounts a ON t.account_id = a.id
-    LEFT JOIN categories c ON t.category_id = c.id
+    LEFT JOIN categories c ON t.category_id = c.id AND c.user_id = t.user_id
     WHERE t.id = ?
   `).bind(id).first();
 }
@@ -2549,7 +2549,7 @@ async function getTransactions(uid, url, env) {
     SELECT t.*, a.name AS account_name, c.name AS category_name, c.emoji AS category_emoji
     FROM transactions t
     LEFT JOIN accounts a ON t.account_id = a.id
-    LEFT JOIN categories c ON t.category_id = c.id
+    LEFT JOIN categories c ON t.category_id = c.id AND c.user_id = t.user_id
     WHERE t.user_id = ?
   `;
   const vals = [uid];
@@ -2653,7 +2653,7 @@ async function getBudgets(uid, env) {
   const { results } = await env.DB.prepare(`
     SELECT b.*, c.name AS category_name, c.emoji AS category_emoji
     FROM budgets b
-    LEFT JOIN categories c ON b.category_id = c.id
+    LEFT JOIN categories c ON b.category_id = c.id AND c.user_id = b.user_id
     WHERE b.user_id = ?
   `).bind(uid).all();
   return jsonRes(results);
