@@ -116,7 +116,7 @@ async function addTx(data, silent = false) {
       note: data.note || '',
       store: data.store || null,
       source: 'website',
-      idempotency_key: data.idempotency_key || crypto.randomUUID()
+      idempotency_key: data.idempotency_key || genUUID()
     };
     await api('POST', '/transactions', body);
     // Refresh cache

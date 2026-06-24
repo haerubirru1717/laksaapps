@@ -1634,7 +1634,7 @@ function aiAppendTxConfirm(tx) {
   }
 
   // Pre-generate idempotency key at render time so retries use the same key
-  const idemKey = crypto.randomUUID();
+  const idemKey = genUUID();
 
   const div = document.createElement('div');
   div.className = 'ai-msg bot';
@@ -1734,11 +1734,11 @@ async function aiConfirmTx(tx, bubbleId) {
 
     const destName = accTo ? accTo.name : (tx.to_account_name || 'Lainnya');
     const noteFrom = nt ? nt + ' (Transfer ke ' + destName + ')' : '(Transfer ke ' + destName + ')';
-    reqs.push({ type: 'expense', amount: amt, date: dt, account_id: accFrom.id, category_id: tfCat.id, note: noteFrom, source: 'ai-chat', idempotency_key: preKey || crypto.randomUUID() });
+    reqs.push({ type: 'expense', amount: amt, date: dt, account_id: accFrom.id, category_id: tfCat.id, note: noteFrom, source: 'ai-chat', idempotency_key: preKey || genUUID() });
     
     if (accTo) {
       const noteTo = nt ? nt + ' (Transfer dari ' + accFrom.name + ')' : '(Transfer dari ' + accFrom.name + ')';
-      reqs.push({ type: 'income', amount: amt, date: dt, account_id: accTo.id, category_id: tfCat.id, note: noteTo, source: 'ai-chat', idempotency_key: (preKey ? preKey + '_in' : crypto.randomUUID()) });
+      reqs.push({ type: 'income', amount: amt, date: dt, account_id: accTo.id, category_id: tfCat.id, note: noteTo, source: 'ai-chat', idempotency_key: (preKey ? preKey + '_in' : genUUID()) });
     }
   } else {
     const targetAcc = (tx.account_name || '').trim().toLowerCase();
@@ -1769,7 +1769,7 @@ async function aiConfirmTx(tx, bubbleId) {
       return;
     }
     const st = tx.store || '';
-    reqs.push({ type: txType, amount: amt, date: dt, account_id: acc.id, category_id: cat.id, note: nt, store: st || undefined, source: 'ai-chat', idempotency_key: preKey || crypto.randomUUID() });
+    reqs.push({ type: txType, amount: amt, date: dt, account_id: acc.id, category_id: cat.id, note: nt, store: st || undefined, source: 'ai-chat', idempotency_key: preKey || genUUID() });
   }
 
   if (bubble) {
@@ -1856,7 +1856,7 @@ function aiCancelEdit(bubbleId, tx) {
   // Pertahankan idempotencyKey asli agar server mengenali ini transaksi yang sama
   // (mencegah triple insert jika user berulang kali Edit → Batal → Catat)
   if (window.aiProcessingBubbles) window.aiProcessingBubbles.delete(bubbleId);
-  // bubble.dataset.idempotencyKey = crypto.randomUUID(); ← DIHAPUS (penyebab triple insert)
+  // bubble.dataset.idempotencyKey = genUUID(); ← DIHAPUS (penyebab triple insert)
   const editArea = bubble.querySelector('.ai-tx-edit-inline');
   if (editArea) {
     const txId = bubbleId;

@@ -3,6 +3,17 @@
 // Constants, State, API, Helpers, Theme, Navigation, Init
 // ══════════════════════════════════════
 
+// ── UUID POLYFILL (older browsers / non-HTTPS) ──
+function genUUID() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
 // ── CONSTANTS ──
 const PROFILE_KEY = 'laksa_profile';
 const K = { tx: 'ft_tx', bud: 'ft_bud', goals: 'ft_goals', accs: 'ft_acc', cats: 'ft_cats', set: 'ft_set', rec: 'ft_rec' };
