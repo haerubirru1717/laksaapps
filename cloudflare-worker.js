@@ -1811,7 +1811,7 @@ Field yang diekstrak:
   • 2 hari lalu / dua hari lalu → ${twoDaysAgo}
   • Minggu lalu → hitung mundur 7 hari dari ${today}
   • Jika TIDAK ada petunjuk waktu sama sekali → null
-- account_name: nama rekening jika disebutkan (mandiri, bca, jago, gopay, ovo, dana, tunai, dll), null jika tidak. Untuk transfer: null.
+- account_name: nama rekening jika disebutkan (mandiri, bca, jago, gopay, ovo, dana, tunai/dompet/cash, dll), null jika tidak. "tunai"/"cash"/"dompet" = rekening kas/dompet fisik, BUKAN metode pembayaran. Untuk transfer: null.
 - from_account: rekening asal jika type=transfer, null jika bukan transfer
 - to_account: rekening tujuan jika type=transfer, null jika bukan transfer
 - category_name: pilih PALING TEPAT dari: Makanan & Minuman, Transportasi, Belanja, Kesehatan, Hiburan, Tagihan, Pendidikan, Gaji, Investasi, Lainnya

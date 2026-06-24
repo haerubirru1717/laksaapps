@@ -1304,7 +1304,7 @@ Jika user meminta mencatat transaksi (misal: "masuk gaji 5juta", "beli kopi 25k"
 - Kamu WAJIB menyertakan objek JSON \`transaction\` agar memicu pop-up konfirmasi. JANGAN membuat konfirmasi transaksi panjang lebar di bagian teks \`answer\`.
 - \`amount\`: WAJIB angka murni tanpa titik/koma/string (misal 5juta = 5000000, 25k = 25000). Jika user bilang "seluruh uang", lihat Saldo rekening saat ini dan gunakan angka tersebut.
 - \`type\`: "income" jika ada kata gaji/dividen/bonus/dapat/terima/masuk/refund/cashback/freelance/honor/jual/hadiah/topup/pemasukan. "expense" untuk pengeluaran/beli/bayar. "transfer" untuk pindah uang antar rekening sendiri.
-- \`account_name\`: Wajib untuk income/expense. Harus cocok dengan rekening yang ada.
+- \`account_name\`: Wajib untuk income/expense. Harus cocok dengan rekening yang ada. Jika user sebut "tunai"/"cash"/"dompet" → isi "tunai" (akan dicocokkan ke rekening Tunai/Dompet). PENTING: Pilih rekening berdasarkan APA YANG USER SEBUT, jangan asal pilih rekening pertama.
 - \`note\`: Deskripsi BERMAKNA dari transaksi. Untuk expense: apa yang dibeli (TANPA nama toko, misal "Beli rokok", "Makan siang"). Untuk income: sumber pemasukan (misal "Dividen BBRI", "Gaji bulanan", "Freelance desain logo", "Bonus tahunan", "Cashback Shopee"). JANGAN isi generik seperti "Lainnya" atau "Pemasukan" — selalu ekstrak deskripsi spesifik dari input user.
 - \`store\`: Nama toko/merchant/tempat BELANJA saja (misal "Alfamart", "Indomaret", "Warteg"). Hanya untuk expense. Untuk income: SELALU null. Nama bank/perusahaan sumber dividen (BBRI, TLKM) BUKAN store. Title Case.
 - \`category_name\`: Pilih PALING TEPAT dari daftar kategori. PANDUAN:
@@ -1622,13 +1622,24 @@ function aiAppendTxConfirm(tx) {
     }
   } else {
     const targetAcc = (tx.account_name || '').trim().toLowerCase();
-    const acc = targetAcc ? accs.find(a => a.name.toLowerCase().includes(targetAcc)) : null;
+    const CASH_SYN = ['tunai', 'cash', 'dompet', 'wallet'];
+    const _findA = (q) => accs.find(a => a.name.toLowerCase().includes(q));
+    let acc = targetAcc ? _findA(targetAcc) : null;
+    if (!acc && targetAcc && CASH_SYN.includes(targetAcc)) {
+      acc = CASH_SYN.reduce((f, s) => f || _findA(s), null);
+    }
     if (acc) {
+      tx.account_name = acc.name;
       const afterBal = txType === 'income' ? (acc.balance || 0) + amt : (acc.balance || 0) - amt;
       balanceHtml = `<div class="ai-tx-balance-info">` +
         `<div class="ai-tx-balance-title">💳 ${esc(acc.name)}</div>` +
         `<div class="ai-tx-balance-row"><span>Saldo saat ini</span><span class="bal-val">${fCur(acc.balance || 0)}</span></div>` +
         `<div class="ai-tx-balance-row"><span>Setelah dicatat</span><span class="bal-val after">${fCur(afterBal)}</span></div>` +
+        `</div>`;
+    } else if (targetAcc) {
+      balanceHtml = `<div class="ai-tx-balance-info" style="border-color:var(--expense)">` +
+        `<div class="ai-tx-balance-title" style="color:var(--expense)">⚠️ Rekening "${esc(tx.account_name)}" tidak ditemukan</div>` +
+        `<div class="ai-tx-balance-row"><span>Akan dicatat ke</span><span class="bal-val">${esc((accs[0] || {}).name || '-')}</span></div>` +
         `</div>`;
     }
   }
@@ -1742,7 +1753,26 @@ async function aiConfirmTx(tx, bubbleId) {
     }
   } else {
     const targetAcc = (tx.account_name || '').trim().toLowerCase();
-    const acc = targetAcc ? (accs.find(a => a.name.toLowerCase().includes(targetAcc)) || accs[0]) : accs[0];
+    const CASH_SYNONYMS = ['tunai', 'cash', 'dompet', 'wallet'];
+    const isCash = CASH_SYNONYMS.includes(targetAcc);
+    const findAcc = (q) => accs.find(a => a.name.toLowerCase().includes(q));
+    let acc = null;
+    if (targetAcc) {
+      acc = findAcc(targetAcc);
+      if (!acc && isCash) {
+        acc = CASH_SYNONYMS.reduce((found, syn) => found || findAcc(syn), null);
+      }
+    }
+    if (!acc) acc = accs[0];
+    if (!acc) {
+      window.aiProcessingBubbles.delete(bubbleId);
+      if (bubble) {
+        const btns = bubble.querySelector('.ai-tx-confirm-btns');
+        if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done" style="color:var(--expense)">❌ Gagal: Tidak ada rekening.</div>';
+      }
+      toast('Tidak ada rekening.', 'err');
+      return;
+    }
     
     const targetCat = (tx.category_name || '').trim().toLowerCase();
     const cat = targetCat 
