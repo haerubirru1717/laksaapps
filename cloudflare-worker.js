@@ -218,7 +218,7 @@ async function handleRegister(body, env) {
   await seedCategories(id, env);
   const defAccId = "acc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
   await env.DB.prepare("INSERT OR IGNORE INTO accounts (id, user_id, name, balance, color) VALUES (?, ?, 'Tunai', 0, '#7c3aed')").bind(defAccId, id).run().catch(() => {});
-  const token = await signJWT({ sub: id, email: emailLower, name: name.trim() }, env.JWT_SECRET || "laksa-default-secret");
+  const token = await signJWT({ sub: id, email: emailLower, name: name.trim() }, env.JWT_SECRET);
   return jsonRes({ token, user: { id, email: emailLower, name: name.trim() } }, 201);
 }
 
@@ -230,14 +230,14 @@ async function handleLogin(body, env) {
   if (!user) return jsonRes({ error: "Email atau password salah" }, 401);
   const valid = await verifyPassword(password, user.salt, user.password_hash);
   if (!valid) return jsonRes({ error: "Email atau password salah" }, 401);
-  const token = await signJWT({ sub: user.id, email: user.email, name: user.name }, env.JWT_SECRET || "laksa-default-secret");
+  const token = await signJWT({ sub: user.id, email: user.email, name: user.name }, env.JWT_SECRET);
   return jsonRes({ token, user: { id: user.id, email: user.email, name: user.name, telegram_id: user.telegram_id } });
 }
 
 async function handleMe(req, env) {
   const token = extractToken(req);
   if (!token) return jsonRes({ error: "Token diperlukan" }, 401);
-  const payload = await verifyJWT(token, env.JWT_SECRET || "laksa-default-secret");
+  const payload = await verifyJWT(token, env.JWT_SECRET);
   if (!payload) return jsonRes({ error: "Token tidak valid atau expired" }, 401);
   const user = await env.DB.prepare("SELECT id, email, name, telegram_id, created_at FROM users WHERE id = ?").bind(payload.sub).first();
   if (!user) return jsonRes({ error: "User tidak ditemukan" }, 404);
@@ -247,7 +247,7 @@ async function handleMe(req, env) {
 async function handleLinkTelegram(req, body, env) {
   const token = extractToken(req);
   if (!token) return jsonRes({ error: "Token diperlukan" }, 401);
-  const payload = await verifyJWT(token, env.JWT_SECRET || "laksa-default-secret");
+  const payload = await verifyJWT(token, env.JWT_SECRET);
   if (!payload) return jsonRes({ error: "Token tidak valid" }, 401);
   const { telegram_id } = body || {};
   if (!telegram_id) return jsonRes({ error: "telegram_id diperlukan" }, 400);
@@ -273,18 +273,18 @@ async function handleLinkTelegram(req, body, env) {
 async function handleRefreshToken(req, env) {
   const token = extractToken(req);
   if (!token) return jsonRes({ error: "Token diperlukan" }, 401);
-  const payload = await verifyJWT(token, env.JWT_SECRET || "laksa-default-secret");
+  const payload = await verifyJWT(token, env.JWT_SECRET);
   if (!payload) return jsonRes({ error: "Token tidak valid atau expired" }, 401);
   const user = await env.DB.prepare("SELECT id, email, name FROM users WHERE id = ?").bind(payload.sub).first();
   if (!user) return jsonRes({ error: "User tidak ditemukan" }, 404);
-  const newToken = await signJWT({ sub: user.id, email: user.email, name: user.name }, env.JWT_SECRET || "laksa-default-secret");
+  const newToken = await signJWT({ sub: user.id, email: user.email, name: user.name }, env.JWT_SECRET);
   return jsonRes({ token: newToken });
 }
 
 async function handleDeleteAccount(req, body, env) {
   const token = extractToken(req);
   if (!token) return jsonRes({ error: "Token diperlukan" }, 401);
-  const payload = await verifyJWT(token, env.JWT_SECRET || "laksa-default-secret");
+  const payload = await verifyJWT(token, env.JWT_SECRET);
   if (!payload) return jsonRes({ error: "Token tidak valid" }, 401);
   const { password } = body || {};
   if (!password) return jsonRes({ error: "Password diperlukan untuk konfirmasi" }, 400);
@@ -322,7 +322,7 @@ async function handleForgotPassword(req, body, env) {
   const nowSec = Math.floor(Date.now() / 1000);
   const resetToken = await signJWT(
     { sub: user.id, email: emailLower, purpose: "otp_verification", otp: otp, reset_exp: nowSec + 600 },
-    env.JWT_SECRET || "laksa-default-secret"
+    env.JWT_SECRET
   );
 
   const resendApiKey = env.RESEND_API_KEY;
@@ -387,7 +387,7 @@ async function handleResetPassword(req, body, env) {
   if (!token || !password) return jsonRes({ error: "Sesi reset tidak valid atau password baru wajib diisi" }, 400);
   if (password.length < 6) return jsonRes({ error: "Password minimal 6 karakter" }, 400);
 
-  const payload = await verifyJWT(token, env.JWT_SECRET || "laksa-default-secret");
+  const payload = await verifyJWT(token, env.JWT_SECRET);
   if (!payload) {
     return jsonRes({ error: "Sesi reset tidak valid atau sudah kedaluwarsa" }, 400);
   }
@@ -475,132 +475,6 @@ function txDedupHash(userId, type, amount, accountId, date) {
   return `${userId}|${type}|${amount}|${accountId}|${date}|${bucket}`;
 }
 
-// ── Insert debug log: captures every INSERT attempt with full context ──
-async function logInsertAttempt(env, entry) {
-  try {
-    await env.DB.prepare(
-      "CREATE TABLE IF NOT EXISTS tx_insert_log (id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT DEFAULT CURRENT_TIMESTAMP, path TEXT, user_id TEXT, type TEXT, amount REAL, account_id TEXT, date TEXT, dedup_hash TEXT, idempotency_key TEXT, result TEXT, meta_changes INTEGER)"
-    ).run();
-    await env.DB.prepare(
-      "INSERT INTO tx_insert_log (path, user_id, type, amount, account_id, date, dedup_hash, idempotency_key, result, meta_changes) VALUES (?,?,?,?,?,?,?,?,?,?)"
-    ).bind(
-      entry.path, entry.user_id, entry.type, entry.amount, entry.account_id,
-      entry.date, entry.dedup_hash, entry.idempotency_key, entry.result,
-      entry.meta_changes ?? null
-    ).run();
-  } catch (e) { console.warn("logInsertAttempt:", e.message); }
-}
-
-// Diagnostic endpoint — check dedup infrastructure health
-async function debugDedup(env) {
-  const checks = {};
-  try {
-    const tbl = await env.DB.prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='processed_updates'"
-    ).first();
-    checks.processed_updates_table = tbl ? "exists" : "MISSING";
-  } catch (e) { checks.processed_updates_table = "ERROR: " + e.message; }
-  try {
-    const col = await env.DB.prepare(
-      "SELECT 1 FROM pragma_table_info('transactions') WHERE name='idempotency_key'"
-    ).first();
-    checks.idempotency_key_column = col ? "exists" : "MISSING";
-  } catch (e) { checks.idempotency_key_column = "ERROR: " + e.message; }
-  try {
-    const col2 = await env.DB.prepare(
-      "SELECT 1 FROM pragma_table_info('transactions') WHERE name='dedup_hash'"
-    ).first();
-    checks.dedup_hash_column = col2 ? "exists" : "MISSING";
-  } catch (e) { checks.dedup_hash_column = "ERROR: " + e.message; }
-  try {
-    const idx = await env.DB.prepare(
-      "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_tx_dedup_hash'"
-    ).first();
-    checks.idx_tx_dedup_hash = idx ? "exists" : "MISSING";
-  } catch (e) { checks.idx_tx_dedup_hash = "ERROR: " + e.message; }
-  try {
-    const dupes = await env.DB.prepare(
-      `SELECT date, type, amount, account_id, COUNT(*) as cnt
-       FROM transactions
-       GROUP BY user_id, date, type, amount, account_id
-       HAVING cnt > 1
-       ORDER BY date DESC LIMIT 10`
-    ).all();
-    checks.recent_duplicates = dupes.results || [];
-  } catch (e) { checks.recent_duplicates = "ERROR: " + e.message; }
-  checks.version = "3.4.0";
-  checks._dedupReady = _dedupReady;
-  return jsonRes(checks);
-}
-
-// Test endpoint — directly verifies the UNIQUE constraint works
-async function debugTestDedup(env) {
-  const report = { steps: [] };
-  try {
-    await ensureDedup(env);
-    report.steps.push({ step: "ensureDedup", ok: true });
-
-    const testHash = `__test__|dedup|${Date.now()}`;
-    const testId1 = `test_${crypto.randomUUID()}`;
-    const testId2 = `test_${crypto.randomUUID()}`;
-
-    // Step 1: Insert with test hash
-    const r1 = await env.DB.prepare(
-      "INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, account_id, source, dedup_hash) VALUES (?, '__test__', '2000-01-01', 'expense', 1, 'dedup test', '__test__', 'debug', ?)"
-    ).bind(testId1, testHash).run();
-    report.steps.push({ step: "insert_1", changes: r1.meta?.changes, expected: 1 });
-
-    // Step 2: Insert with SAME hash — should be ignored
-    const r2 = await env.DB.prepare(
-      "INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, account_id, source, dedup_hash) VALUES (?, '__test__', '2000-01-01', 'expense', 1, 'dedup test 2', '__test__', 'debug', ?)"
-    ).bind(testId2, testHash).run();
-    report.steps.push({ step: "insert_2_same_hash", changes: r2.meta?.changes, expected: 0 });
-
-    // Verify
-    const count = await env.DB.prepare(
-      "SELECT COUNT(*) as cnt FROM transactions WHERE dedup_hash = ?"
-    ).bind(testHash).first();
-    report.steps.push({ step: "count_with_hash", count: count?.cnt, expected: 1 });
-
-    report.constraint_works = (r1.meta?.changes === 1 && r2.meta?.changes === 0 && count?.cnt === 1);
-
-    // Cleanup
-    await env.DB.prepare("DELETE FROM transactions WHERE user_id = '__test__'").run();
-    report.steps.push({ step: "cleanup", ok: true });
-
-  } catch (e) {
-    report.error = e.message;
-    report.stack = e.stack;
-    try { await env.DB.prepare("DELETE FROM transactions WHERE user_id = '__test__'").run(); } catch {}
-  }
-  return jsonRes(report);
-}
-
-// Show recent transactions with dedup_hash values
-async function debugRecentTx(env) {
-  try {
-    const { results } = await env.DB.prepare(
-      `SELECT id, user_id, date, type, amount, account_id, source, idempotency_key, dedup_hash, created_at
-       FROM transactions
-       ORDER BY created_at DESC LIMIT 15`
-    ).all();
-    return jsonRes({ transactions: results });
-  } catch (e) { return jsonRes({ error: e.message }, 500); }
-}
-
-// Show insert attempt log
-async function debugInsertLog(env) {
-  try {
-    await env.DB.prepare(
-      "CREATE TABLE IF NOT EXISTS tx_insert_log (id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT DEFAULT CURRENT_TIMESTAMP, path TEXT, user_id TEXT, type TEXT, amount REAL, account_id TEXT, date TEXT, dedup_hash TEXT, idempotency_key TEXT, result TEXT, meta_changes INTEGER)"
-    ).run();
-    const { results } = await env.DB.prepare(
-      "SELECT * FROM tx_insert_log ORDER BY id DESC LIMIT 20"
-    ).all();
-    return jsonRes({ log: results });
-  } catch (e) { return jsonRes({ error: e.message }, 500); }
-}
-
 // ─────────────────────────────────────────────────────
 // ENTRY POINT
 // ─────────────────────────────────────────────────────
@@ -665,12 +539,14 @@ async function routeAPI(req, url, env) {
   const m    = req.method;
   const path = url.pathname;
 
-  if (path === "/" && m === "GET") return jsonRes({ status: "ok", version: "3.4.0" });
-  if (path === "/setup")           return setupDatabase(env);
-  if (path === "/debug/dedup" && m === "GET") return debugDedup(env);
-  if (path === "/debug/test-dedup" && m === "GET") return debugTestDedup(env);
-  if (path === "/debug/recent-tx" && m === "GET") return debugRecentTx(env);
-  if (path === "/debug/insert-log" && m === "GET") return debugInsertLog(env);
+  if (!env.JWT_SECRET) return jsonRes({ error: "Server misconfigured" }, 500);
+
+  if (path === "/" && m === "GET") return jsonRes({ status: "ok", version: "3.5.0" });
+  if (path === "/setup") {
+    const secret = req.headers.get("X-Setup-Secret");
+    if (!secret || secret !== env.SETUP_SECRET) return jsonRes({ error: "Not found" }, 404);
+    return setupDatabase(env);
+  }
 
   // Auth routes (public — no token needed)
   if ((path === "/auth/login" || path === "/auth/register" || path === "/auth/forgot-password" || path === "/auth/reset-password") && m === "POST") {
@@ -698,7 +574,7 @@ async function routeAPI(req, url, env) {
   let uid = null;
   const token = extractToken(req);
   if (token) {
-    const payload = await verifyJWT(token, env.JWT_SECRET || "laksa-default-secret");
+    const payload = await verifyJWT(token, env.JWT_SECRET);
     if (!payload) return jsonRes({ error: "Token tidak valid atau expired" }, 401);
     uid = payload.sub;
   } else {
@@ -1128,7 +1004,6 @@ async function saveTx(chatId, userId, parsed, acc, cat, rawText, env) {
   ).run();
 
   const changes = result.meta?.changes ?? -1;
-  await logInsertAttempt(env, { path: "saveTx", user_id: userId, type: parsed.type, amount: parsed.amount, account_id: acc.id, date, dedup_hash: dedupHash, idempotency_key: idemKey, result: changes > 0 ? "created" : "duplicate", meta_changes: changes });
 
   if (changes <= 0) return;
   await adjustBalance(acc.id, parsed.type, parsed.amount, +1, env);
@@ -1191,13 +1066,11 @@ async function saveTransfer(chatId, userId, parsed, fromAcc, toAcc, rawText, env
     INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key, dedup_hash)
     VALUES (?, ?, ?, 'expense', ?, ?, null, ?, null, ?, 'telegram', ?, ?)
   `).bind(idOut, userId, date, parsed.amount, note, fromAcc.id, rawText, idemKey, dedupHashOut).run();
-  await logInsertAttempt(env, { path: "saveTransfer_out", user_id: userId, type: "expense", amount: parsed.amount, account_id: fromAcc.id, date, dedup_hash: dedupHashOut, idempotency_key: idemKey, result: (r1.meta?.changes > 0) ? "created" : "duplicate", meta_changes: r1.meta?.changes ?? -1 });
 
   const r2 = await env.DB.prepare(`
     INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key, dedup_hash)
     VALUES (?, ?, ?, 'income', ?, ?, null, ?, null, ?, 'telegram', ?, ?)
   `).bind(idIn, userId, date, parsed.amount, note, toAcc.id, rawText, idemKey + '_in', dedupHashIn).run();
-  await logInsertAttempt(env, { path: "saveTransfer_in", user_id: userId, type: "income", amount: parsed.amount, account_id: toAcc.id, date, dedup_hash: dedupHashIn, idempotency_key: idemKey + "_in", result: (r2.meta?.changes > 0) ? "created" : "duplicate", meta_changes: r2.meta?.changes ?? -1 });
 
   if (r1.meta?.changes > 0) await adjustBalance(fromAcc.id, "expense", parsed.amount, +1, env);
   if (r2.meta?.changes > 0) await adjustBalance(toAcc.id,   "income",  parsed.amount, +1, env);
@@ -2619,7 +2492,7 @@ async function createTransaction(uid, body, env) {
 
   const changes = result.meta?.changes ?? -1;
   const status = (changes > 0) ? "created" : "duplicate";
-  await logInsertAttempt(env, { path: "createTransaction", user_id: uid, type: body.type, amount: body.amount, account_id: body.account_id, date, dedup_hash: dedupHash, idempotency_key: idempotencyKey, result: status, meta_changes: changes });
+
 
   if (changes <= 0) {
     return jsonRes({ id, status: "duplicate", dedup_hash: dedupHash });
