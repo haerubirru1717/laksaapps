@@ -65,14 +65,14 @@
     /* ── DARK GLASS THEME ── */
     html[data-theme="dark"] {
       --bg: #020203;
-      --bg2: rgba(255, 255, 255, .04);
+      --bg2: rgba(255, 255, 255, .10);
       --bg3: rgba(255, 255, 255, .03);
       --ink: #ededef;
       --ink2: #94a3b8;
       --ink3: #64748b;
       --border: rgba(255, 255, 255, .10);
       --border-hi: rgba(255, 255, 255, .18);
-      --card: rgba(255, 255, 255, .08);
+      --card: rgba(255, 255, 255, .13);
       --accent: #5e6ad2;
       --accent2: #f7931a;
       --t1: #ededef;
