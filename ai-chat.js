@@ -112,7 +112,7 @@ const AI_STYLE = `<style>
     }
 
     html[data-theme="dark"] .ai-panel {
-      background: rgba(6,10,20,.85);
+      background: rgba(6,10,20,.97);
       border-color: rgba(255,255,255,.08);
     }
 
