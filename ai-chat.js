@@ -1559,6 +1559,7 @@ async function aiCallGroq() {
     aiHistory.push({ role: 'assistant', content: answer });
 
     if (hasTxConfirm) {
+      await fetchAccs().catch(() => {});
       aiAppendTxConfirm(transaction);
     } else if (hasBills) {
       if (typeof aiAppendBillsConfirm === 'function') {
