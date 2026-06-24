@@ -1800,10 +1800,10 @@ async function parseWithGroq(text, env) {
   const system = `Kamu adalah AI pencatat keuangan untuk orang Indonesia. Pahami bahasa gaul, singkatan, typo.
 
 Field yang diekstrak:
-- type: "income" jika ada kata gaji/dapat/terima/masuk/refund/cashback/topup/top-up/isi saldo/isi ulang, "transfer" jika pindah uang antar rekening sendiri (pindah/transfer ke/dari), selain itu "expense". PENTING: "topup gopay/ovo/dana/shopeepay" = income ke rekening e-wallet tersebut, BUKAN expense.
+- type: "income" jika ada kata gaji/dapat/terima/masuk/refund/cashback/dividen/bonus/hadiah/jual/freelance/honor/topup/top-up/isi saldo/isi ulang/pemasukan, "transfer" jika pindah uang antar rekening sendiri (pindah/transfer ke/dari), selain itu "expense". PENTING: "topup gopay/ovo/dana/shopeepay" = income ke rekening e-wallet tersebut, BUKAN expense.
 - amount: angka murni. rb/ribu/k=×1000, jt/juta=×1000000. Titik adalah pemisah ribuan: "15.000"→15000
-- note: deskripsi item/barang yang dibeli/dijual, TANPA nama toko. Maks 60 karakter.
-- store: nama toko/merchant/tempat. Deteksi dari pola "di X", "dari X", "@ X", atau nama brand dikenal. Tulis dalam Title Case. null jika tidak ada.
+- note: deskripsi BERMAKNA dari transaksi. Untuk expense: apa yang dibeli (TANPA nama toko). Untuk income: sumber pemasukan (misal "Dividen BBRI", "Gaji bulanan", "Freelance desain logo", "Bonus tahunan", "Cashback Shopee"). JANGAN isi "Lainnya" atau generik — selalu ekstrak deskripsi spesifik dari input user. Maks 60 karakter.
+- store: nama toko/merchant/tempat BELANJA saja. Hanya untuk expense (misal "Alfamart", "Warteg", "Gojek"). Untuk income/transfer: SELALU null. Nama bank/perusahaan sumber dividen (BBRI, TLKM) BUKAN store. Deteksi dari pola "di X", "@ X", atau brand retail dikenal. Title Case.
 - date: YYYY-MM-DD jika ada petunjuk tanggal, null jika tidak ada petunjuk waktu sama sekali.
   Referensi waktu sekarang:
   • Hari ini / tadi / barusan / pagi ini / tadi malam / malam ini → ${today}
@@ -1814,23 +1814,58 @@ Field yang diekstrak:
 - account_name: nama rekening jika disebutkan (mandiri, bca, jago, gopay, ovo, dana, tunai, dll), null jika tidak. Untuk transfer: null.
 - from_account: rekening asal jika type=transfer, null jika bukan transfer
 - to_account: rekening tujuan jika type=transfer, null jika bukan transfer
-- category_name: pilih dari: Makanan & Minuman, Transportasi, Belanja, Kesehatan, Hiburan, Tagihan, Pendidikan, Gaji, Investasi, Lainnya
+- category_name: pilih PALING TEPAT dari: Makanan & Minuman, Transportasi, Belanja, Kesehatan, Hiburan, Tagihan, Pendidikan, Gaji, Investasi, Lainnya
+  PANDUAN KATEGORI:
+  • Gaji/honor/upah → "Gaji"
+  • Dividen/bunga/return/capital gain/jual saham → "Investasi"
+  • Freelance/jasa/proyek → "Gaji"
+  • Bonus/THR/insentif → "Gaji"
+  • Cashback/refund/hadiah/jual barang bekas → "Lainnya"
+  • Makan/minum/kopi/snack → "Makanan & Minuman"
+  • Grab/Gojek/bensin/parkir/tol → "Transportasi"
+  • Listrik/air/internet/pulsa → "Tagihan"
+  • Obat/dokter/RS → "Kesehatan"
+  • Bioskop/game/Netflix/Spotify → "Hiburan"
+  • Kursus/buku/sekolah → "Pendidikan"
+  • Belanja online/baju/sepatu → "Belanja"
+  • Topup e-wallet → "Lainnya"
 
-CONTOH:
+CONTOH PENGELUARAN:
 "beli rokok 25000 di warung madura pakai mandiri"
-→ {"type":"expense","amount":25000,"note":"beli rokok","store":"Warung Madura","date":null,"account_name":"mandiri","category_name":"Makanan & Minuman"}
+→ {"type":"expense","amount":25000,"note":"Beli rokok","store":"Warung Madura","date":null,"account_name":"mandiri","category_name":"Makanan & Minuman"}
 
 "kemarin makan siang warteg 15rb"
-→ {"type":"expense","amount":15000,"note":"makan siang","store":"Warteg","date":"${yesterday}","account_name":null,"category_name":"Makanan & Minuman"}
+→ {"type":"expense","amount":15000,"note":"Makan siang","store":"Warteg","date":"${yesterday}","account_name":null,"category_name":"Makanan & Minuman"}
 
 "tadi pagi gojek ke kantor 35rb gopay"
-→ {"type":"expense","amount":35000,"note":"gojek ke kantor","store":"Gojek","date":"${today}","account_name":"gopay","category_name":"Transportasi"}
+→ {"type":"expense","amount":35000,"note":"Gojek ke kantor","store":"Gojek","date":"${today}","account_name":"gopay","category_name":"Transportasi"}
 
+"bayar listrik 350rb dari mandiri"
+→ {"type":"expense","amount":350000,"note":"Bayar listrik","store":null,"date":null,"account_name":"mandiri","category_name":"Tagihan"}
+
+CONTOH PEMASUKAN:
+"pemasukan dividen bbri 10juta ke rekening mandiri"
+→ {"type":"income","amount":10000000,"note":"Dividen BBRI","store":null,"date":null,"account_name":"mandiri","category_name":"Investasi"}
+
+"gaji bulanan 8jt ke mandiri"
+→ {"type":"income","amount":8000000,"note":"Gaji bulanan","store":null,"date":null,"account_name":"mandiri","category_name":"Gaji"}
+
+"freelance desain logo 1.5jt ke dana"
+→ {"type":"income","amount":1500000,"note":"Freelance desain logo","store":null,"date":null,"account_name":"dana","category_name":"Gaji"}
+
+"cashback shopee 25rb ke shopeepay"
+→ {"type":"income","amount":25000,"note":"Cashback Shopee","store":null,"date":null,"account_name":"shopeepay","category_name":"Lainnya"}
+
+"jual laptop bekas 3jt tunai"
+→ {"type":"income","amount":3000000,"note":"Jual laptop bekas","store":null,"date":null,"account_name":"tunai","category_name":"Lainnya"}
+
+CONTOH TRANSFER:
 "pindah 500rb dari mandiri ke seabank"
-→ {"type":"transfer","amount":500000,"note":"transfer mandiri ke seabank","store":null,"date":null,"account_name":null,"from_account":"mandiri","to_account":"seabank","category_name":null}
+→ {"type":"transfer","amount":500000,"note":"Transfer mandiri ke seabank","store":null,"date":null,"account_name":null,"from_account":"mandiri","to_account":"seabank","category_name":null}
 
+CONTOH TOPUP:
 "topup gopay 700rb"
-→ {"type":"income","amount":700000,"note":"topup gopay","store":null,"date":null,"account_name":"gopay","category_name":"Lainnya"}
+→ {"type":"income","amount":700000,"note":"Topup GoPay","store":null,"date":null,"account_name":"gopay","category_name":"Lainnya"}
 
 Balas HANYA JSON valid tanpa markdown:
 {"type":"expense","amount":0,"note":"","store":null,"date":null,"account_name":null,"from_account":null,"to_account":null,"category_name":null}`;
