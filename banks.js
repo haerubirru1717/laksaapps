@@ -113,10 +113,10 @@ const BANKS = {
   shopee:    {color:'#EE4D2D',c2:'#c93b1e',domain:'shopee.co.id',slug:'shopeepay'},
 
   // ── Kas/Tunai ──
-  tunai:     {color:'#7c5a43',c2:'#593c2a',domain:null,noLogo:true},
-  cash:      {color:'#7c5a43',c2:'#593c2a',domain:null,noLogo:true},
-  dompet:    {color:'#70483c',c2:'#4e2e25',domain:null,isWallet:true,noLogo:true},
-  kas:       {color:'#8c6239',c2:'#5f3e1b',domain:null,noLogo:true}
+  tunai:     {color:'#7c5a43',c2:'#593c2a',domain:null,isWallet:true,slug:'dompet'},
+  cash:      {color:'#7c5a43',c2:'#593c2a',domain:null,isWallet:true,slug:'dompet'},
+  dompet:    {color:'#70483c',c2:'#4e2e25',domain:null,isWallet:true,slug:'dompet'},
+  kas:       {color:'#8c6239',c2:'#5f3e1b',domain:null,isWallet:true,slug:'dompet'}
 };
 
 // ── DAFTAR SEMUA FILE SVG ──
@@ -126,7 +126,7 @@ const SVG_FILES = [
   'btn','btnsyariah','btpnsyariah','bukopin','bukopinsyariah','bumiartha',
   'bws','capital','ccbindonesia','chinaconstructionbankindonesia',
   'cimbniaga','cimbniagasyariah','citibank','commonwealthbank','creditsuisse',
-  'ctbcbank','danamon','danamonsyariah','dbs','deutschebank','dki',
+  'ctbcbank','danamon','danamonsyariah','dbs','deutschebank','dki','dompet',
   'ganesha','hanabank','hibank','hsbc','ibkbank','icbc','ina','indexselindo',
   'ingbank','jago','jakarta','jenius','jpmorganchaseandco',
   'jtrustbank','krombank','linebank','mandiri','mas','maspion','maybank',
@@ -259,7 +259,7 @@ const detBank = (name) => {
     const isDompet = /dompet/i.test(n);
     const col = isKas ? '#8c6239' : (isDompet ? '#70483c' : '#7c5a43');
     const col2 = isKas ? '#5f3e1b' : (isDompet ? '#4e2e25' : '#593c2a');
-    return { color: col, c2: col2, domain: null, isWallet: true, slug: nClean, noLogo: true };
+    return { color: col, c2: col2, domain: null, isWallet: true, slug: 'dompet' };
   }
 
   // 6. Fallback
