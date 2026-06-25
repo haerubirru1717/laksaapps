@@ -31,8 +31,8 @@
     .dash-bg-banner {
       position: absolute;
       top: -2rem;
-      left: -1.2rem;
-      right: -2.5rem;
+      left: -1.35rem;
+      right: -2.6rem;
       height: 210px;
       background: linear-gradient(135deg, #c1440e 0%, #d4691a 50%, #e8913a 100%);
       border-radius: 0 0 24px 24px;
@@ -45,18 +45,25 @@
     }
 
     /* Target screens with other paddings */
+    @media(min-width:1280px) {
+      .dash-bg-banner {
+        left: -1.35rem;
+        right: -3.15rem;
+      }
+    }
+
     @media(max-width:1279px) and (min-width:769px) {
       .dash-bg-banner {
-        left: -1.2rem;
-        right: -2.25rem;
+        left: -1.35rem;
+        right: -2.6rem;
       }
     }
 
     @media(max-width:768px) {
       .dash-bg-banner {
         top: -1.25rem;
-        left: -0.9rem;
-        right: -0.9rem;
+        left: -0.95rem;
+        right: -0.95rem;
         height: 170px;
         border-radius: 0 0 18px 18px;
       }
@@ -432,10 +439,10 @@
       margin-bottom: .85rem
     }
 
-    /* 2×2 inline stats grid */
+    /* inline stats grid */
     .nw-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(4, 1fr);
       gap: .5rem .85rem;
       position: relative;
       z-index: 1;
@@ -5353,5 +5360,15 @@ html[data-theme="education"] .nw-growth-badge.neg {
   background: rgba(239, 68, 68, 0.15) !important;
   color: #b91c1c !important;
   border: 1.5px solid #0f172a !important;
+}
+
+@media(max-width:768px) {
+  .nw-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .nw-item-bud,
+  .nw-item-bill {
+    display: none !important;
+  }
 }
 
