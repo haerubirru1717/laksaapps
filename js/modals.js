@@ -23,6 +23,7 @@ function openModal(type, data = null) {
     addTransaction: () => buildTxForm(data), addBudget: () => buildBudForm(),
     addGoal: () => buildGoalForm(), addToGoal: () => buildAddToGoalForm(data),
     addAccount: () => buildAccForm(), addCategory: () => buildCatForm(),
+    addEwallet: () => buildAccForm(true),
     addBill: () => buildBillForm(data), payBill: () => buildPayBillForm(data),
     billHistory: () => buildBillHistory(data),
     addPiutang: () => buildPiutangForm(data), returnPiutang: () => buildReturnPiutangForm(data)
@@ -386,9 +387,12 @@ function buildAddToGoalForm(goal) {
   const html = `<form><p style="color:var(--t3);font-size:.84rem;margin-bottom:.9rem">Progress: <strong style="color:var(--income)">${fCur(goal.current)}</strong> / ${fCur(goal.target)}</p><div class="fg"><label class="flbl">Tambah Tabungan *</label><input type="number" class="finp" id="agAmt" min="1" placeholder="0" required/></div><div class="mfoot"><button type="button" class="btn2" onclick="closeModal()">Batal</button><button type="submit" class="btn">Tabung</button></div></form>`;
   return { t: 'Tabung — ' + esc(goal.name), html, onSubmit: () => addToGoal(goal.id, getRawAmt('agAmt')) };
 }
-function buildAccForm() {
-  const html = `<form><div class="fg"><label class="flbl">Nama Rekening *</label><input type="text" class="finp" id="aN" placeholder="misal: Bank Mandiri, Neo Bank, Krom Bank" required/></div><p class="hint" style="margin:-.4rem 0 .7rem">Brand color & logo otomatis dari nama bank</p><div class="fg"><label class="flbl">Saldo Awal</label><input type="number" class="finp" id="aBal" min="0" placeholder="0"/></div><div class="mfoot"><button type="button" class="btn2" onclick="closeModal()">Batal</button><button type="submit" class="btn">Tambah</button></div></form>`;
-  return { t: 'Tambah Rekening', html, onSubmit: () => addAcc({ name: el('aN').value.trim(), balance: getRawAmt('aBal') || 0 }) };
+function buildAccForm(isEwallet = false) {
+  const title = isEwallet ? 'Tambah E-Wallet' : 'Tambah Rekening';
+  const placeholder = isEwallet ? 'misal: Dana, OVO, GoPay, ShopeePay' : 'misal: Bank Mandiri, Neo Bank, Krom Bank';
+  const hint = isEwallet ? 'Brand color & logo otomatis dari nama e-wallet' : 'Brand color & logo otomatis dari nama bank';
+  const html = `<form><div class="fg"><label class="flbl">${isEwallet ? 'Nama E-Wallet' : 'Nama Rekening'} *</label><input type="text" class="finp" id="aN" placeholder="${placeholder}" required/></div><p class="hint" style="margin:-.4rem 0 .7rem">${hint}</p><div class="fg"><label class="flbl">Saldo Awal</label><input type="number" class="finp" id="aBal" min="0" placeholder="0"/></div><div class="mfoot"><button type="button" class="btn2" onclick="closeModal()">Batal</button><button type="submit" class="btn">Tambah</button></div></form>`;
+  return { t: title, html, onSubmit: () => addAcc({ name: el('aN').value.trim(), balance: getRawAmt('aBal') || 0 }) };
 }
 function buildCatForm() {
   const html = `<form><div class="fg"><label class="flbl">Nama Kategori *</label><input type="text" class="finp" id="cN" placeholder="misal: Hobi" required/></div><div class="frow"><div class="fg"><label class="flbl">Emoji</label><input type="text" class="finp" id="cE" placeholder="🏷️" maxlength="2"/></div><div class="fg"><label class="flbl">Berlaku untuk</label><select class="finp" id="cT"><option value="both">Keduanya</option><option value="expense">Pengeluaran</option><option value="income">Pemasukan</option></select></div></div><div class="mfoot"><button type="button" class="btn2" onclick="closeModal()">Batal</button><button type="submit" class="btn">Tambah</button></div></form>`;

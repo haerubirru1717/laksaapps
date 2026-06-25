@@ -6,3 +6,4 @@ ui-ux-pro-max-skill/
 node_modules/
 dist/
 deploy.ps1
+admin/

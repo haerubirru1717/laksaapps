@@ -117,6 +117,31 @@ function extractToken(req) {
   return auth.slice(7);
 }
 
+async function verifyAdminJWT(req, env) {
+  const token = extractToken(req);
+  if (!token) return null;
+  const payload = await verifyJWT(token, env.JWT_SECRET);
+  if (!payload) return null;
+  if (payload.role !== "admin") return null;
+  return payload;
+}
+
+async function logAdminAction(adminId, action, target, details, env) {
+  const id = "log_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+  await env.DB.prepare(
+    "INSERT INTO admin_audit_logs (id, admin_id, action, target, details, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+  ).bind(
+    id,
+    adminId,
+    action,
+    target || null,
+    details ? JSON.stringify(details) : null,
+    new Date().toISOString()
+  ).run().catch(e => {
+    console.error("logAdminAction error:", e.message);
+  });
+}
+
 // ─────────────────────────────────────────────────────
 // USAGE TRACKING (FREEMIUM)
 // ─────────────────────────────────────────────────────
@@ -481,7 +506,7 @@ function txDedupHash(userId, type, amount, accountId, date) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
+    if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }), request);
     try {
       if (request.method === "POST" && (url.pathname === "/webhook" || url.pathname === "/telegram-webhook")) {
         // Webhook secret verification (security guard — harus sebelum parse body)
@@ -524,10 +549,10 @@ export default {
         ctx.waitUntil(handleAdminBot(body, env));
         return new Response("OK");
       }
-      return cors(await routeAPI(request, url, env));
+      return cors(await routeAPI(request, url, env), request);
     } catch (e) {
       console.error("Worker error:", e.message, e.stack);
-      return cors(jsonRes({ error: e.message }, 500));
+      return cors(jsonRes({ error: e.message }, 500), request);
     }
   }
 };
@@ -546,6 +571,96 @@ async function routeAPI(req, url, env) {
     const secret = req.headers.get("X-Setup-Secret");
     if (!secret || secret !== env.SETUP_SECRET) return jsonRes({ error: "Not found" }, 404);
     return setupDatabase(env);
+  }
+
+  // ── ADMIN PANEL ROUTES ──
+  if ((path === "/admin/auth/otp-request" || path === "/admin/auth/otp-verify") && m === "POST") {
+    const ip = req.headers.get("CF-Connecting-IP") || req.headers.get("X-Forwarded-For") || "unknown";
+    if (!checkRateLimit(ip)) {
+      return jsonRes({ error: "Terlalu banyak percobaan. Coba lagi dalam 15 menit." }, 429);
+    }
+    if (path === "/admin/auth/otp-request") return handleAdminOtpRequest(await req.json(), env);
+    if (path === "/admin/auth/otp-verify") return handleAdminOtpVerify(await req.json(), ip, env);
+  }
+
+  if (path.startsWith("/admin/")) {
+    const adminPayload = await verifyAdminJWT(req, env);
+    if (!adminPayload) return jsonRes({ error: "Autentikasi admin diperlukan" }, 401);
+    const adminId = adminPayload.sub;
+
+    if (path === "/admin/auth/me" && m === "GET") {
+      return jsonRes({ telegram_id: adminId });
+    }
+    if (path === "/admin/stats" && m === "GET") {
+      return handleAdminStats(adminId, env);
+    }
+    if (path === "/admin/users" && m === "GET") {
+      return handleAdminGetUsers(adminId, url, env);
+    }
+    if (path === "/admin/pricing" && m === "GET") {
+      return handleAdminGetPricing(adminId, env);
+    }
+    if (path === "/admin/pricing" && m === "POST") {
+      return handleAdminUpdatePricing(adminId, await req.json(), env);
+    }
+    if (path === "/admin/settings/qris" && m === "POST") {
+      return handleAdminUpdateQris(adminId, await req.json(), env);
+    }
+    if (path === "/admin/coupons" && m === "GET") {
+      return handleAdminGetCoupons(adminId, env);
+    }
+    if (path === "/admin/coupons" && m === "POST") {
+      return handleAdminCreateCoupon(adminId, await req.json(), env);
+    }
+    if (path === "/admin/audit-logs" && m === "GET") {
+      return handleAdminGetAuditLogs(adminId, url, env);
+    }
+
+    // Dynamic routes
+    const userMatch = path.match(/^\/admin\/users\/([^/]+)$/);
+    if (userMatch && m === "GET") {
+      return handleAdminGetUserDetail(adminId, userMatch[1], env);
+    }
+    if (userMatch && m === "DELETE") {
+      return handleAdminDeleteUser(adminId, userMatch[1], env);
+    }
+
+    const userBanMatch = path.match(/^\/admin\/users\/([^/]+)\/ban$/);
+    if (userBanMatch && m === "POST") {
+      return handleAdminBanUser(adminId, userBanMatch[1], env);
+    }
+
+    const userUnbanMatch = path.match(/^\/admin\/users\/([^/]+)\/unban$/);
+    if (userUnbanMatch && m === "POST") {
+      return handleAdminUnbanUser(adminId, userUnbanMatch[1], env);
+    }
+
+    const userResetPwMatch = path.match(/^\/admin\/users\/([^/]+)\/reset-password$/);
+    if (userResetPwMatch && m === "POST") {
+      return handleAdminResetPassword(adminId, userResetPwMatch[1], await req.json(), env);
+    }
+
+    const userApproveMatch = path.match(/^\/admin\/users\/([^/]+)\/approve$/);
+    if (userApproveMatch && m === "POST") {
+      return handleAdminApproveUser(adminId, userApproveMatch[1], await req.json(), env);
+    }
+
+    const userExtendMatch = path.match(/^\/admin\/users\/([^/]+)\/extend$/);
+    if (userExtendMatch && m === "POST") {
+      return handleAdminExtendUser(adminId, userExtendMatch[1], await req.json(), env);
+    }
+
+    const userRevokeMatch = path.match(/^\/admin\/users\/([^/]+)\/revoke$/);
+    if (userRevokeMatch && m === "POST") {
+      return handleAdminRevokeUser(adminId, userRevokeMatch[1], env);
+    }
+
+    const couponDeleteMatch = path.match(/^\/admin\/coupons\/([^/]+)$/);
+    if (couponDeleteMatch && m === "DELETE") {
+      return handleAdminDeleteCoupon(adminId, couponDeleteMatch[1], env);
+    }
+
+    return jsonRes({ error: "Endpoint admin tidak ditemukan" }, 404);
   }
 
   // Auth routes (public — no token needed)
@@ -2040,6 +2155,462 @@ function resolveCategory(catName, note, store, type, cats) {
 }
 
 // ─────────────────────────────────────────────────────
+// ADMIN API HANDLERS
+// ─────────────────────────────────────────────────────
+async function handleAdminOtpRequest(body, env) {
+  const { telegram_id } = body || {};
+  if (!telegram_id) return jsonRes({ error: "Telegram ID wajib diisi" }, 400);
+
+  const adminTelegramId = env.ADMIN_TELEGRAM_ID;
+  if (!adminTelegramId) {
+    return jsonRes({ error: "Server misconfigured: ADMIN_TELEGRAM_ID tidak diatur" }, 500);
+  }
+
+  // Generic message for security (don't reveal if ID matches or not)
+  if (String(telegram_id).trim() !== String(adminTelegramId).trim()) {
+    // Return a mock success response to avoid admin username/ID harvesting
+    return jsonRes({ ok: true, message: "Jika ID terdaftar sebagai admin, OTP akan dikirim." });
+  }
+
+  const token = env.ADMIN_BOT_TOKEN;
+  if (!token) {
+    return jsonRes({ error: "Server misconfigured: ADMIN_BOT_TOKEN tidak diatur" }, 500);
+  }
+
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+  // Send OTP message to admin Telegram
+  try {
+    const text = `🔐 *Kode OTP Admin Panel LaksaApp*\n\nKode verifikasi Anda adalah: \`${otp}\`\n\nKode ini hanya berlaku selama 3 menit. Jangan bagikan kode ini kepada siapapun!`;
+    const tgResp = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: adminTelegramId, text, parse_mode: 'Markdown' })
+    });
+
+    if (!tgResp.ok) {
+      const err = await tgResp.text();
+      console.error("Telegram Send OTP Error:", err);
+      return jsonRes({ error: "Gagal mengirim OTP ke Telegram. Pastikan Anda sudah memulai chat dengan Bot Admin." }, 500);
+    }
+  } catch (e) {
+    console.error("Telegram Send OTP Exception:", e);
+    return jsonRes({ error: "Gagal mengirim OTP ke Telegram." }, 500);
+  }
+
+  // State token containing hashed OTP (stateless verification)
+  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(otp));
+  const otpHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  const stateToken = await signJWT(
+    { telegram_id: adminTelegramId, otp_hash: otpHash, otp_exp: nowSec + 180, purpose: "admin_otp" },
+    env.JWT_SECRET
+  );
+
+  return jsonRes({ ok: true, state_token: stateToken, message: "Kode OTP telah dikirim ke Telegram Anda." });
+}
+
+async function handleAdminOtpVerify(body, ip, env) {
+  const { otp, state_token } = body || {};
+  if (!otp || !state_token) {
+    return jsonRes({ error: "OTP dan state token wajib diisi" }, 400);
+  }
+
+  const payload = await verifyJWT(state_token, env.JWT_SECRET);
+  if (!payload || payload.purpose !== "admin_otp") {
+    return jsonRes({ error: "Sesi verifikasi tidak valid atau telah kedaluwarsa" }, 400);
+  }
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (!payload.otp_exp || nowSec > payload.otp_exp) {
+    return jsonRes({ error: "Kode OTP telah kedaluwarsa. Silakan minta kode baru." }, 400);
+  }
+
+  // Compare hash
+  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(otp.trim()));
+  const inputHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+  if (inputHash !== payload.otp_hash) {
+    return jsonRes({ error: "Kode OTP salah" }, 400);
+  }
+
+  // Generate Admin JWT Token
+  const adminToken = await signJWT(
+    { sub: payload.telegram_id, role: "admin" },
+    env.JWT_SECRET
+  );
+
+  // Log action
+  await logAdminAction(payload.telegram_id, "login", null, { ip }, env);
+
+  return jsonRes({
+    token: adminToken,
+    admin: { telegram_id: payload.telegram_id }
+  });
+}
+
+async function handleAdminStats(adminId, env) {
+  try {
+    const totalUsers = await env.DB.prepare("SELECT COUNT(*) as cnt FROM users").first();
+    const premiumUsers = await env.DB.prepare("SELECT COUNT(*) as cnt FROM users WHERE plan = 'premium'").first();
+    const bannedUsers = await env.DB.prepare("SELECT COUNT(*) as cnt FROM users WHERE is_banned = 1").first();
+    
+    const revenue = await env.DB.prepare("SELECT SUM(amount) as total FROM payment_requests WHERE status = 'approved'").first();
+    const recentPayments = await env.DB.prepare("SELECT id, user_id, email, pricing_id, amount, status, created_at, resolved_at FROM payment_requests ORDER BY created_at DESC LIMIT 10").all();
+    
+    // Growth metrics (last 30 days)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const newUsersLast30Days = await env.DB.prepare("SELECT COUNT(*) as cnt FROM users WHERE created_at >= ?").bind(thirtyDaysAgo).first();
+
+    return jsonRes({
+      stats: {
+        total_users: totalUsers?.cnt || 0,
+        premium_users: premiumUsers?.cnt || 0,
+        banned_users: bannedUsers?.cnt || 0,
+        total_revenue: revenue?.total || 0,
+        new_users_30d: newUsersLast30Days?.cnt || 0
+      },
+      recent_payments: recentPayments.results || []
+    });
+  } catch (e) {
+    return jsonRes({ error: "Gagal memuat statistik: " + e.message }, 500);
+  }
+}
+
+async function handleAdminGetUsers(adminId, url, env) {
+  try {
+    const search = url.searchParams.get("search") || "";
+    const plan = url.searchParams.get("plan") || "";
+    const status = url.searchParams.get("status") || "";
+    const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
+    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get("limit") || "50")));
+    const offset = (page - 1) * limit;
+
+    let query = "SELECT id, email, name, plan, plan_expired_at, is_banned, created_at FROM users WHERE 1=1";
+    let countQuery = "SELECT COUNT(*) as cnt FROM users WHERE 1=1";
+    const params = [];
+
+    if (search) {
+      query += " AND (email LIKE ? OR name LIKE ?)";
+      countQuery += " AND (email LIKE ? OR name LIKE ?)";
+      params.push(`%${search}%`, `%${search}%`);
+    }
+    if (plan) {
+      query += " AND plan = ?";
+      countQuery += " AND plan = ?";
+      params.push(plan);
+    }
+    if (status) {
+      if (status === "banned") {
+        query += " AND is_banned = 1";
+        countQuery += " AND is_banned = 1";
+      } else if (status === "active") {
+        query += " AND is_banned = 0";
+        countQuery += " AND is_banned = 0";
+      }
+    }
+
+    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+    const bindings = [...params, limit, offset];
+    
+    const users = await env.DB.prepare(query).bind(...bindings).all();
+    const total = await env.DB.prepare(countQuery).bind(...params).first();
+
+    return jsonRes({
+      users: users.results || [],
+      total: total?.cnt || 0,
+      page,
+      limit
+    });
+  } catch (e) {
+    return jsonRes({ error: "Gagal memuat daftar user: " + e.message }, 500);
+  }
+}
+
+async function handleAdminGetUserDetail(adminId, userId, env) {
+  try {
+    const user = await env.DB.prepare("SELECT id, email, name, telegram_id, plan, plan_expired_at, is_banned, created_at FROM users WHERE id = ?").bind(userId).first();
+    if (!user) return jsonRes({ error: "User tidak ditemukan" }, 404);
+
+    const txCount = await env.DB.prepare("SELECT COUNT(*) as cnt FROM transactions WHERE user_id = ?").bind(userId).first();
+    const payments = await env.DB.prepare("SELECT id, pricing_id, amount, status, created_at, resolved_at FROM payment_requests WHERE user_id = ? ORDER BY created_at DESC").bind(userId).all();
+
+    return jsonRes({
+      user,
+      stats: {
+        transactions_count: txCount?.cnt || 0
+      },
+      payments: payments.results || []
+    });
+  } catch (e) {
+    return jsonRes({ error: "Gagal memuat detail user: " + e.message }, 500);
+  }
+}
+
+async function handleAdminBanUser(adminId, userId, env) {
+  try {
+    const user = await env.DB.prepare("SELECT email FROM users WHERE id = ?").bind(userId).first();
+    if (!user) return jsonRes({ error: "User tidak ditemukan" }, 404);
+
+    await env.DB.prepare("UPDATE users SET is_banned = 1 WHERE id = ?").bind(userId).run();
+    await logAdminAction(adminId, "ban_user", userId, { email: user.email }, env);
+    return jsonRes({ ok: true, message: "User berhasil diblokir" });
+  } catch (e) {
+    return jsonRes({ error: "Gagal memblokir user: " + e.message }, 500);
+  }
+}
+
+async function handleAdminUnbanUser(adminId, userId, env) {
+  try {
+    const user = await env.DB.prepare("SELECT email FROM users WHERE id = ?").bind(userId).first();
+    if (!user) return jsonRes({ error: "User tidak ditemukan" }, 404);
+
+    await env.DB.prepare("UPDATE users SET is_banned = 0 WHERE id = ?").bind(userId).run();
+    await logAdminAction(adminId, "unban_user", userId, { email: user.email }, env);
+    return jsonRes({ ok: true, message: "Blokir user berhasil dibuka" });
+  } catch (e) {
+    return jsonRes({ error: "Gagal membuka blokir user: " + e.message }, 500);
+  }
+}
+
+async function handleAdminDeleteUser(adminId, userId, env) {
+  try {
+    const user = await env.DB.prepare("SELECT email FROM users WHERE id = ?").bind(userId).first();
+    if (!user) return jsonRes({ error: "User tidak ditemukan" }, 404);
+
+    // Delete user data (cascade delete)
+    await env.DB.prepare("DELETE FROM transaction_items WHERE transaction_id IN (SELECT id FROM transactions WHERE user_id = ?)").bind(userId).run().catch(() => {});
+    await env.DB.prepare("DELETE FROM transactions WHERE user_id = ?").bind(userId).run().catch(() => {});
+    await env.DB.prepare("DELETE FROM accounts WHERE user_id = ?").bind(userId).run().catch(() => {});
+    await env.DB.prepare("DELETE FROM categories WHERE user_id = ?").bind(userId).run().catch(() => {});
+    await env.DB.prepare("DELETE FROM budgets WHERE user_id = ?").bind(userId).run().catch(() => {});
+    await env.DB.prepare("DELETE FROM goals WHERE user_id = ?").bind(userId).run().catch(() => {});
+    await env.DB.prepare("DELETE FROM bills WHERE user_id = ?").bind(userId).run().catch(() => {});
+    await env.DB.prepare("DELETE FROM piutang WHERE user_id = ?").bind(userId).run().catch(() => {});
+    await env.DB.prepare("DELETE FROM pending_scans WHERE user_id = ?").bind(userId).run().catch(() => {});
+    await env.DB.prepare("DELETE FROM pending_texts WHERE user_id = ?").bind(userId).run().catch(() => {});
+    await env.DB.prepare("DELETE FROM usage_logs WHERE user_id = ?").bind(userId).run().catch(() => {});
+    await env.DB.prepare("DELETE FROM payment_requests WHERE user_id = ?").bind(userId).run().catch(() => {});
+    await env.DB.prepare("DELETE FROM bot_messages WHERE user_id = ?").bind(userId).run().catch(() => {});
+    await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
+
+    await logAdminAction(adminId, "delete_user", userId, { email: user.email }, env);
+    return jsonRes({ ok: true, message: "User dan semua data berhasil dihapus permanen" });
+  } catch (e) {
+    return jsonRes({ error: "Gagal menghapus user: " + e.message }, 500);
+  }
+}
+
+async function handleAdminResetPassword(adminId, userId, body, env) {
+  try {
+    const { password } = body || {};
+    if (!password || password.length < 6) return jsonRes({ error: "Password minimal 6 karakter" }, 400);
+
+    const user = await env.DB.prepare("SELECT email FROM users WHERE id = ?").bind(userId).first();
+    if (!user) return jsonRes({ error: "User tidak ditemukan" }, 404);
+
+    const salt = crypto.randomUUID();
+    const passwordHash = await hashPassword(password, salt);
+
+    await env.DB.prepare("UPDATE users SET password_hash = ?, salt = ? WHERE id = ?").bind(passwordHash, salt, userId).run();
+    await logAdminAction(adminId, "reset_password", userId, { email: user.email }, env);
+
+    return jsonRes({ ok: true, message: "Password user berhasil direset" });
+  } catch (e) {
+    return jsonRes({ error: "Gagal mereset password user: " + e.message }, 500);
+  }
+}
+
+async function handleAdminApproveUser(adminId, userId, body, env) {
+  try {
+    const { duration } = body || {};
+    const user = await env.DB.prepare("SELECT email, plan_expired_at FROM users WHERE id = ?").bind(userId).first();
+    if (!user) return jsonRes({ error: "User tidak ditemukan" }, 404);
+
+    let expiredAt = null;
+    let durationLabel = "";
+    if (duration === "30d") {
+      expiredAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      durationLabel = "30 hari";
+    } else if (duration === "90d") {
+      expiredAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+      durationLabel = "90 hari";
+    } else if (duration === "365d") {
+      expiredAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+      durationLabel = "365 hari";
+    } else if (duration === "lifetime") {
+      expiredAt = null;
+      durationLabel = "Lifetime";
+    } else {
+      return jsonRes({ error: "Durasi tidak valid. Gunakan: 30d, 90d, 365d, lifetime" }, 400);
+    }
+
+    await env.DB.prepare("UPDATE users SET plan = 'premium', plan_expired_at = ? WHERE id = ?").bind(expiredAt, userId).run();
+    await env.DB.prepare("UPDATE payment_requests SET status = 'approved', resolved_at = ?, resolved_by = ? WHERE user_id = ? AND status = 'pending'").bind(new Date().toISOString(), adminId, userId).run().catch(() => {});
+    
+    await logAdminAction(adminId, "approve_premium", userId, { email: user.email, duration: durationLabel }, env);
+    return jsonRes({ ok: true, message: "Premium diaktifkan untuk user " + user.email });
+  } catch (e) {
+    return jsonRes({ error: "Gagal approve premium: " + e.message }, 500);
+  }
+}
+
+async function handleAdminExtendUser(adminId, userId, body, env) {
+  try {
+    const { duration } = body || {};
+    const user = await env.DB.prepare("SELECT email, plan, plan_expired_at FROM users WHERE id = ?").bind(userId).first();
+    if (!user) return jsonRes({ error: "User tidak ditemukan" }, 404);
+
+    let days = 0;
+    if (duration === "30d") days = 30;
+    else if (duration === "90d") days = 90;
+    else if (duration === "365d") days = 365;
+    else return jsonRes({ error: "Durasi tidak valid. Gunakan: 30d, 90d, 365d" }, 400);
+
+    let currentExp = user.plan_expired_at ? new Date(user.plan_expired_at).getTime() : Date.now();
+    if (currentExp < Date.now()) currentExp = Date.now();
+
+    const expiredAt = new Date(currentExp + days * 24 * 60 * 60 * 1000).toISOString();
+
+    await env.DB.prepare("UPDATE users SET plan = 'premium', plan_expired_at = ? WHERE id = ?").bind(expiredAt, userId).run();
+    await logAdminAction(adminId, "extend_premium", userId, { email: user.email, days }, env);
+
+    return jsonRes({ ok: true, message: "Masa aktif premium diperpanjang untuk user " + user.email });
+  } catch (e) {
+    return jsonRes({ error: "Gagal extend premium: " + e.message }, 500);
+  }
+}
+
+async function handleAdminRevokeUser(adminId, userId, env) {
+  try {
+    const user = await env.DB.prepare("SELECT email FROM users WHERE id = ?").bind(userId).first();
+    if (!user) return jsonRes({ error: "User tidak ditemukan" }, 404);
+
+    await env.DB.prepare("UPDATE users SET plan = 'free', plan_expired_at = NULL WHERE id = ?").bind(userId).run();
+    await logAdminAction(adminId, "revoke_premium", userId, { email: user.email }, env);
+
+    return jsonRes({ ok: true, message: "Premium dicabut untuk user " + user.email });
+  } catch (e) {
+    return jsonRes({ error: "Gagal mencabut premium: " + e.message }, 500);
+  }
+}
+
+async function handleAdminGetPricing(adminId, env) {
+  try {
+    const prices = await env.DB.prepare("SELECT * FROM pricing ORDER BY duration_days ASC").all();
+    return jsonRes(prices.results || []);
+  } catch (e) {
+    return jsonRes({ error: "Gagal mengambil data pricing: " + e.message }, 500);
+  }
+}
+
+async function handleAdminUpdatePricing(adminId, body, env) {
+  try {
+    const { id, price, original_price, label, active } = body || {};
+    if (!id) return jsonRes({ error: "Pricing ID diperlukan" }, 400);
+    
+    await env.DB.prepare(
+      "UPDATE pricing SET price = ?, original_price = ?, label = ?, active = ? WHERE id = ?"
+    ).bind(price, original_price || null, label, active === undefined ? 1 : active, id).run();
+
+    await logAdminAction(adminId, "update_pricing", id, { price, label }, env);
+    return jsonRes({ ok: true, message: "Pricing berhasil diperbarui" });
+  } catch (e) {
+    return jsonRes({ error: "Gagal memperbarui pricing: " + e.message }, 500);
+  }
+}
+
+async function handleAdminUpdateQris(adminId, body, env) {
+  try {
+    const { qris_url } = body || {};
+    if (!qris_url) return jsonRes({ error: "QRIS URL diperlukan" }, 400);
+
+    await env.DB.prepare(
+      "INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES ('qris_image_url', ?, ?)"
+    ).bind(qris_url, new Date().toISOString()).run();
+
+    await logAdminAction(adminId, "update_qris", null, { qris_url }, env);
+    return jsonRes({ ok: true, message: "QRIS URL berhasil diperbarui" });
+  } catch (e) {
+    return jsonRes({ error: "Gagal memperbarui QRIS URL: " + e.message }, 500);
+  }
+}
+
+async function handleAdminGetCoupons(adminId, env) {
+  try {
+    const coupons = await env.DB.prepare("SELECT * FROM coupons ORDER BY created_at DESC").all();
+    return jsonRes(coupons.results || []);
+  } catch (e) {
+    return jsonRes({ error: "Gagal mengambil data kupon: " + e.message }, 500);
+  }
+}
+
+async function handleAdminCreateCoupon(adminId, body, env) {
+  try {
+    const { code, type, value, description, max_uses, expired_at } = body || {};
+    if (!code || !type || value === undefined) {
+      return jsonRes({ error: "Code, type, dan value wajib diisi" }, 400);
+    }
+
+    const couponId = "cpn_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+    await env.DB.prepare(
+      "INSERT INTO coupons (id, code, type, value, description, max_uses, expired_at, active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)"
+    ).bind(
+      couponId,
+      code.toUpperCase().trim(),
+      type,
+      value,
+      description || null,
+      max_uses || 0,
+      expired_at || null
+    ).run();
+
+    await logAdminAction(adminId, "create_coupon", code.toUpperCase().trim(), { type, value }, env);
+    return jsonRes({ ok: true, message: "Kupon berhasil dibuat" });
+  } catch (e) {
+    return jsonRes({ error: "Gagal membuat kupon: " + e.message }, 500);
+  }
+}
+
+async function handleAdminDeleteCoupon(adminId, code, env) {
+  try {
+    if (!code) return jsonRes({ error: "Kode kupon diperlukan" }, 400);
+
+    await env.DB.prepare("DELETE FROM coupons WHERE code = ?").bind(code.toUpperCase().trim()).run();
+    await logAdminAction(adminId, "delete_coupon", code.toUpperCase().trim(), null, env);
+    return jsonRes({ ok: true, message: "Kupon berhasil dihapus" });
+  } catch (e) {
+    return jsonRes({ error: "Gagal menghapus kupon: " + e.message }, 500);
+  }
+}
+
+async function handleAdminGetAuditLogs(adminId, url, env) {
+  try {
+    const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
+    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get("limit") || "50")));
+    const offset = (page - 1) * limit;
+
+    const logs = await env.DB.prepare(
+      "SELECT * FROM admin_audit_logs ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    ).bind(limit, offset).all();
+
+    const total = await env.DB.prepare("SELECT COUNT(*) as cnt FROM admin_audit_logs").first();
+
+    return jsonRes({
+      logs: logs.results || [],
+      total: total?.cnt || 0,
+      page,
+      limit
+    });
+  } catch (e) {
+    return jsonRes({ error: "Gagal mengambil log audit: " + e.message }, 500);
+  }
+}
+
+
+// ─────────────────────────────────────────────────────
 // DATABASE & SEEDING HELPERS
 // ─────────────────────────────────────────────────────
 async function setupDatabase(env) {
@@ -2276,6 +2847,18 @@ async function setupDatabase(env) {
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+
+    // Admin audit logs table
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS admin_audit_logs (
+        id TEXT PRIMARY KEY,
+        admin_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        target TEXT,
+        details TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `).run();
 
@@ -2659,10 +3242,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-function cors(response) {
+function cors(response, request = null) {
   const headers = new Headers(response.headers);
+  let origin = "*";
+  if (request) {
+    const reqOrigin = request.headers.get("Origin");
+    if (reqOrigin && (reqOrigin === "https://admin.laksaapp.my.id" || reqOrigin.startsWith("http://localhost:") || reqOrigin.startsWith("http://127.0.0.1:"))) {
+      origin = reqOrigin;
+      headers.set("Vary", "Origin");
+    }
+  }
+  headers.set("Access-Control-Allow-Origin", origin);
   for (const [k, v] of Object.entries(corsHeaders)) {
-    headers.set(k, v);
+    if (k !== "Access-Control-Allow-Origin") {
+      headers.set(k, v);
+    }
   }
   return new Response(response.body, {
     status: response.status,

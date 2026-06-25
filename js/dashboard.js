@@ -6,12 +6,46 @@ function renderDash() {
   const txs = getTx(), accs = getAccs(), now = thisMon();
   const total = accs.reduce((s, a) => s + (a.balance || 0), 0);
   const balEl = el('totalBal');
+  
+  // ── Saldo & Visibilitas ──
+  const isHidden = localStorage.getItem('laksa_bal_hidden') === 'true';
+  const eyeBtn = el('nwEyeBtn');
+  if (eyeBtn) {
+    const eyeOpen = eyeBtn.querySelector('.eye-open');
+    const eyeClosed = eyeBtn.querySelector('.eye-closed');
+    if (isHidden) {
+      if (eyeOpen) eyeOpen.style.display = 'none';
+      if (eyeClosed) eyeClosed.style.display = 'block';
+    } else {
+      if (eyeOpen) eyeOpen.style.display = 'block';
+      if (eyeClosed) eyeClosed.style.display = 'none';
+    }
+  }
+
   if (balEl) {
     const prev = parseFloat(balEl.dataset.val);
-    if (!isNaN(prev) && prev !== total) animateValue(balEl, prev, total, 1200);
-    else balEl.textContent = fCur(total);
     balEl.dataset.val = total;
+    if (isHidden) {
+      balEl.innerHTML = `<span class="bal-curr">${getSet().currency}</span> <span class="bal-masked">••••••</span>`;
+    } else {
+      if (!isNaN(prev) && prev !== total) {
+        animateValue(balEl, prev, total, 1200);
+      } else {
+        const cfg = getSet();
+        const val = total || 0;
+        const neg = val < 0;
+        const pfx = neg ? '−' : '';
+        const abs = Math.abs(val);
+        const isRp = cfg.currency === 'Rp';
+        const locale = isRp ? 'id-ID' : 'en-US';
+        const sep = isRp ? ',' : '.';
+        const integerPart = Math.floor(abs).toLocaleString(locale);
+        const decimalPart = (abs % 1).toFixed(2).slice(2);
+        balEl.innerHTML = `<span class="bal-pfx">${pfx}</span><span class="bal-curr">${cfg.currency}</span> <span class="bal-int">${integerPart}</span><span class="bal-dec">${sep}${decimalPart}</span>`;
+      }
+    }
   }
+
   const bCount = accs.filter(a => !(/ovo|gopay|dana|linkaja|shopeepay|spay|wallet/i.test(a.name) || (detBank(a.name) && detBank(a.name).isWallet))).length;
   const eCount = accs.length - bCount;
   el('balSub').textContent = bCount + ' rekening' + (eCount > 0 ? ' • ' + eCount + ' e-wallet' : '');
@@ -19,7 +53,7 @@ function renderDash() {
   const inc = mTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const exp = mTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
-  // ── Hero 2×2 stats ──
+  // ── Hero 2×2 stats (Legacy ids - compatibility check) ──
   if (el('mIncomeHero')) el('mIncomeHero').textContent = fCur(inc);
   if (el('mExpenseHero')) el('mExpenseHero').textContent = fCur(exp);
 
@@ -44,6 +78,20 @@ function renderDash() {
   // Untuk pengeluaran: naik = merah (buruk), turun = hijau (baik)
   if (expG) { expG.textContent = eg.text; expG.className = 'nw-item-growth ' + (eg.cls === 'pos' ? 'neg' : eg.cls === 'neg' ? 'pos' : eg.cls); }
 
+  // ── Render Growth Badge ──
+  const balGrowthBadge = el('balGrowthBadge');
+  if (balGrowthBadge) {
+    if (ig.text === '—' || ig.text === '=0% vs bln lalu') {
+      balGrowthBadge.style.display = 'none';
+    } else {
+      balGrowthBadge.style.display = 'inline-flex';
+      const isPos = ig.cls === 'pos';
+      const arrow = isPos ? '↑' : '↓';
+      balGrowthBadge.className = 'nw-growth-badge ' + ig.cls;
+      balGrowthBadge.innerHTML = `<span>${arrow}</span> <span>${ig.text.replace(' vs bln lalu', '')}</span>`;
+    }
+  }
+
   // Anggaran %
   const buds = getBud();
   const budEl = el('budgPctHero');
@@ -62,12 +110,17 @@ function renderDash() {
     }
   }
 
-  // Tagihan aktif bulan ini
+  // Tagihan aktif bulan ini (Notifikasi Bell Dot)
   const bills = getBills();
   const billEl = el('heroBillCount');
   const billItem = el('heroItemBill');
+  const activeBills = bills.filter(b => b.status !== 'paid');
+  
+  if (el('bellDot')) {
+    el('bellDot').style.display = activeBills.length > 0 ? 'block' : 'none';
+  }
+
   if (billEl && billItem) {
-    const activeBills = bills.filter(b => b.status !== 'paid');
     const overdueBills = activeBills.filter(b => {
       if (!b.due_date && !b.due_day) return false;
       const st = billDueStatus(b);
@@ -99,15 +152,23 @@ function renderDash() {
 
 // ── TOP BAR: greeting + avatar ──
 function renderDashTopbar() {
-  const h = new Date().getHours();
-  const greeting = h < 12 ? 'Selamat pagi' : h < 17 ? 'Selamat siang' : 'Selamat malam';
   const p = getProfile();
   const name = p?.name || getSet().name || '—';
-  const timeEl = el('dashGreetTime');
   const nameEl = el('dashGreetName');
-  if (timeEl) timeEl.textContent = greeting;
   if (nameEl) nameEl.textContent = name;
+  const handleEl = el('dashProfileHandle');
+  if (handleEl) {
+    const handle = p?.email ? '@' + p.email.split('@')[0] : '@user';
+    handleEl.textContent = handle;
+  }
   renderDashAvatar();
+}
+
+function toggleBalanceVisibility(e) {
+  if (e) e.stopPropagation();
+  const isHidden = localStorage.getItem('laksa_bal_hidden') === 'true';
+  localStorage.setItem('laksa_bal_hidden', isHidden ? 'false' : 'true');
+  renderDash();
 }
 
 function renderDashAvatar() {
@@ -263,7 +324,7 @@ function renderDCs(accs, total, txs, now) {
   });
   
   bHtml += `<div class="dc dc-add" onclick="openModal('addAccount')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Tambah Rekening</span></div>`;
-  eHtml += `<div class="ecard ec-add" onclick="openModal('addAccount')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Tambah E-Wallet</span></div>`;
+  eHtml += `<div class="ecard ec-add" onclick="openModal('addEwallet')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Tambah E-Wallet</span></div>`;
   
   wrap.innerHTML = bHtml;
   eWrap.innerHTML = eHtml;

@@ -441,15 +441,54 @@ function showSkeletons() {
 }
 // getLogoHtml → dipindahkan ke banks.js
 function animateValue(obj, start, end, duration) {
+  const isHidden = localStorage.getItem('laksa_bal_hidden') === 'true';
+  if (isHidden && obj.id === 'totalBal') {
+    const cfg = getSet();
+    obj.innerHTML = `<span class="bal-curr">${cfg.currency}</span> <span class="bal-masked">••••••</span>`;
+    return;
+  }
+
   let startTimestamp = null;
   const step = (timestamp) => {
     if (!startTimestamp) startTimestamp = timestamp;
     const progress = Math.min((timestamp - startTimestamp) / duration, 1);
     const easeOut = 1 - Math.pow(1 - progress, 3);
     const current = start + (end - start) * easeOut;
-    obj.textContent = fCur(current);
+    
+    if (obj.id === 'totalBal') {
+      const cfg = getSet();
+      const val = current || 0;
+      const neg = val < 0;
+      const pfx = neg ? '−' : '';
+      const abs = Math.abs(val);
+      const isRp = cfg.currency === 'Rp';
+      const locale = isRp ? 'id-ID' : 'en-US';
+      const sep = isRp ? ',' : '.';
+      const integerPart = Math.floor(abs).toLocaleString(locale);
+      const decimalPart = (abs % 1).toFixed(2).slice(2);
+      obj.innerHTML = `<span class="bal-pfx">${pfx}</span><span class="bal-curr">${cfg.currency}</span> <span class="bal-int">${integerPart}</span><span class="bal-dec">${sep}${decimalPart}</span>`;
+    } else {
+      obj.textContent = fCur(current);
+    }
+
     if (progress < 1) window.requestAnimationFrame(step);
-    else obj.textContent = fCur(end);
+    else {
+      if (obj.id === 'totalBal') {
+        const cfg = getSet();
+        const val = end || 0;
+        const neg = val < 0;
+        const pfx = neg ? '−' : '';
+        const abs = Math.abs(val);
+        const isRp = cfg.currency === 'Rp';
+        const locale = isRp ? 'id-ID' : 'en-US';
+        const sep = isRp ? ',' : '.';
+        const integerPart = Math.floor(abs).toLocaleString(locale);
+        const decimalPart = (abs % 1).toFixed(2).slice(2);
+        obj.innerHTML = `<span class="bal-pfx">${pfx}</span><span class="bal-curr">${cfg.currency}</span> <span class="bal-int">${integerPart}</span><span class="bal-dec">${sep}${decimalPart}</span>`;
+      } else {
+        obj.textContent = fCur(end);
+      }
+    }
   };
   window.requestAnimationFrame(step);
 }

@@ -23,6 +23,36 @@
       }
     }
 
+    /* ── Dashboard Split Background Banner ── */
+    #page-dashboard {
+      position: relative;
+    }
+
+    .dash-bg-banner {
+      position: absolute;
+      top: 0;
+      left: -1.2rem;
+      right: -1.2rem;
+      height: 260px;
+      background: linear-gradient(135deg, #c1440e 0%, #d4691a 50%, #e8913a 100%);
+      border-radius: 0 0 28px 28px;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    html[data-theme="dark"] .dash-bg-banner {
+      background: linear-gradient(135deg, #7a2e0a 0%, #8c3f12 50%, #a35520 100%);
+    }
+
+    #page-dashboard > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .dash-bg-banner {
+      z-index: 0 !important;
+    }
+
     /* Keuangan Sub-panel Transitions */
     #keuPanelBudget, #keuPanelGoals, #keuPanelBills {
       animation: keuPanelFadeIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -4890,5 +4920,396 @@ html[data-theme="dark"] .plan-expiry {
   background: rgba(99,102,241,.05);
   border-radius: 8px;
   border: 1px solid rgba(99,102,241,.1);
+}
+
+/* ══════════════════════════════════════════
+   UPGRADE DASHBOARD HEADER & HERO CARD
+   ══════════════════════════════════════════ */
+
+/* 1. TOPBAR REDESIGN */
+.dash-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.95rem;
+  padding: 0.2rem 0.4rem;
+}
+
+.dash-profile-sec {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.dash-profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.dash-profile-name {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.dash-profile-handle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.64rem;
+  font-weight: 500;
+  color: var(--ink3);
+  opacity: 0.85;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.dash-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.dash-action-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--gs-2);
+  color: var(--ink);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.dash-action-btn:hover {
+  background: var(--gs-4);
+  transform: translateY(-1px);
+}
+
+.dash-action-btn:active {
+  transform: translateY(1px);
+}
+
+.dash-action-btn svg {
+  stroke: var(--ink);
+  opacity: 0.85;
+}
+
+/* Red dot for Bell notification */
+.bell-dot {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 7.5px;
+  height: 7.5px;
+  background: var(--expense);
+  border-radius: 50%;
+  border: 1.5px solid var(--modal-bg);
+}
+
+/* 2. HERO CARD REDESIGN */
+.nw-card {
+  width: 100%;
+  padding: 1.35rem 1.45rem 1.25rem !important;
+  background: var(--hero-grad) !important;
+  border-radius: 24px !important;
+  border: 1.5px solid var(--border) !important;
+  color: #fff !important;
+  box-shadow: var(--shd-lg) !important;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+/* Card Header */
+.nw-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.nw-card-header .nw-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 0;
+}
+
+/* Clean Menu/Eye Buttons inside card */
+.nw-menu-btn, .nw-eye-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  transition: all 0.18s ease;
+}
+
+.nw-menu-btn:hover, .nw-eye-btn:hover {
+  background: rgba(255, 255, 255, 0.24);
+  transform: scale(1.05);
+}
+
+.nw-menu-btn:active, .nw-eye-btn:active {
+  transform: scale(0.95);
+}
+
+.nw-menu-btn svg, .nw-eye-btn svg {
+  stroke: #fff;
+}
+
+/* Balance Area */
+.nw-val-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 1rem;
+}
+
+.nw-val {
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(1.7rem, 6vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #fff !important;
+  line-height: 1;
+  word-break: break-word;
+  display: flex;
+  align-items: baseline;
+}
+
+/* Superscript Decimals style */
+.bal-pfx {
+  font-size: 0.9em;
+  margin-right: 0.15rem;
+}
+.bal-curr {
+  font-size: 0.65em;
+  font-weight: 700;
+  margin-right: 0.25rem;
+  opacity: 0.9;
+}
+.bal-dec {
+  font-size: 0.58em;
+  font-weight: 700;
+  opacity: 0.85;
+  vertical-align: baseline;
+  margin-left: 2px;
+  position: relative;
+  top: -0.12em;
+}
+.bal-masked {
+  font-size: 0.85em;
+  letter-spacing: 0.05em;
+}
+
+/* Meta Row */
+.nw-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  margin-top: -0.3rem;
+  margin-bottom: 0.2rem;
+}
+
+.nw-card .nw-accs {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.58rem;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 0;
+  display: inline-block;
+}
+
+/* Growth Badge */
+.nw-growth-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.54rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 99px;
+  line-height: 1;
+}
+
+.nw-growth-badge.pos {
+  background: rgba(16, 185, 129, 0.22);
+  color: #a7f3d0;
+}
+
+.nw-growth-badge.neg {
+  background: rgba(239, 68, 68, 0.22);
+  color: #fecaca;
+}
+
+/* 3. ROW OF 4 ACTIONS */
+.nw-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding-top: 0.95rem;
+  border-top: 1.2px solid rgba(255, 255, 255, 0.15);
+}
+
+.nw-action-item {
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  padding: 0;
+  width: 100%;
+}
+
+.nw-action-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.24);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: all 0.22s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.nw-action-item:hover .nw-action-icon {
+  background: rgba(15, 23, 42, 0.38);
+  transform: translateY(-2px);
+}
+
+.nw-action-item:active .nw-action-icon {
+  transform: translateY(1px);
+}
+
+.nw-action-icon svg {
+  stroke: #fff;
+  opacity: 0.95;
+  transition: transform 0.2s ease;
+}
+
+.nw-action-item:hover .nw-action-icon svg {
+  transform: scale(1.05);
+}
+
+.nw-action-lbl {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+/* 4. THEME OVERRIDES */
+
+/* DARK THEME */
+html[data-theme="dark"] .dash-action-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+html[data-theme="dark"] .dash-action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* EDUCATION THEME (Claymorphism/Neobrutalism) */
+html[data-theme="education"] .dash-action-btn {
+  border: 2px solid #0f172a !important;
+  box-shadow: 2px 2px 0px #0f172a !important;
+  background: #ffffff !important;
+  border-radius: 12px !important;
+}
+html[data-theme="education"] .dash-action-btn:hover {
+  transform: translate(-1px, -1px) !important;
+  box-shadow: 3px 3px 0px #0f172a !important;
+}
+html[data-theme="education"] .dash-action-btn:active {
+  transform: translate(1px, 1px) !important;
+  box-shadow: 1px 1px 0px #0f172a !important;
+}
+
+html[data-theme="education"] .nw-card {
+  border: 3px solid #0f172a !important;
+  box-shadow: 5px 5px 0px #0f172a !important;
+  color: #0f172a !important;
+}
+html[data-theme="education"] .nw-card-header .nw-label {
+  color: rgba(15, 23, 42, 0.7) !important;
+}
+html[data-theme="education"] .nw-val {
+  color: #0f172a !important;
+}
+html[data-theme="education"] .nw-card .nw-accs {
+  color: rgba(15, 23, 42, 0.7) !important;
+}
+html[data-theme="education"] .nw-actions {
+  border-top-color: rgba(15, 23, 42, 0.15) !important;
+}
+html[data-theme="education"] .nw-action-icon {
+  background: #ffffff !important;
+  border: 2px solid #0f172a !important;
+  box-shadow: 2px 2px 0px #0f172a !important;
+  color: #0f172a !important;
+  border-radius: 12px !important;
+}
+html[data-theme="education"] .nw-action-icon svg {
+  stroke: #0f172a !important;
+}
+html[data-theme="education"] .nw-action-item:hover .nw-action-icon {
+  background: #f1f5f9 !important;
+  transform: translate(-1.5px, -1.5px) !important;
+  box-shadow: 3.5px 3.5px 0px #0f172a !important;
+}
+html[data-theme="education"] .nw-action-item:active .nw-action-icon {
+  transform: translate(1px, 1px) !important;
+  box-shadow: 1px 1px 0px #0f172a !important;
+}
+html[data-theme="education"] .nw-action-lbl {
+  color: #0f172a !important;
+}
+html[data-theme="education"] .nw-menu-btn,
+html[data-theme="education"] .nw-eye-btn {
+  background: rgba(15, 23, 42, 0.08) !important;
+  color: #0f172a !important;
+}
+html[data-theme="education"] .nw-menu-btn svg,
+html[data-theme="education"] .nw-eye-btn svg {
+  stroke: #0f172a !important;
+}
+html[data-theme="education"] .nw-menu-btn:hover,
+html[data-theme="education"] .nw-eye-btn:hover {
+  background: rgba(15, 23, 42, 0.15) !important;
+}
+html[data-theme="education"] .nw-growth-badge.pos {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #047857 !important;
+  border: 1.5px solid #0f172a !important;
+}
+html[data-theme="education"] .nw-growth-badge.neg {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #b91c1c !important;
+  border: 1.5px solid #0f172a !important;
 }
 

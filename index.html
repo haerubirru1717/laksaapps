@@ -548,13 +548,11 @@
 
       <!-- DASHBOARD -->
       <section class="page active" id="page-dashboard">
+        <!-- Split Background Banner -->
+        <div class="dash-bg-banner"></div>
         <!-- DASHBOARD TOP BAR -->
         <div class="dash-topbar" id="dashTopbar">
-          <div class="dash-topbar-right">
-            <div class="dash-greeting">
-              <span class="dash-greeting-time" id="dashGreetTime">Selamat pagi</span>
-              <span class="dash-greeting-name" id="dashGreetName">—</span>
-            </div>
+          <div class="dash-profile-sec">
             <div style="position:relative;flex-shrink:0">
               <button class="dash-profile-btn" onclick="toggleAvatarDropdown(event)" title="Profil">
                 <div class="dash-avatar" id="dashAvatar">
@@ -586,15 +584,64 @@
                 </button>
               </div>
             </div>
+            <div class="dash-profile-info">
+              <span class="dash-profile-name" id="dashGreetName">—</span>
+              <span class="dash-profile-handle" id="dashProfileHandle">@user</span>
+            </div>
+          </div>
+          <div class="dash-topbar-actions">
+            <button class="dash-action-btn trophy" onclick="showUpgradeModal()" title="Upgrade ke Premium">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                <path d="M4 22h16"/>
+                <path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34"/>
+                <path d="M12 2a4 4 0 0 1 4 4v7a4 4 0 0 1-4 4 4 4 0 0 1-4-4V6a4 4 0 0 1 4-4Z"/>
+              </svg>
+            </button>
+            <button class="dash-action-btn bell" onclick="go('keuangan'); setKeuTab('bills')" title="Tagihan & Pemberitahuan">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9Z"/>
+                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+              </svg>
+              <span class="bell-dot" id="bellDot" style="display:none"></span>
+            </button>
           </div>
           <input type="file" id="avatarInput" accept="image/*" onchange="handleAvatarUpload(event)" />
         </div>
 
         <div class="zone-hero">
           <div class="card nw-card">
-            <div class="nw-label">Total Kekayaan Bersih</div>
-            <div class="nw-val" id="totalBal">Rp 0</div>
-            <span class="nw-accs" id="balSub">0 rekening</span>
+            <div class="nw-card-header">
+              <div class="nw-label">Total Kekayaan Bersih</div>
+              <button class="nw-menu-btn" onclick="openModal('addAccount')" title="Kelola Rekening">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="1"/>
+                  <circle cx="19" cy="12" r="1"/>
+                  <circle cx="5" cy="12" r="1"/>
+                </svg>
+              </button>
+            </div>
+            
+            <div class="nw-val-row">
+              <div class="nw-val" id="totalBal">Rp 0</div>
+              <button class="nw-eye-btn" onclick="toggleBalanceVisibility(event)" title="Sembunyikan/Tampilkan Saldo" id="nwEyeBtn">
+                <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <svg class="eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              </button>
+            </div>
+            
+            <div class="nw-meta-row">
+              <span class="nw-accs" id="balSub">0 rekening</span>
+              <span class="nw-growth-badge" id="balGrowthBadge" style="display:none"></span>
+            </div>
+
             <div class="nw-grid">
               <div class="nw-item nw-item-inc">
                 <span class="nw-item-lbl">Pemasukan</span>
@@ -614,6 +661,49 @@
                 <span class="nw-item-lbl">Tagihan</span>
                 <span class="nw-item-val"><span class="sym">⚡</span><span id="heroBillCount">—</span></span>
               </div>
+            </div>
+
+            <div class="nw-actions">
+              <button class="nw-action-item" onclick="openModal('addTransaction')" title="Catat Transaksi">
+                <div class="nw-action-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                </div>
+                <span class="nw-action-lbl">Catat</span>
+              </button>
+              <button class="nw-action-item" onclick="openModal('addTransaction', { type: 'transfer' })" title="Transfer Antar Rekening">
+                <div class="nw-action-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="17 1 21 5 17 9"/>
+                    <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                    <polyline points="7 23 3 19 7 15"/>
+                    <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                  </svg>
+                </div>
+                <span class="nw-action-lbl">Transfer</span>
+              </button>
+              <button class="nw-action-item" onclick="go('receipt')" title="Scan Struk OCR">
+                <div class="nw-action-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                </div>
+                <span class="nw-action-lbl">Scan</span>
+              </button>
+              <button class="nw-action-item" onclick="go('reports')" title="Laporan Keuangan">
+                <div class="nw-action-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"/>
+                    <line x1="12" y1="20" x2="12" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="14"/>
+                    <line x1="2" y1="20" x2="22" y2="20"/>
+                  </svg>
+                </div>
+                <span class="nw-action-lbl">Laporan</span>
+              </button>
             </div>
           </div>
         </div>
