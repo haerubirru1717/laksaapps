@@ -493,11 +493,11 @@
     }
 
     .nw-item-growth.pos {
-      color: #6ee7b7
+      color: #2ecc71
     }
 
     .nw-item-growth.neg {
-      color: #fca5a5
+      color: #ff4d4d
     }
 
     .nw-item-growth.neu {
@@ -506,23 +506,23 @@
 
     /* Colour tokens per item */
     .nw-item-inc .nw-item-val {
-      color: #6ee7b7
+      color: #2ecc71
     }
 
     .nw-item-exp .nw-item-val {
-      color: #fca5a5
+      color: #ff4d4d
     }
 
     .nw-item-bud .nw-item-val {
-      color: #bfdbfe
+      color: #38bdf8
     }
 
     .nw-item-bill .nw-item-val {
-      color: #fde68a
+      color: #facc15
     }
 
     .nw-item-bill.has-overdue .nw-item-val {
-      color: #fca5a5
+      color: #ff4d4d
     }
 
     @media(max-width:380px) {
