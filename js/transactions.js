@@ -25,10 +25,18 @@ function filterTx() {
 }
 function _doFilterTx(mon) {
   let txs = getTx();
-  const q = (el('txSearch').value || '').toLowerCase().trim();
+  const searchEl = el('txSearch');
+  const q = (searchEl ? searchEl.value : '').toLowerCase().trim();
   if (q) txs = txs.filter(t => { const c = catBy(t.category_id); return (t.note || '').toLowerCase().includes(q) || (c?.name || '').toLowerCase().includes(q); });
-  const type = el('txType').value; if (type !== 'all') txs = txs.filter(t => t.type === type);
-  const cat = el('txCat').value; if (cat !== 'all') txs = txs.filter(t => t.category_id === cat);
+  
+  const typeEl = el('txType');
+  const type = typeEl ? typeEl.value : 'all';
+  if (type !== 'all') txs = txs.filter(t => t.type === type);
+  
+  const catEl = el('txCat');
+  const cat = catEl ? catEl.value : 'all';
+  if (cat !== 'all') txs = txs.filter(t => t.category_id === cat);
+  
   if (mon) txs = txs.filter(t => mKey(t.date) === mon);
   txs.sort((a, b) => { 
     let va = a[sortF], vb = b[sortF]; 
@@ -36,8 +44,15 @@ function _doFilterTx(mon) {
     if (va === vb) return (b.created_at || b.id).localeCompare(a.created_at || a.id);
     return sortA ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1); 
   });
-  el('txSub').textContent = txs.length + ' transaksi ditemukan';
+  
+  const subEl = el('txSub');
+  if (subEl) subEl.textContent = txs.length + ' transaksi ditemukan';
+  
   const tot = Math.max(1, Math.ceil(txs.length / TX_PER)); if (txPg > tot) txPg = tot;
+  
+  // Draw premium dynamic hermite bezier spline chart
+  drawTxChart(txs, type);
+
   renderTxTbl(txs.slice((txPg - 1) * TX_PER, txPg * TX_PER), txs.length === 0);
   renderPgn(tot);
 }
@@ -49,32 +64,40 @@ function renderTxTbl(txs, empty) {
   const groups = {};
   txs.forEach(tx => { const dk = tx.date || '?'; if (!groups[dk]) groups[dk] = []; groups[dk].push(tx); });
   const sortedDates = Object.keys(groups).sort((a, b) => sortA ? a.localeCompare(b) : b.localeCompare(a));
-  let html = '<ul class="txcl">';
+  let html = '';
   sortedDates.forEach(dk => {
     const dayTxs = groups[dk];
     const dayNet = dayTxs.reduce((s, t) => t.type === 'income' ? s + t.amount : t.type === 'expense' ? s - t.amount : s, 0);
     const netStr = dayNet === 0 ? '' : fCur(dayNet, true);
-    const netC = dayNet > 0 ? 'var(--income)' : dayNet < 0 ? 'var(--expense)' : 'var(--t3)';
-    html += `<li class="txcl-grp">${fDate(dk)}<span class="txcl-grp-tot" style="color:${netC}">${netStr}</span></li>`;
+    const netC = dayNet > 0 ? '#2ecc71' : dayNet < 0 ? '#ff4d4d' : 'var(--t3)';
+    
+    html += `<div class="tx-date-group-card">`;
+    html += `<div class="txcl-grp">${fDate(dk)}<span class="txcl-grp-tot" style="color:${netC};font-weight:700">${netStr}</span></div>`;
+    html += `<ul class="txcl">`;
+    
     dayTxs.forEach(tx => {
       const catName = tx.category_name || catBy(tx.category_id).name;
       const catEmoji = tx.category_emoji || '';
       const accName = tx.account_name || accBy(tx.account_id).name;
-      const sign = tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : '↔';
+      const sign = tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : '';
       const tc = tx.type === 'income' ? 'inc' : tx.type === 'expense' ? 'exp' : 'trf';
       const srcPip = tx.source === 'telegram' ? `<div class="txcl-pip"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012.18 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.15a16 16 0 006.29 6.29l1.51-1.52a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>` : '';
       const timeStr = tx.created_at ? new Date(tx.created_at.replace(' ', 'T') + 'Z').toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '';
       const dispName = tx.store ? `${tx.note || catName} • 🏪 ${tx.store}` : (tx.note || catName);
+      
+      const premiumIcon = getPremiumCategorySvg(catName, tc);
+      
       html += `<li class="txcl-item" onclick="openTxDetail('${tx.id}')">
     <div class="txcl-ico-wrap">
-      <div class="txcl-ico ${tc}">${tc === 'trf' ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>` : `<span style="font-size:13px">${catEmoji}</span>`}</div>
+      <div class="txcl-ico ${tc}">${premiumIcon}</div>
       ${srcPip}
     </div>
     <div class="txcl-body">
       <div class="txcl-name">${esc(dispName)}</div>
       <div class="txcl-meta">
         <span class="txcl-cat ${tc}">${esc(catName)}</span>
-        <span>${esc(accName)}</span>
+        <span>•</span>
+        <span class="txcl-acc">${esc(accName)}</span>
       </div>
     </div>
     <div class="txcl-right">
@@ -83,8 +106,10 @@ function renderTxTbl(txs, empty) {
     </div>
   </li>`;
     });
+    
+    html += `</ul>`;
+    html += `</div>`;
   });
-  html += '</ul>';
   wrap.innerHTML = html;
 }
 function renderPgn(tot) {
@@ -217,3 +242,300 @@ function openEditTx(id) { const tx = getTx().find(t => t.id === id); if (tx) ope
 // updateTx sudah di atas (async, API)
 
 // ── BUDGET (D1) ──
+
+// ── PREMIUM CHART & SEGMENTED TABS LOGIC ──
+function drawTxChart(txs, activeTab) {
+  const canvas = el('txChartCanvas');
+  const netEl = el('txChartNet');
+  const subEl = el('txChartSub');
+  if (!canvas || !netEl || !subEl) return;
+
+  // Destroy previous chart instance if it exists
+  if (CH.txChart) {
+    try { CH.txChart.destroy(); } catch (e) {}
+    delete CH.txChart;
+  }
+
+  // Ensure placeholder element exists
+  let placeholder = el('txChartPlaceholder');
+  if (!placeholder) {
+    placeholder = document.createElement('div');
+    placeholder.id = 'txChartPlaceholder';
+    placeholder.className = 'tx-chart-placeholder';
+    placeholder.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:0.75rem;';
+    canvas.parentNode.appendChild(placeholder);
+  }
+
+  if (!txs || !txs.length) {
+    canvas.style.display = 'none';
+    placeholder.style.display = 'flex';
+    placeholder.textContent = 'Belum ada data tren untuk filter ini';
+    subEl.textContent = 'Belum ada transaksi';
+    netEl.textContent = 'Rp 0';
+    netEl.style.color = 'inherit';
+    return;
+  }
+
+  canvas.style.display = 'block';
+  placeholder.style.display = 'none';
+
+  // Group transactions by date
+  const daily = {};
+  txs.forEach(t => {
+    const d = t.date || today(); // YYYY-MM-DD
+    if (!daily[d]) daily[d] = { inc: 0, exp: 0 };
+    const amt = parseFloat(t.amount) || 0;
+    if (t.type === 'income') daily[d].inc += amt;
+    else if (t.type === 'expense') daily[d].exp += amt;
+  });
+
+  // Sort dates
+  const sortedDates = Object.keys(daily).sort();
+  const maxDateStr = sortedDates[sortedDates.length - 1] || today();
+
+  // Generate last 7 days ending at maxDateStr
+  const chartDates = [];
+  const maxDate = new Date(maxDateStr + 'T00:00:00');
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(maxDate);
+    d.setDate(maxDate.getDate() - i);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    chartDates.push(`${yyyy}-${mm}-${dd}`);
+  }
+
+  // Calculate cumulative values based on active tab
+  const points = [];
+  let runningSum = 0;
+
+  chartDates.forEach(d => {
+    const val = daily[d] || { inc: 0, exp: 0 };
+    if (activeTab === 'income') {
+      runningSum += val.inc;
+      points.push(runningSum);
+    } else if (activeTab === 'expense') {
+      // Cumulative expenses as positive values so the curve goes UP!
+      runningSum += val.exp;
+      points.push(runningSum);
+    } else {
+      // Tab 'all': Cumulative Net Savings / Wealth Trend (income - expense)
+      runningSum += (val.inc - val.exp);
+      points.push(runningSum);
+    }
+  });
+
+  // Generate formatted labels (e.g. "19 Jun")
+  const labels = chartDates.map(d => {
+    const dateObj = new Date(d + 'T00:00:00');
+    const day = dateObj.getDate();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return `${day} ${months[dateObj.getMonth()]}`;
+  });
+
+  // Calculate full month totals for the header
+  let totalInc = 0;
+  let totalExp = 0;
+  txs.forEach(t => {
+    const amt = parseFloat(t.amount) || 0;
+    if (t.type === 'income') totalInc += amt;
+    else if (t.type === 'expense') totalExp += amt;
+  });
+
+  let displayNet = 0;
+  let themeColor = '#38bdf8'; // Blue for 'all'
+  if (activeTab === 'income') {
+    displayNet = totalInc;
+    themeColor = '#2ecc71'; // Green
+    subEl.textContent = 'Total pemasukan bulan ini';
+    netEl.textContent = '+' + fCur(displayNet);
+    netEl.style.color = '#2ecc71';
+  } else if (activeTab === 'expense') {
+    displayNet = totalExp;
+    themeColor = '#ff4d4d'; // Red
+    subEl.textContent = 'Total pengeluaran bulan ini';
+    netEl.textContent = '−' + fCur(displayNet);
+    netEl.style.color = '#ff4d4d';
+  } else {
+    displayNet = totalInc - totalExp;
+    themeColor = '#38bdf8'; // Blue
+    subEl.textContent = 'Selisih bersih bulan ini';
+    netEl.textContent = (displayNet >= 0 ? '+' : '') + fCur(displayNet);
+    netEl.style.color = displayNet > 0 ? '#2ecc71' : displayNet < 0 ? '#ff4d4d' : 'inherit';
+  }
+
+  // Determine dark mode
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const isEd = document.documentElement.getAttribute('data-theme') === 'education';
+  
+  // Set Chart.js defaults
+  Chart.defaults.color = isDark ? 'rgba(210,220,240,0.7)' : (isEd ? '#0f172a' : 'rgba(15,23,42,0.55)');
+  Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : (isEd ? 'rgba(15,23,42,0.15)' : 'rgba(15,23,42,0.08)');
+
+  // Create gradient
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, 130);
+  grad.addColorStop(0, themeColor + (isDark ? '40' : '25')); // ~25% opacity
+  grad.addColorStop(1, themeColor + '00'); // 0% opacity
+
+  const config = {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: points,
+        borderColor: themeColor,
+        borderWidth: 3,
+        backgroundColor: grad,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 2.5,
+        pointBackgroundColor: themeColor,
+        pointBorderColor: isDark ? '#1e293b' : '#ffffff',
+        pointBorderWidth: 1.5,
+        pointHoverRadius: 6,
+        pointHoverBackgroundColor: themeColor,
+        pointHoverBorderColor: '#ffffff',
+        pointHoverBorderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          titleColor: isDark ? '#ffffff' : '#0f172a',
+          bodyColor: isDark ? '#e2e8f0' : '#334155',
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(15, 23, 42, 0.08)',
+          borderWidth: 1,
+          padding: 10,
+          cornerRadius: 12,
+          displayColors: false,
+          titleFont: {
+            family: "'Inter', sans-serif",
+            size: 11,
+            weight: 'bold'
+          },
+          bodyFont: {
+            family: "'JetBrains Mono', monospace",
+            size: 12,
+            weight: 'bold'
+          },
+          callbacks: {
+            title: function(context) {
+              const idx = context[0].dataIndex;
+              return fDate(chartDates[idx]);
+            },
+            label: function(context) {
+              const val = context.raw;
+              let labelPrefix = '';
+              if (activeTab === 'income') labelPrefix = 'Total Pemasukan: ';
+              else if (activeTab === 'expense') labelPrefix = 'Total Pengeluaran: ';
+              else labelPrefix = 'Saldo Kumulatif: ';
+              return labelPrefix + fCur(val, activeTab === 'all');
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            font: {
+              family: "'JetBrains Mono', monospace",
+              size: 9,
+              weight: '600'
+            }
+          }
+        },
+        y: {
+          grid: {
+            borderDash: [3, 3],
+            color: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.06)'
+          },
+          ticks: {
+            callback: function(value) {
+              return fCurS(value);
+            },
+            maxTicksLimit: 4,
+            font: {
+              family: "'JetBrains Mono', monospace",
+              size: 9,
+              weight: '600'
+            }
+          }
+        }
+      }
+    }
+  };
+
+  try {
+    CH.txChart = new Chart(canvas, config);
+  } catch (e) {
+    console.error('Gagal membuat Chart.js transaksi:', e);
+  }
+}
+
+function setTxTypeTab(type) {
+  // Toggle active class on segmented tab buttons
+  document.querySelectorAll('.tx-tab-btn').forEach(btn => btn.classList.remove('active'));
+  if (type === 'all') el('txTabAll').classList.add('active');
+  else if (type === 'income') el('txTabIncome').classList.add('active');
+  else if (type === 'expense') el('txTabExpense').classList.add('active');
+
+  const select = el('txType');
+  if (select) {
+    select.value = type;
+    txPg = 1; // Reset to page 1 when changing tabs
+    filterTx();
+  }
+}
+
+function getPremiumCategorySvg(catName, tc) {
+  const name = (catName || '').toLowerCase();
+  
+  // BILLS / UTILITIES (Lightning Bolt - sharp filled)
+  if (name.includes('listrik') || name.includes('tagihan') || name.includes('utilitas') || name.includes('air') || name.includes('internet') || name.includes('pulsa') || name.includes('token') || name.includes('wifi')) {
+    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M13 2v9h6L11 22v-9H5L13 2z"/></svg>`;
+  }
+  
+  // SHOPPING / GROCERIES (Shopping Cart - clean outline)
+  if (name.includes('belanja') || name.includes('mall') || name.includes('shopee') || name.includes('tokopedia') || name.includes('pasar') || name.includes('supermarket') || name.includes('indomaret') || name.includes('alfamart')) {
+    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>`;
+  }
+  
+  // FOOD / COFFEE (Utensils - clean outline)
+  if (name.includes('makan') || name.includes('minum') || name.includes('kopi') || name.includes('cafe') || name.includes('restoran') || name.includes('kuliner') || name.includes('sarapan') || name.includes('siang') || name.includes('warung') || name.includes('bakso')) {
+    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8V2M14 2v6c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2M12 2v20M9 18H5a3 3 0 0 1-3-3V2h4v13a3 3 0 0 0 3 3z"/></svg>`;
+  }
+  
+  // TRANSPORTATION (Car - beautifully filled)
+  if (name.includes('transport') || name.includes('ojek') || name.includes('grab') || name.includes('gojek') || name.includes('mobil') || name.includes('motor') || name.includes('bensin') || name.includes('parkir') || name.includes('tol') || name.includes('tiket')) {
+    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 11v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-4.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.27-3.82c.14-.4.51-.68.94-.68h9.58c.43 0 .8.28.94.68L19 11H5z"/></svg>`;
+  }
+  
+  // HEALTH / DRUGS (Heartbeat - clean outline)
+  if (name.includes('sehat') || name.includes('obat') || name.includes('klinik') || name.includes('sakit') || name.includes('dokter') || name.includes('apotek') || name.includes('medis')) {
+    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`;
+  }
+  
+  // INCOME / SALARY / CASHBACK (Dollar Sign - clean outline)
+  if (tc === 'inc' || name.includes('gaji') || name.includes('pendapatan') || name.includes('bonus') || name.includes('transfer dari') || name.includes('cashback') || name.includes('hibah')) {
+    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`;
+  }
+  
+  // TRANSFER (Double Arrows - clean outline)
+  if (tc === 'trf' || name.includes('transfer') || name.includes('kirim') || name.includes('pindah')) {
+    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>`;
+  }
+  
+  // DEFAULT FALLBACK (Beautiful clean tag - outline)
+  return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
+}
+

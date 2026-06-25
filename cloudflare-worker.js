@@ -259,6 +259,60 @@ async function handleLogin(body, env) {
   return jsonRes({ token, user: { id: user.id, email: user.email, name: user.name, telegram_id: user.telegram_id } });
 }
 
+async function handleGoogleLogin(body, env) {
+  const { access_token } = body || {};
+  if (!access_token) return jsonRes({ error: "Access token wajib diisi" }, 400);
+
+  try {
+    // Fetch user profile from Google
+    const resp = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { "Authorization": `Bearer ${access_token}` }
+    });
+
+    if (!resp.ok) {
+      return jsonRes({ error: "Token Google tidak valid atau expired" }, 401);
+    }
+
+    const gUser = await resp.json();
+    const email = gUser.email?.toLowerCase().trim();
+    const name = gUser.name || gUser.given_name || "Google User";
+
+    if (!email) {
+      return jsonRes({ error: "Gagal mendapatkan email dari Google" }, 400);
+    }
+
+    // Check if user already exists in D1 database
+    let user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
+
+    if (!user) {
+      // Register new user automatically
+      const id = "usr_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+      const salt = crypto.randomUUID();
+      // Generate a random password hash since they log in via Google
+      const randomPassword = crypto.randomUUID();
+      const passwordHash = await hashPassword(randomPassword, salt);
+
+      await env.DB.prepare(
+        "INSERT INTO users (id, email, name, password_hash, salt, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+      ).bind(id, email, name.trim(), passwordHash, salt, new Date().toISOString()).run();
+
+      // Seed default categories and account
+      await seedCategories(id, env);
+      const defAccId = "acc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+      await env.DB.prepare("INSERT OR IGNORE INTO accounts (id, user_id, name, balance, color) VALUES (?, ?, 'Tunai', 0, '#7c3aed')").bind(defAccId, id).run().catch(() => {});
+
+      user = { id, email, name, telegram_id: null };
+    }
+
+    // Generate Laksa JWT token
+    const token = await signJWT({ sub: user.id, email: user.email, name: user.name }, env.JWT_SECRET);
+    return jsonRes({ token, user: { id: user.id, email: user.email, name: user.name, telegram_id: user.telegram_id || null } });
+
+  } catch (e) {
+    return jsonRes({ error: "Gagal melakukan autentikasi Google: " + e.message }, 500);
+  }
+}
+
 async function handleMe(req, env) {
   const token = extractToken(req);
   if (!token) return jsonRes({ error: "Token diperlukan" }, 401);
@@ -664,7 +718,7 @@ async function routeAPI(req, url, env) {
   }
 
   // Auth routes (public — no token needed)
-  if ((path === "/auth/login" || path === "/auth/register" || path === "/auth/forgot-password" || path === "/auth/reset-password") && m === "POST") {
+  if ((path === "/auth/login" || path === "/auth/register" || path === "/auth/google" || path === "/auth/forgot-password" || path === "/auth/reset-password") && m === "POST") {
     const ip = req.headers.get("CF-Connecting-IP") || req.headers.get("X-Forwarded-For") || "unknown";
     if (!checkRateLimit(ip)) {
       return jsonRes({ error: "Terlalu banyak percobaan. Coba lagi dalam 15 menit." }, 429);
@@ -672,6 +726,7 @@ async function routeAPI(req, url, env) {
   }
   if (path === "/auth/register" && m === "POST") return handleRegister(await req.json(), env);
   if (path === "/auth/login"    && m === "POST") return handleLogin(await req.json(), env);
+  if (path === "/auth/google"   && m === "POST") return handleGoogleLogin(await req.json(), env);
   if (path === "/auth/me"       && m === "GET")  return handleMe(req, env);
   if (path === "/auth/refresh"  && m === "POST") return handleRefreshToken(req, env);
   if (path === "/auth/link-telegram" && m === "POST") return handleLinkTelegram(req, await req.json(), env);

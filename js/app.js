@@ -84,6 +84,7 @@ const getSet = () => {
 
 // ── API LAYER — D1 sebagai master ──
 const CLOUD_URL = 'https://laksana.haerubirru17.workers.dev';
+const GOOGLE_CLIENT_ID = '930869389270-p8h9mrcbgm2t8e6ch0v3h2o5q61m4fpe.apps.googleusercontent.com'; // Ganti dengan Client ID Google Anda jika diperlukan
 
 // In-memory cache — di-refresh setiap load halaman
 let _cache = { tx: null, accs: null, cats: null, buds: null, goals: null, bills: null, piutang: null, loading: false };
@@ -501,15 +502,15 @@ const accBy = (id) => getAccs().find(a => a.id === id) || { name: '-', id: '?' }
 const fCur = (a, sign = false, short = false) => {
   const cfg = getSet(), val = a || 0, abs = Math.abs(val);
   const neg = val < 0;
-  const pfx = (sign && val > 0 ? '+' : neg ? '−' : '');
+  const signStr = neg ? '−' : (sign && val > 0 ? '+' : '');
   if (short) {
-    if (abs >= 1e12) return (neg && !sign ? '−' : '') + pfx + cfg.currency + ' ' + (abs / 1e12).toFixed(1).replace(/\.0$/, '') + 'T';
-    if (abs >= 1e9) return (neg && !sign ? '−' : '') + pfx + cfg.currency + ' ' + (abs / 1e9).toFixed(1).replace(/\.0$/, '') + 'M';
-    if (abs >= 1e6) return (neg && !sign ? '−' : '') + pfx + cfg.currency + ' ' + (abs / 1e6).toFixed(1).replace(/\.0$/, '') + 'jt';
-    if (abs >= 1e3) return (neg && !sign ? '−' : '') + pfx + cfg.currency + ' ' + (abs / 1e3).toFixed(0) + 'rb';
-    return (neg && !sign ? '−' : '') + pfx + cfg.currency + ' ' + abs.toLocaleString('id-ID');
+    if (abs >= 1e12) return signStr + cfg.currency + ' ' + (abs / 1e12).toFixed(1).replace(/\.0$/, '') + 'T';
+    if (abs >= 1e9) return signStr + cfg.currency + ' ' + (abs / 1e9).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (abs >= 1e6) return signStr + cfg.currency + ' ' + (abs / 1e6).toFixed(1).replace(/\.0$/, '') + 'jt';
+    if (abs >= 1e3) return signStr + cfg.currency + ' ' + (abs / 1e3).toFixed(0) + 'rb';
+    return signStr + cfg.currency + ' ' + abs.toLocaleString('id-ID');
   }
-  return (neg && !sign ? '−' : '') + pfx + cfg.currency + ' ' + abs.toLocaleString('id-ID');
+  return signStr + cfg.currency + ' ' + abs.toLocaleString('id-ID');
 };
 // Short version — dipakai di hero card & kartu rekening
 const fCurS = (a, sign = false) => fCur(a, sign, true);
@@ -545,6 +546,7 @@ function applyTheme(theme, btn, save = true) {
   Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : (theme === 'education' ? 'rgba(15,23,42,0.15)' : 'rgba(15,23,42,0.08)');
   if (curPage === 'dashboard') renderDash();
   if (curPage === 'reports') renderReports();
+  if (curPage === 'transactions') filterTx();
 }
 
 
@@ -668,9 +670,52 @@ function showAuthPage() {
   const o = el('authOverlay'); if (o) o.style.display = 'flex';
   hideSetupPage();
   switchAuthTab('login');
+  authPitchStart();
 }
 function hideAuthPage() {
   const o = el('authOverlay'); if (o) o.style.display = 'none';
+  authPitchStop();
+}
+
+// ── AUTH PITCH SLIDER ──
+let _authPitchIdx = 0;
+let _authPitchTimer = null;
+const AUTH_PITCH_COUNT = 5;
+const AUTH_PITCH_INTERVAL = 5000;
+
+function authPitchGo(idx) {
+  const slides = document.querySelectorAll('.auth-pitch-slide');
+  const dots = document.querySelectorAll('.auth-pitch-dot');
+  if (!slides.length) return;
+  const prev = _authPitchIdx;
+  _authPitchIdx = ((idx % AUTH_PITCH_COUNT) + AUTH_PITCH_COUNT) % AUTH_PITCH_COUNT;
+  slides.forEach(s => { s.classList.remove('active', 'exit-left'); });
+  dots.forEach(d => d.classList.remove('active'));
+  // Animate previous slide out
+  if (slides[prev]) slides[prev].classList.add('exit-left');
+  // Animate new slide in
+  if (slides[_authPitchIdx]) slides[_authPitchIdx].classList.add('active');
+  if (dots[_authPitchIdx]) dots[_authPitchIdx].classList.add('active');
+  // Reset auto-rotation timer
+  authPitchResetTimer();
+}
+
+function authPitchNext() { authPitchGo(_authPitchIdx + 1); }
+function authPitchPrev() { authPitchGo(_authPitchIdx - 1); }
+
+function authPitchResetTimer() {
+  if (_authPitchTimer) clearInterval(_authPitchTimer);
+  _authPitchTimer = setInterval(() => authPitchGo(_authPitchIdx + 1), AUTH_PITCH_INTERVAL);
+}
+
+function authPitchStart() {
+  _authPitchIdx = 0;
+  authPitchGo(0);
+  authPitchResetTimer();
+}
+
+function authPitchStop() {
+  if (_authPitchTimer) { clearInterval(_authPitchTimer); _authPitchTimer = null; }
 }
 function switchAuthTab(tab) {
   const loginForm = el('authLoginForm');
@@ -721,12 +766,60 @@ async function handleAuthLogin() {
   }
 }
 
+let googleTokenClient = null;
+
+function handleGoogleLogin() {
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+    alert('Google API belum selesai dimuat. Silakan coba beberapa saat lagi.');
+    return;
+  }
+  
+  if (!googleTokenClient) {
+    googleTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: 'email profile',
+      callback: async (tokenResponse) => {
+        if (tokenResponse && tokenResponse.access_token) {
+          try {
+            showLoadingOverlay(true);
+            const data = await apiAuth('POST', '/auth/google', { access_token: tokenResponse.access_token });
+            
+            // Simpan token dan profil
+            setToken(data.token);
+            const p = { id: data.user.id, name: data.user.name, email: data.user.email, tgId: data.user.telegram_id || '', theme: 'glass' };
+            saveProfile(p);
+            
+            const s = getSet(); 
+            s.name = p.name; 
+            sv(K.set, s);
+            
+            hideAuthPage();
+            updateProfileUI();
+            updateSidebarProfile();
+            
+            showLoadingOverlay(true);
+            try { await loadAll(thisMon()); } finally { showLoadingOverlay(false); }
+            go('dashboard');
+            refresh();
+          } catch (e) {
+            console.error('Google login error:', e);
+            alert('Login Google gagal: ' + (e.message || 'Error tidak diketahui'));
+          } finally {
+            showLoadingOverlay(false);
+          }
+        }
+      }
+    });
+  }
+  googleTokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
 function toggleForgotForm(show) {
-  const loginFormInputs = document.querySelectorAll('#authLoginForm > .setup-field, #authLoginForm > #authLoginBtn, #authLoginForm > .auth-forgot, #authLoginForm > #authLoginError');
+  const loginFieldsGroup = el('authLoginFieldsGroup');
   const forgotForm = el('forgotPasswordForm');
-  if (!forgotForm) return;
+  if (!forgotForm || !loginFieldsGroup) return;
   if (show) {
-    loginFormInputs.forEach(item => item.style.display = 'none'); // Bug #4 fix: ganti 'el' → 'item' agar tidak shadow fungsi global el()
+    loginFieldsGroup.style.display = 'none';
     forgotForm.style.display = 'block';
     
     // Show step 1, hide step 2
@@ -741,8 +834,24 @@ function toggleForgotForm(show) {
     el('authForgotError').style.display = 'none';
     el('authForgotSuccess').style.display = 'none';
   } else {
-    loginFormInputs.forEach(item => item.style.display = ''); // Bug #4 fix: sama
+    loginFieldsGroup.style.display = 'block';
     forgotForm.style.display = 'none';
+  }
+}
+
+function togglePasswordVisibility(inputId, btn) {
+  const input = el(inputId);
+  if (!input) return;
+  const isPassword = input.type === 'password';
+  input.type = isPassword ? 'text' : 'password';
+  
+  // Toggle SVG icon
+  if (isPassword) {
+    btn.innerHTML = `<svg class="eye-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+    btn.title = 'Sembunyikan sandi';
+  } else {
+    btn.innerHTML = `<svg class="eye-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+    btn.title = 'Tampilkan sandi';
   }
 }
 

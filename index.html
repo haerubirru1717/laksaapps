@@ -11,10 +11,11 @@
     rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
   <script src="banks.js?v=1.4.0" defer></script>
-  <link rel="stylesheet" href="css/core.css?v=1.4.0" />
-  <link rel="stylesheet" href="css/layout.css?v=1.4.0" />
-  <link rel="stylesheet" href="css/components.css?v=1.4.0" />
-  <link rel="stylesheet" href="css/pages.css?v=1.4.0" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <link rel="stylesheet" href="css/core.css?v=1.5.0" />
+  <link rel="stylesheet" href="css/layout.css?v=1.5.0" />
+  <link rel="stylesheet" href="css/components.css?v=1.5.0" />
+  <link rel="stylesheet" href="css/pages.css?v=1.5.0" />
 </head>
 
 <body>
@@ -121,177 +122,272 @@
 
   <!-- AUTH OVERLAY (Login/Register) -->
   <div class="setup-overlay" id="authOverlay" style="display:none">
-    <div class="setup-card" style="max-width:380px">
-      <div class="setup-logo">
-        <div class="setup-logo-ico">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
+    <div class="auth-split-container">
+      <!-- LEFT PANEL: Login/Register Form -->
+      <div class="auth-split-left">
+        <div class="auth-form-inner">
+          <!-- Text Logo -->
+          <div class="auth-logo-text">laksa.</div>
+
+          <!-- LOGIN FORM -->
+          <div id="authLoginForm">
+            <!-- Group 1: Login Form Fields -->
+            <div id="authLoginFieldsGroup">
+              <h2 class="auth-heading">Selamat datang</h2>
+              <p class="auth-subheading">Masuk untuk melanjutkan kelola keuanganmu.</p>
+
+              <!-- Google Button -->
+              <button class="auth-google-btn" id="authGoogleLoginBtn" onclick="handleGoogleLogin()" type="button">
+                <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59A14.5 14.5 0 019.5 24c0-1.59.28-3.14.77-4.59l-7.98-6.19A23.97 23.97 0 000 24c0 3.77.9 7.35 2.56 10.52l7.97-5.93z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 5.93C6.51 42.62 14.62 48 24 48z"/></svg>
+                Lanjutkan dengan Google
+              </button>
+
+              <div class="auth-divider"><span>atau</span></div>
+
+              <div class="auth-field">
+                <label class="auth-field-label">Email</label>
+                <input class="auth-field-input" id="authLoginEmail" type="email" placeholder="nama@email.com" />
+              </div>
+              <div class="auth-field">
+                <div class="auth-field-row">
+                  <label class="auth-field-label">Password</label>
+                  <a href="javascript:void(0)" onclick="showForgotPassword()" class="auth-field-link">Lupa password?</a>
+                </div>
+                <div class="auth-input-wrapper">
+                  <input class="auth-field-input" id="authLoginPassword" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleAuthLogin()" />
+                  <button type="button" class="auth-eye-btn" onclick="togglePasswordVisibility('authLoginPassword', this)" title="Tampilkan sandi">
+                    <svg class="eye-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div id="authLoginError" class="auth-error" style="display:none"></div>
+
+              <button class="auth-submit-btn" id="authLoginBtn" onclick="handleAuthLogin()">Masuk</button>
+
+              <p class="auth-toggle-text">Belum punya akun? <a href="javascript:void(0)" onclick="switchAuthTab('register')">Daftar gratis</a></p>
+            </div>
+            
+            <!-- Group 2: Forgot Password Form (hidden by default) -->
+            <div id="forgotPasswordForm" style="display:none">
+              <h2 class="auth-heading">Pulihkan password</h2>
+              <p class="auth-subheading">Masukkan email terdaftar untuk menerima kode OTP.</p>
+
+              <div id="forgotStepEmail">
+                <div class="auth-field">
+                  <label class="auth-field-label">Email Pemulihan</label>
+                  <input class="auth-field-input" id="authForgotEmail" type="email" placeholder="nama@email.com" onkeydown="if(event.key==='Enter')handleForgotPasswordSubmit()" />
+                </div>
+                <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
+                  <button class="auth-submit-btn" id="authForgotBtn" onclick="handleForgotPasswordSubmit()" style="flex:2;margin:0">Kirim Kode OTP</button>
+                  <button class="auth-submit-btn auth-submit-btn-outline" onclick="toggleForgotForm(false)" style="flex:1;margin:0">Batal</button>
+                </div>
+              </div>
+              <div id="forgotStepOTP" style="display:none">
+                <div class="auth-field">
+                  <label class="auth-field-label">Kode OTP (6 Digit)</label>
+                  <input class="auth-field-input" id="authForgotOTP" type="text" placeholder="Masukkan 6 digit kode" maxlength="6" style="letter-spacing:0.3em;text-align:center;font-weight:bold" />
+                </div>
+                <div class="auth-field">
+                  <label class="auth-field-label">Password Baru</label>
+                  <div class="auth-input-wrapper">
+                    <input class="auth-field-input" id="authForgotNewPassword" type="password" placeholder="Min. 6 karakter" />
+                    <button type="button" class="auth-eye-btn" onclick="togglePasswordVisibility('authForgotNewPassword', this)" title="Tampilkan sandi">
+                      <svg class="eye-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="auth-field">
+                  <label class="auth-field-label">Ulangi Password Baru</label>
+                  <div class="auth-input-wrapper">
+                    <input class="auth-field-input" id="authForgotNewPassword2" type="password" placeholder="Ulangi password baru" onkeydown="if(event.key==='Enter')handleForgotPasswordResetSubmit()" />
+                    <button type="button" class="auth-eye-btn" onclick="togglePasswordVisibility('authForgotNewPassword2', this)" title="Tampilkan sandi">
+                      <svg class="eye-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
+                  <button class="auth-submit-btn" id="authForgotResetBtn" onclick="handleForgotPasswordResetSubmit()" style="flex:2;margin:0">Perbarui Password</button>
+                  <button class="auth-submit-btn auth-submit-btn-outline" onclick="toggleForgotForm(false)" style="flex:1;margin:0">Batal</button>
+                </div>
+              </div>
+              <div id="authForgotError" class="auth-error" style="display:none;margin-top:0.6rem"></div>
+              <div id="authForgotSuccess" class="auth-success" style="display:none;margin-top:0.6rem"></div>
+            </div>
+          </div>
+
+          <!-- REGISTER FORM -->
+          <div id="authRegisterForm" style="display:none">
+            <h2 class="auth-heading">Buat akun baru</h2>
+            <p class="auth-subheading">Ayo bergabung dan mari kita mulai belajar kelola keuangan hari ini!</p>
+
+            <button class="auth-google-btn" id="authGoogleRegisterBtn" onclick="handleGoogleLogin()" type="button">
+              <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59A14.5 14.5 0 019.5 24c0-1.59.28-3.14.77-4.59l-7.98-6.19A23.97 23.97 0 000 24c0 3.77.9 7.35 2.56 10.52l7.97-5.93z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 5.93C6.51 42.62 14.62 48 24 48z"/></svg>
+              Daftar dengan Google
+            </button>
+
+            <div class="auth-divider"><span>atau isi manual</span></div>
+
+            <div class="auth-field">
+              <label class="auth-field-label">Nama lengkap</label>
+              <input class="auth-field-input" id="authRegisterName" type="text" placeholder="Nama kamu" maxlength="30" />
+            </div>
+            <div class="auth-field">
+              <label class="auth-field-label">Email</label>
+              <input class="auth-field-input" id="authRegisterEmail" type="email" placeholder="nama@email.com" />
+            </div>
+            <div class="auth-field-2col">
+              <div class="auth-field">
+                <label class="auth-field-label">Password</label>
+                <div class="auth-input-wrapper">
+                  <input class="auth-field-input" id="authRegisterPassword" type="password" placeholder="Min. 8 karakter" />
+                  <button type="button" class="auth-eye-btn" onclick="togglePasswordVisibility('authRegisterPassword', this)" title="Tampilkan sandi">
+                    <svg class="eye-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="auth-field">
+                <label class="auth-field-label">Konfirmasi password</label>
+                <div class="auth-input-wrapper">
+                  <input class="auth-field-input" id="authRegisterPassword2" type="password" placeholder="Ulangi password" onkeydown="if(event.key==='Enter')handleAuthRegister()" />
+                  <button type="button" class="auth-eye-btn" onclick="togglePasswordVisibility('authRegisterPassword2', this)" title="Tampilkan sandi">
+                    <svg class="eye-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div id="authRegisterError" class="auth-error" style="display:none"></div>
+
+            <button class="auth-submit-btn" id="authRegisterBtn" onclick="handleAuthRegister()">Buat Akun</button>
+
+            <p class="auth-toggle-text">Sudah punya akun? <a href="javascript:void(0)" onclick="switchAuthTab('login')">Masuk</a></p>
+          </div>
         </div>
-        <span style="font-weight:800;font-size:1.1rem;color:var(--ink)">Laksa</span>
       </div>
 
-      <!-- Auth Tabs -->
-      <div style="display:flex;gap:0;margin-bottom:1rem;border-radius:10px;overflow:hidden;border:1.5px solid var(--gs-border)">
-        <button id="authTabLogin" class="auth-tab active" onclick="switchAuthTab('login')">Masuk</button>
-        <button id="authTabRegister" class="auth-tab" onclick="switchAuthTab('register')">Daftar</button>
-      </div>
+      <!-- RIGHT PANEL: Feature Pitch Slider -->
+      <div class="auth-split-right">
+        <div class="auth-pitch-slider" id="authPitchSlider">
+          <!-- Slide 1 -->
+          <div class="auth-pitch-slide active" data-slide="0">
+            <div class="auth-pitch-preview">
+              <div class="auth-preview-card apc-hero">
+                <div class="apc-label">Total Kekayaan Bersih</div>
+                <div class="apc-value">Rp 12.450.000</div>
+                <div class="apc-row">
+                  <span class="apc-badge apc-inc">↑ Rp 8.2jt</span>
+                  <span class="apc-badge apc-exp">↓ Rp 3.1jt</span>
+                </div>
+              </div>
+            </div>
+            <h3 class="auth-pitch-title">Dashboard keuangan real-time</h3>
+            <p class="auth-pitch-desc">Pantau saldo, pemasukan, dan pengeluaran dari semua rekening dalam satu tampilan yang elegan.</p>
+          </div>
 
-      <!-- Login Form -->
-      <div id="authLoginForm">
-        <div class="setup-field">
-          <label class="setup-label">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-              <polyline points="22,6 12,13 2,6"/>
-            </svg>
-            Email
-          </label>
-          <input class="setup-input" id="authLoginEmail" type="email" placeholder="email@contoh.com" />
-        </div>
-        <div class="setup-field">
-          <label class="setup-label">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-              <path d="M7 11V7a5 5 0 0110 0v4"/>
-            </svg>
-            Password
-          </label>
-          <input class="setup-input" id="authLoginPassword" type="password" placeholder="Min. 6 karakter" onkeydown="if(event.key==='Enter')handleAuthLogin()" />
-        </div>
-        <div id="authLoginError" class="auth-error" style="display:none"></div>
-        <button class="setup-btn" id="authLoginBtn" onclick="handleAuthLogin()">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
-            <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/>
-            <polyline points="10 17 15 12 10 7"/>
-            <line x1="15" y1="12" x2="3" y2="12"/>
-          </svg>
-          Masuk
-        </button>
-        <div class="auth-forgot" style="text-align:center;margin-top:0.6rem">
-          <a href="javascript:void(0)" onclick="showForgotPassword()" style="font-size:0.72rem;color:var(--ink3);text-decoration:underline">Lupa password?</a>
-        </div>
-        
-        <!-- Forgot Password Form -->
-        <div id="forgotPasswordForm" style="display:none;margin-top:1rem;border-top:1.5px solid var(--gs-border);padding-top:1rem;">
-          <!-- Step 1: Input Email -->
-          <div id="forgotStepEmail">
-            <div class="setup-field">
-              <label class="setup-label">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                  <polyline points="22,6 12,13 2,6"/>
+          <!-- Slide 2 -->
+          <div class="auth-pitch-slide" data-slide="1">
+            <div class="auth-pitch-preview">
+              <div class="auth-preview-card apc-bill">
+                <div class="apc-pill apc-pill-red">Indihome <span>jatuh tempo 2 hari</span></div>
+                <div class="apc-pill-val">Rp 350rb</div>
+              </div>
+              <div class="auth-preview-row">
+                <div class="auth-preview-card apc-sm">
+                  <div class="apc-label">DP Rumah</div>
+                  <div class="apc-prog"><div class="apc-prog-fill" style="width:12%"></div></div>
+                  <div class="apc-prog-label">Rp 12jt dari 100jt</div>
+                </div>
+                <div class="auth-preview-card apc-sm">
+                  <div class="apc-label">Anggaran Makan</div>
+                  <div class="apc-prog"><div class="apc-prog-fill apc-prog-warn" style="width:70%"></div></div>
+                  <div class="apc-prog-label">70% terpakai</div>
+                </div>
+              </div>
+            </div>
+            <h3 class="auth-pitch-title">Tagihan, target, dan anggaran terkontrol</h3>
+            <p class="auth-pitch-desc">Pantau semua kewajiban finansial dengan indikator urgensi dan progress tabungan.</p>
+          </div>
+
+          <!-- Slide 3 -->
+          <div class="auth-pitch-slide" data-slide="2">
+            <div class="auth-pitch-preview">
+              <div class="auth-preview-card apc-chart">
+                <svg width="100%" height="60" viewBox="0 0 200 60" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="pitchGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#34d399" stop-opacity="0.3"/>
+                      <stop offset="100%" stop-color="#34d399" stop-opacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  <path d="M0,45 C30,40 50,25 80,30 C110,35 130,10 160,15 C180,18 195,8 200,12 L200,60 L0,60Z" fill="url(#pitchGrad)"/>
+                  <path d="M0,45 C30,40 50,25 80,30 C110,35 130,10 160,15 C180,18 195,8 200,12" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round"/>
                 </svg>
-                Email Pemulihan
-              </label>
-              <input class="setup-input" id="authForgotEmail" type="email" placeholder="email@contoh.com" onkeydown="if(event.key==='Enter')handleForgotPasswordSubmit()" />
+                <div class="apc-chart-labels">
+                  <span>Jan</span><span>Mar</span><span>Jun</span><span>Sep</span><span>Des</span>
+                </div>
+              </div>
             </div>
-            <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
-              <button class="setup-btn" id="authForgotBtn" onclick="handleForgotPasswordSubmit()" style="flex:2">Kirim Kode OTP</button>
-              <button class="setup-btn" onclick="toggleForgotForm(false)" style="flex:1;background:var(--gs-2);color:var(--ink2);border:1.5px solid var(--gs-border);box-shadow:none">Batal</button>
-            </div>
+            <h3 class="auth-pitch-title">Laporan & grafik interaktif</h3>
+            <p class="auth-pitch-desc">Lihat tren keuangan dengan grafik yang bisa diklik di setiap titiknya. Pahami pola keuanganmu.</p>
           </div>
 
-          <!-- Step 2: Input OTP & New Password -->
-          <div id="forgotStepOTP" style="display:none">
-            <div class="setup-field">
-              <label class="setup-label">Kode OTP (6 Digit)</label>
-              <input class="setup-input" id="authForgotOTP" type="text" placeholder="Masukkan 6 digit kode" maxlength="6" style="letter-spacing:0.3em;text-align:center;font-weight:bold" />
+          <!-- Slide 4 -->
+          <div class="auth-pitch-slide" data-slide="3">
+            <div class="auth-pitch-preview">
+              <div class="auth-preview-card apc-ai">
+                <div class="apc-ai-bubble apc-ai-user">Catat makan siang Rp 35rb di BCA</div>
+                <div class="apc-ai-bubble apc-ai-bot">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                  Dicatat! Pengeluaran Rp 35.000 di kategori Makan & Minum, rekening BCA.
+                </div>
+              </div>
             </div>
-            <div class="setup-field">
-              <label class="setup-label">Password Baru</label>
-              <input class="setup-input" id="authForgotNewPassword" type="password" placeholder="Min. 6 karakter" />
-            </div>
-            <div class="setup-field">
-              <label class="setup-label">Ulangi Password Baru</label>
-              <input class="setup-input" id="authForgotNewPassword2" type="password" placeholder="Ulangi password baru" onkeydown="if(event.key==='Enter')handleForgotPasswordResetSubmit()" />
-            </div>
-            <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
-              <button class="setup-btn" id="authForgotResetBtn" onclick="handleForgotPasswordResetSubmit()" style="flex:2">Perbarui Password</button>
-              <button class="setup-btn" onclick="toggleForgotForm(false)" style="flex:1;background:var(--gs-2);color:var(--ink2);border:1.5px solid var(--gs-border);box-shadow:none">Batal</button>
-            </div>
+            <h3 class="auth-pitch-title">Asisten AI yang mengerti konteksmu</h3>
+            <p class="auth-pitch-desc">Cukup ketik atau kirim pesan via Telegram, AI kami langsung mencatat dan menjawab pertanyaan keuanganmu.</p>
           </div>
 
-          <div id="authForgotError" class="auth-error" style="display:none;margin-top:0.5rem"></div>
-          <div id="authForgotSuccess" class="auth-success" style="display:none;margin-top:0.5rem;color:var(--income);font-size:0.75rem;font-weight:600"></div>
-        </div>
-      </div>
-
-      <!-- Register Form -->
-      <div id="authRegisterForm" style="display:none">
-        <div class="setup-field">
-          <label class="setup-label">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
-            </svg>
-            Nama
-          </label>
-          <input class="setup-input" id="authRegisterName" type="text" placeholder="Nama kamu" maxlength="30" />
-        </div>
-        <div class="setup-field">
-          <label class="setup-label">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-              <polyline points="22,6 12,13 2,6"/>
-            </svg>
-            Email
-          </label>
-          <input class="setup-input" id="authRegisterEmail" type="email" placeholder="email@contoh.com" />
-        </div>
-        <div class="setup-field">
-          <label class="setup-label">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-              <path d="M7 11V7a5 5 0 0110 0v4"/>
-            </svg>
-            Password
-          </label>
-          <input class="setup-input" id="authRegisterPassword" type="password" placeholder="Min. 6 karakter" />
-        </div>
-        <div class="setup-field">
-          <label class="setup-label">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-            Konfirmasi Password
-          </label>
-          <input class="setup-input" id="authRegisterPassword2" type="password" placeholder="Ulangi password" onkeydown="if(event.key==='Enter')handleAuthRegister()" />
+          <!-- Slide 5 -->
+          <div class="auth-pitch-slide" data-slide="4">
+            <div class="auth-pitch-preview">
+              <div class="auth-preview-row">
+                <div class="auth-preview-card apc-acc">
+                  <div class="apc-acc-ico" style="background:#003d79">BCA</div>
+                  <div class="apc-label">Rp 5.2jt</div>
+                </div>
+                <div class="auth-preview-card apc-acc">
+                  <div class="apc-acc-ico" style="background:#fbbf24">💵</div>
+                  <div class="apc-label">Rp 450rb</div>
+                </div>
+                <div class="auth-preview-card apc-acc">
+                  <div class="apc-acc-ico" style="background:#00aa13">GoPay</div>
+                  <div class="apc-label">Rp 120rb</div>
+                </div>
+              </div>
+            </div>
+            <h3 class="auth-pitch-title">Multi-rekening & e-wallet</h3>
+            <p class="auth-pitch-desc">Hubungkan bank, dompet tunai, dan e-wallet. Lihat saldo gabungan dari semua sumber keuanganmu.</p>
+          </div>
         </div>
 
-        <!-- Theme picker in register form -->
-        <div class="setup-field">
-          <label class="setup-label">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-            </svg>
-            Tema
-          </label>
-          <div class="setup-themes">
-            <button class="setup-theme-opt active" onclick="setupPickTheme('glass',this)" style="display:flex;align-items:center;gap:.4rem">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
-              Glass
+        <!-- Slider Controls -->
+        <div class="auth-pitch-controls">
+          <div class="auth-pitch-nav">
+            <button class="auth-pitch-nav-btn" onclick="authPitchPrev()" aria-label="Previous">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
-            <button class="setup-theme-opt" onclick="setupPickTheme('dark',this)" style="display:flex;align-items:center;gap:.4rem">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-              Dark
+            <button class="auth-pitch-nav-btn" onclick="authPitchNext()" aria-label="Next">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 6 15 12 9 18"/></svg>
             </button>
           </div>
+          <div class="auth-pitch-dots" id="authPitchDots">
+            <span class="auth-pitch-dot active" onclick="authPitchGo(0)"></span>
+            <span class="auth-pitch-dot" onclick="authPitchGo(1)"></span>
+            <span class="auth-pitch-dot" onclick="authPitchGo(2)"></span>
+            <span class="auth-pitch-dot" onclick="authPitchGo(3)"></span>
+            <span class="auth-pitch-dot" onclick="authPitchGo(4)"></span>
+          </div>
         </div>
-
-        <button class="setup-btn" id="authRegisterBtn" onclick="handleAuthRegister()">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
-            <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-            <circle cx="8.5" cy="7" r="4"/>
-            <line x1="20" y1="8" x2="20" y2="14"/>
-            <line x1="23" y1="11" x2="17" y2="11"/>
-          </svg>
-          Daftar
-        </button>
       </div>
     </div>
   </div>
@@ -794,16 +890,16 @@
               <svg width="16" height="16" viewBox="0 0 72 72" fill="none"><g style="transform-origin:36px 36px;animation:spinOrbit 12s linear infinite"><ellipse cx="36" cy="36" rx="22" ry="9" stroke="white" stroke-width="2.5" transform="rotate(-30 36 36)"/></g><g style="transform-origin:36px 36px;animation:spinOrbitRev 15s linear infinite"><ellipse cx="36" cy="36" rx="22" ry="9" stroke="white" stroke-width="2" transform="rotate(30 36 36)" opacity=".65"/></g><circle cx="36" cy="36" r="4" fill="white"/></svg>
             </div>
             <svg class="ai-orb-ring ring-a" viewBox="0 0 100 100"><defs><path id="orbA1" d="M50,50 m-40,0 a40,40 0 1,1 80,0 a40,40 0 1,1 -80,0"/></defs><text><textPath href="#orbA1">Laksa.na • Laksa.na •&#160;</textPath></text></svg>
-            <svg class="ai-orb-ring ring-b" viewBox="0 0 100 100"><defs><path id="orbB1" d="M50,50 m-40,0 a40,40 0 1,1 80,0 a40,40 0 1,1 -80,0"/></defs><text><textPath href="#orbB1">AI Financial Agent •&#160;</textPath></text></svg>
           </div>
         </div>
+
         <div class="fbar">
           <div class="fsrch"><svg class="fsrch-ico" width="13" height="13" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2">
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg><input type="text" class="finput srch" id="txSearch" placeholder="Cari…" oninput="debF()" /></div>
-          <select class="fsel" id="txType" onchange="filterTx()">
+          <select class="fsel" id="txType" onchange="filterTx()" style="display:none">
             <option value="all">Semua Jenis</option>
             <option value="income">Pemasukan</option>
             <option value="expense">Pengeluaran</option>
@@ -813,6 +909,27 @@
             <option value="all">Semua Kategori</option>
           </select>
           <input type="month" class="finput mon" id="txMonth" onchange="filterTx()" />
+        </div>
+
+        <!-- PREMIUM TREND CHART CARD -->
+        <div class="tx-chart-card card" id="txChartCard">
+          <div class="tx-chart-header">
+            <div>
+              <span class="tx-chart-title">Analisis Tren</span>
+              <span class="tx-chart-sub" id="txChartSub">Memuat tren...</span>
+            </div>
+            <div class="tx-chart-net" id="txChartNet">Rp 0</div>
+          </div>
+          <div class="tx-chart-canvas-wrap">
+            <canvas id="txChartCanvas"></canvas>
+          </div>
+          
+          <!-- SEGMENTED TABS -->
+          <div class="tx-tabs">
+            <button type="button" class="tx-tab-btn active" id="txTabAll" onclick="setTxTypeTab('all')">Semua</button>
+            <button type="button" class="tx-tab-btn" id="txTabIncome" onclick="setTxTypeTab('income')">Pemasukan</button>
+            <button type="button" class="tx-tab-btn" id="txTabExpense" onclick="setTxTypeTab('expense')">Pengeluaran</button>
+          </div>
         </div>
         <div class="gc" style="padding:.5rem">
           <div id="txList"></div>
