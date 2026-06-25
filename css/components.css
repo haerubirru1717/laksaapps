@@ -30,10 +30,10 @@
 
     .dash-bg-banner {
       position: absolute;
-      top: 0;
-      left: -1.2rem;
-      right: -1.2rem;
-      height: 110px;
+      top: -2rem;
+      left: -2.5rem;
+      right: -2.5rem;
+      height: 145px;
       background: linear-gradient(135deg, #c1440e 0%, #d4691a 50%, #e8913a 100%);
       border-radius: 0 0 24px 24px;
       z-index: 0;
@@ -44,13 +44,51 @@
       background: linear-gradient(135deg, #7a2e0a 0%, #8c3f12 50%, #a35520 100%);
     }
 
-    #page-dashboard > * {
+    /* Target screens with other paddings */
+    @media(max-width:1279px) and (min-width:769px) {
+      .dash-bg-banner {
+        left: -2.25rem;
+        right: -2.25rem;
+      }
+    }
+
+    @media(max-width:768px) {
+      .dash-bg-banner {
+        top: -1.25rem;
+        left: -0.9rem;
+        right: -0.9rem;
+        height: 125px;
+        border-radius: 0 0 18px 18px;
+      }
+    }
+
+    #page-dashboard > *:not(.dash-bg-banner) {
       position: relative;
       z-index: 1;
     }
 
     .dash-bg-banner {
       z-index: 0 !important;
+    }
+
+    /* Topbar white/glassmorphic theme when sitting over the orange banner */
+    .dash-bg-banner ~ .dash-topbar .dash-profile-name {
+      color: #fff !important;
+    }
+    .dash-bg-banner ~ .dash-topbar .dash-profile-handle {
+      color: rgba(255, 255, 255, 0.75) !important;
+    }
+    .dash-bg-banner ~ .dash-topbar .dash-action-btn {
+      background: rgba(255, 255, 255, 0.12) !important;
+      border-color: rgba(255, 255, 255, 0.22) !important;
+      color: #fff !important;
+    }
+    .dash-bg-banner ~ .dash-topbar .dash-action-btn svg {
+      stroke: #fff !important;
+    }
+    .dash-bg-banner ~ .dash-topbar .dash-action-btn:hover {
+      background: rgba(255, 255, 255, 0.22) !important;
+      border-color: rgba(255, 255, 255, 0.35) !important;
     }
 
     /* Keuangan Sub-panel Transitions */
