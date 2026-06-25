@@ -48,7 +48,7 @@
       min-height: 100vh;
       position: relative;
       z-index: 1;
-      padding: 2rem 2.25rem 3rem;
+      padding: 2rem 2.25rem 3rem 1.2rem;
       box-sizing: border-box;
       width: calc(100% - 220px);
       overflow-x: hidden
@@ -65,7 +65,7 @@
       .main {
         margin-left: 240px;
         width: calc(100% - 240px);
-        padding: 2rem 2.5rem 3rem
+        padding: 2rem 2.5rem 3rem 1.2rem
       }
 
       /* Content max-width container so it doesn't stretch on ultrawide */
@@ -136,7 +136,7 @@
       .main {
         margin-left: 260px;
         width: calc(100% - 260px);
-        padding: 2.25rem 3rem 3rem
+        padding: 2.25rem 3rem 3rem 1.2rem
       }
     }
 

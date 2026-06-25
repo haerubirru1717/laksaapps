@@ -31,9 +31,9 @@
     .dash-bg-banner {
       position: absolute;
       top: -2rem;
-      left: -2.5rem;
+      left: -1.2rem;
       right: -2.5rem;
-      height: 145px;
+      height: 210px;
       background: linear-gradient(135deg, #c1440e 0%, #d4691a 50%, #e8913a 100%);
       border-radius: 0 0 24px 24px;
       z-index: 0;
@@ -47,7 +47,7 @@
     /* Target screens with other paddings */
     @media(max-width:1279px) and (min-width:769px) {
       .dash-bg-banner {
-        left: -2.25rem;
+        left: -1.2rem;
         right: -2.25rem;
       }
     }
@@ -57,7 +57,7 @@
         top: -1.25rem;
         left: -0.9rem;
         right: -0.9rem;
-        height: 125px;
+        height: 170px;
         border-radius: 0 0 18px 18px;
       }
     }
