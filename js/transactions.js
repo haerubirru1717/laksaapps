@@ -67,12 +67,19 @@ function renderTxTbl(txs, empty) {
   let html = '';
   sortedDates.forEach(dk => {
     const dayTxs = groups[dk];
-    const dayNet = dayTxs.reduce((s, t) => t.type === 'income' ? s + t.amount : t.type === 'expense' ? s - t.amount : s, 0);
-    const netStr = dayNet === 0 ? '' : fCur(dayNet, true);
-    const netC = dayNet > 0 ? '#2ecc71' : dayNet < 0 ? '#ff4d4d' : 'var(--t3)';
+    const dayInc = dayTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const dayExp = dayTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    
+    let totalHtml = '';
+    if (dayInc > 0) {
+      totalHtml += `<span class="txcl-grp-tot-val inc" style="color:#2ecc71;font-weight:700">+${fCur(dayInc)}</span>`;
+    }
+    if (dayExp > 0) {
+      totalHtml += `<span class="txcl-grp-tot-val exp" style="color:#ff4d4d;font-weight:700;margin-left:8px;">−${fCur(dayExp)}</span>`;
+    }
     
     html += `<div class="tx-date-group-card">`;
-    html += `<div class="txcl-grp">${fDate(dk)}<span class="txcl-grp-tot" style="color:${netC};font-weight:700">${netStr}</span></div>`;
+    html += `<div class="txcl-grp">${fDate(dk)}<div class="txcl-grp-tots">${totalHtml}</div></div>`;
     html += `<ul class="txcl">`;
     
     dayTxs.forEach(tx => {
@@ -291,18 +298,18 @@ function drawTxChart(txs, activeTab) {
 
   // Sort dates
   const sortedDates = Object.keys(daily).sort();
-  const maxDateStr = sortedDates[sortedDates.length - 1] || today();
 
-  // Generate last 7 days ending at maxDateStr
+  // Generate dates for the entire selected month
+  const selectedMonth = el('txMonth').value || thisMon(); // e.g. "2026-06"
+  const [yearStr, monthStr] = selectedMonth.split('-');
+  const yyyy = parseInt(yearStr);
+  const mm = parseInt(monthStr);
+  const daysInMonth = new Date(yyyy, mm, 0).getDate();
+
   const chartDates = [];
-  const maxDate = new Date(maxDateStr + 'T00:00:00');
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(maxDate);
-    d.setDate(maxDate.getDate() - i);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    chartDates.push(`${yyyy}-${mm}-${dd}`);
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dayStr = String(d).padStart(2, '0');
+    chartDates.push(`${yearStr}-${String(monthStr).padStart(2, '0')}-${dayStr}`);
   }
 
   // Calculate cumulative values based on active tab
@@ -447,6 +454,8 @@ function drawTxChart(txs, activeTab) {
             display: false
           },
           ticks: {
+            autoSkip: true,
+            maxTicksLimit: 6,
             font: {
               family: "'JetBrains Mono', monospace",
               size: 9,
