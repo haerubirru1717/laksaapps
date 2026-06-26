@@ -599,6 +599,13 @@ export default {
       }
       // Admin bot webhook
       if (request.method === "POST" && url.pathname === "/admin-webhook") {
+        const secret = env.ADMIN_TELEGRAM_WEBHOOK_SECRET || env.TELEGRAM_WEBHOOK_SECRET;
+        if (secret) {
+          const headerSecret = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
+          if (headerSecret !== secret) {
+            return new Response("Unauthorized", { status: 403 });
+          }
+        }
         const body = await request.json();
         ctx.waitUntil(handleAdminBot(body, env));
         return new Response("OK");
@@ -608,6 +615,9 @@ export default {
       console.error("Worker error:", e.message, e.stack);
       return cors(jsonRes({ error: e.message }, 500), request);
     }
+  },
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(cleanupOldData(env));
   }
 };
 
@@ -740,7 +750,7 @@ async function routeAPI(req, url, env) {
     return jsonRes(prices.results || []);
   }
 
-  // Resolve user_id: prefer JWT token, fallback to query param (backward compat for Telegram bot)
+  // Resolve user_id: prefer JWT token, fallback to query param (secured with secret header)
   let uid = null;
   const token = extractToken(req);
   if (token) {
@@ -748,7 +758,10 @@ async function routeAPI(req, url, env) {
     if (!payload) return jsonRes({ error: "Token tidak valid atau expired" }, 401);
     uid = payload.sub;
   } else {
-    uid = url.searchParams.get("user_id");
+    const internalSecret = req.headers.get("X-Internal-Secret");
+    if (internalSecret && env.INTERNAL_SECRET && internalSecret === env.INTERNAL_SECRET) {
+      uid = url.searchParams.get("user_id");
+    }
   }
 
   // Usage status
@@ -3117,8 +3130,11 @@ async function createTransaction(uid, body, env) {
 
   await ensureDedup(env);
 
-  const result = await env.DB.prepare(`
-    INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key, dedup_hash)
+  const sign = body.type === "income" ? 1 : -1;
+  const diff = body.amount * sign * 1;
+
+  const insertStmt = env.DB.prepare(`
+    INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key, dedup_hash)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     id, uid, date, body.type, body.amount,
@@ -3126,25 +3142,24 @@ async function createTransaction(uid, body, env) {
     body.account_id, body.category_id || null,
     body.raw_text || null, body.source || "web",
     idempotencyKey, dedupHash
-  ).run();
+  );
 
-  const changes = result.meta?.changes ?? -1;
-  const status = (changes > 0) ? "created" : "duplicate";
+  const updateStmt = env.DB.prepare("UPDATE accounts SET balance = balance + ? WHERE id = ?").bind(diff, body.account_id);
 
-
-  if (changes <= 0) {
-    return jsonRes({ id, status: "duplicate", dedup_hash: dedupHash });
+  try {
+    await env.DB.batch([insertStmt, updateStmt]);
+    return jsonRes({ id, status: "created", dedup_hash: dedupHash });
+  } catch (e) {
+    if (e.message && (e.message.includes("UNIQUE constraint") || e.message.includes("idx_tx_idempotency") || e.message.includes("idx_tx_dedup_hash"))) {
+      return jsonRes({ id, status: "duplicate", dedup_hash: dedupHash });
+    }
+    throw e;
   }
-
-  await adjustBalance(body.account_id, body.type, body.amount, +1, env);
-  return jsonRes({ id, status: "created", dedup_hash: dedupHash });
 }
 
 async function updateTransaction(uid, id, body, env) {
   const tx = await env.DB.prepare("SELECT * FROM transactions WHERE id = ? AND user_id = ?").bind(id, uid).first();
   if (!tx) return jsonRes({ error: "Transaction not found" }, 404);
-
-  await adjustBalance(tx.account_id, tx.type, tx.amount, -1, env);
 
   const date = body.date || tx.date;
   const type = body.type || tx.type;
@@ -3154,22 +3169,34 @@ async function updateTransaction(uid, id, body, env) {
   const account_id = body.account_id || tx.account_id;
   const category_id = body.category_id !== undefined ? body.category_id : tx.category_id;
 
-  await env.DB.prepare(`
+  const signOld = tx.type === "income" ? 1 : -1;
+  const diffOld = tx.amount * signOld * -1;
+  const revertStmt = env.DB.prepare("UPDATE accounts SET balance = balance + ? WHERE id = ?").bind(diffOld, tx.account_id);
+
+  const updateStmt = env.DB.prepare(`
     UPDATE transactions
     SET date = ?, type = ?, amount = ?, note = ?, store = ?, account_id = ?, category_id = ?
     WHERE id = ? AND user_id = ?
-  `).bind(date, type, amount, note, store, account_id, category_id, id, uid).run();
+  `).bind(date, type, amount, note, store, account_id, category_id, id, uid);
 
-  await adjustBalance(account_id, type, amount, +1, env);
+  const signNew = type === "income" ? 1 : -1;
+  const diffNew = amount * signNew * 1;
+  const applyStmt = env.DB.prepare("UPDATE accounts SET balance = balance + ? WHERE id = ?").bind(diffNew, account_id);
+
+  await env.DB.batch([revertStmt, updateStmt, applyStmt]);
   return jsonRes({ status: "updated" });
 }
 
 async function deleteTransaction(uid, id, env) {
   const tx = await env.DB.prepare("SELECT * FROM transactions WHERE id = ? AND user_id = ?").bind(id, uid).first();
   if (tx) {
-    await adjustBalance(tx.account_id, tx.type, tx.amount, -1, env);
-    await env.DB.prepare("DELETE FROM transaction_items WHERE transaction_id = ?").bind(id).run().catch(() => {});
-    await env.DB.prepare("DELETE FROM transactions WHERE id = ? AND user_id = ?").bind(id, uid).run();
+    const sign = tx.type === "income" ? 1 : -1;
+    const diff = tx.amount * sign * -1;
+    const revertStmt = env.DB.prepare("UPDATE accounts SET balance = balance + ? WHERE id = ?").bind(diff, tx.account_id);
+    const deleteItemsStmt = env.DB.prepare("DELETE FROM transaction_items WHERE transaction_id = ?").bind(id);
+    const deleteTxStmt = env.DB.prepare("DELETE FROM transactions WHERE id = ? AND user_id = ?").bind(id, uid);
+
+    await env.DB.batch([revertStmt, deleteItemsStmt, deleteTxStmt]);
   }
   return jsonRes({ status: "deleted" });
 }
@@ -3291,27 +3318,35 @@ async function deleteBill(uid, id, env) {
 // ─────────────────────────────────────────────────────
 // HELPERS & CORE UTILITIES
 // ─────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = [
+  "https://laksaapp.my.id",
+  "https://admin.laksaapp.my.id",
+  "https://haerubirru17.github.io"
+];
+
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
 function cors(response, request = null) {
   const headers = new Headers(response.headers);
-  let origin = "*";
+  let origin = "";
   if (request) {
     const reqOrigin = request.headers.get("Origin");
-    if (reqOrigin && (reqOrigin === "https://admin.laksaapp.my.id" || reqOrigin.startsWith("http://localhost:") || reqOrigin.startsWith("http://127.0.0.1:"))) {
-      origin = reqOrigin;
-      headers.set("Vary", "Origin");
+    if (reqOrigin) {
+      const isAllowed = ALLOWED_ORIGINS.includes(reqOrigin) || 
+                        reqOrigin.startsWith("http://localhost:") || 
+                        reqOrigin.startsWith("http://127.0.0.1:");
+      if (isAllowed) {
+        origin = reqOrigin;
+        headers.set("Vary", "Origin");
+      }
     }
   }
-  headers.set("Access-Control-Allow-Origin", origin);
+  headers.set("Access-Control-Allow-Origin", origin || "https://laksaapp.my.id");
   for (const [k, v] of Object.entries(corsHeaders)) {
-    if (k !== "Access-Control-Allow-Origin") {
-      headers.set(k, v);
-    }
+    headers.set(k, v);
   }
   return new Response(response.body, {
     status: response.status,
@@ -3976,4 +4011,15 @@ async function adminSend(chatId, text, token) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
   });
+}
+
+async function cleanupOldData(env) {
+  try {
+    await env.DB.prepare(
+      "DELETE FROM processed_updates WHERE created_at < datetime('now', '-7 days')"
+    ).run();
+    console.log("Cleanup old data completed successfully.");
+  } catch (e) {
+    console.error("Cleanup old data error:", e.message);
+  }
 }

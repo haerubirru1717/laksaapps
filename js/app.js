@@ -83,8 +83,7 @@ const getSet = () => {
 };
 
 // ── API LAYER — D1 sebagai master ──
-const CLOUD_URL = 'https://laksana.haerubirru17.workers.dev';
-const GOOGLE_CLIENT_ID = '930869389270-p8h9mrcbgm2t8e6ch0v3h2o5q61m4fpe.apps.googleusercontent.com'; // Ganti dengan Client ID Google Anda jika diperlukan
+// CLOUD_URL & GOOGLE_CLIENT_ID didefinisikan secara global di js/config.js
 
 // In-memory cache — di-refresh setiap load halaman
 let _cache = { tx: null, accs: null, cats: null, buds: null, goals: null, bills: null, piutang: null, loading: false };
@@ -226,7 +225,7 @@ async function showUpgradeModal(message) {
     <div class="modal-box upgrade-box">
       <div class="upgrade-icon">&#9889;</div>
       <h3>Upgrade ke Premium</h3>
-      <p class="upgrade-msg">${message || 'Upgrade untuk akses unlimited semua fitur.'}</p>
+      <p class="upgrade-msg">${esc(message) || 'Upgrade untuk akses unlimited semua fitur.'}</p>
       ${pricingHtml}
       ${qrisHtml}
       <div class="upgrade-contact">
