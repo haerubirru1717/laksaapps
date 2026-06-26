@@ -2,6 +2,27 @@
 // transactions.js — Transactions Page
 // ══════════════════════════════════════
 
+let chartStartDay = null;
+let currentChartMonth = '';
+let lastFilteredTxs = [];
+let lastActiveTab = 'all';
+
+function shiftChartRange(direction) {
+  const selectedMonth = el('txMonth').value || thisMon();
+  const [yearStr, monthStr] = selectedMonth.split('-');
+  const yyyy = parseInt(yearStr);
+  const mm = parseInt(monthStr);
+  const daysInMonth = new Date(yyyy, mm, 0).getDate();
+
+  if (direction === -1) {
+    chartStartDay = Math.max(1, chartStartDay - 7);
+  } else if (direction === 1) {
+    chartStartDay = Math.min(Math.max(1, daysInMonth - 6), chartStartDay + 7);
+  }
+
+  drawTxChart(lastFilteredTxs, lastActiveTab);
+}
+
 function renderTxPage() {
   populateCatFilter();
   const m = el('txMonth'); if (!m.value) m.value = thisMon();
@@ -51,6 +72,8 @@ function _doFilterTx(mon) {
   const tot = Math.max(1, Math.ceil(txs.length / TX_PER)); if (txPg > tot) txPg = tot;
   
   // Draw premium dynamic hermite bezier spline chart
+  lastFilteredTxs = txs;
+  lastActiveTab = type;
   drawTxChart(txs, type);
 
   renderTxTbl(txs.slice((txPg - 1) * TX_PER, txPg * TX_PER), txs.length === 0);
@@ -306,28 +329,47 @@ function drawTxChart(txs, activeTab) {
   const mm = parseInt(monthStr);
   const daysInMonth = new Date(yyyy, mm, 0).getDate();
 
-  const chartDates = [];
+  // Reset or initialize chartStartDay if month changed
+  if (currentChartMonth !== selectedMonth) {
+    currentChartMonth = selectedMonth;
+    if (selectedMonth === thisMon()) {
+      const todayD = new Date().getDate();
+      chartStartDay = Math.max(1, Math.min(daysInMonth - 6, todayD - 6));
+    } else {
+      chartStartDay = Math.max(1, daysInMonth - 6);
+    }
+  }
+
+  // Generate dates for the entire month to compute cumulative sums correctly
+  const allMonthDates = [];
   for (let d = 1; d <= daysInMonth; d++) {
+    const dayStr = String(d).padStart(2, '0');
+    allMonthDates.push(`${yearStr}-${String(monthStr).padStart(2, '0')}-${dayStr}`);
+  }
+
+  // Generate the 7 dates for the active window
+  const chartDates = [];
+  for (let i = 0; i < 7; i++) {
+    const d = chartStartDay + i;
     const dayStr = String(d).padStart(2, '0');
     chartDates.push(`${yearStr}-${String(monthStr).padStart(2, '0')}-${dayStr}`);
   }
 
-  // Calculate cumulative values based on active tab
+  // Calculate cumulative values
   const points = [];
   let runningSum = 0;
 
-  chartDates.forEach(d => {
+  allMonthDates.forEach(d => {
     const val = daily[d] || { inc: 0, exp: 0 };
     if (activeTab === 'income') {
       runningSum += val.inc;
-      points.push(runningSum);
     } else if (activeTab === 'expense') {
-      // Cumulative expenses as positive values so the curve goes UP!
       runningSum += val.exp;
-      points.push(runningSum);
     } else {
-      // Tab 'all': Cumulative Net Savings / Wealth Trend (income - expense)
       runningSum += (val.inc - val.exp);
+    }
+
+    if (chartDates.includes(d)) {
       points.push(runningSum);
     }
   });
@@ -336,17 +378,31 @@ function drawTxChart(txs, activeTab) {
   const labels = chartDates.map(d => {
     const dateObj = new Date(d + 'T00:00:00');
     const day = dateObj.getDate();
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-    return `${day} ${months[dateObj.getMonth()]}`;
+    const monthsList = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return `${day} ${monthsList[dateObj.getMonth()]}`;
   });
 
-  // Calculate full month totals for the header
+  // Display range label in the navigation controls
+  const rangeLbl = el('chartRangeLabel');
+  if (rangeLbl) {
+    rangeLbl.textContent = `${labels[0]} - ${labels[6]}`;
+  }
+
+  // Set disabled state for Prev/Next buttons
+  const btnPrev = el('chartBtnPrev');
+  const btnNext = el('chartBtnNext');
+  if (btnPrev) btnPrev.disabled = (chartStartDay === 1);
+  if (btnNext) btnNext.disabled = (chartStartDay === Math.max(1, daysInMonth - 6));
+
+  // Calculate 7-day window totals for the header
   let totalInc = 0;
   let totalExp = 0;
   txs.forEach(t => {
-    const amt = parseFloat(t.amount) || 0;
-    if (t.type === 'income') totalInc += amt;
-    else if (t.type === 'expense') totalExp += amt;
+    if (chartDates.includes(t.date)) {
+      const amt = parseFloat(t.amount) || 0;
+      if (t.type === 'income') totalInc += amt;
+      else if (t.type === 'expense') totalExp += amt;
+    }
   });
 
   let displayNet = 0;
@@ -354,19 +410,19 @@ function drawTxChart(txs, activeTab) {
   if (activeTab === 'income') {
     displayNet = totalInc;
     themeColor = '#2ecc71'; // Green
-    subEl.textContent = 'Total pemasukan bulan ini';
+    subEl.textContent = 'Total pemasukan 7 hari ini';
     netEl.textContent = '+' + fCur(displayNet);
     netEl.style.color = '#2ecc71';
   } else if (activeTab === 'expense') {
     displayNet = totalExp;
     themeColor = '#ff4d4d'; // Red
-    subEl.textContent = 'Total pengeluaran bulan ini';
+    subEl.textContent = 'Total pengeluaran 7 hari ini';
     netEl.textContent = '−' + fCur(displayNet);
     netEl.style.color = '#ff4d4d';
   } else {
     displayNet = totalInc - totalExp;
     themeColor = '#38bdf8'; // Blue
-    subEl.textContent = 'Selisih bersih bulan ini';
+    subEl.textContent = 'Selisih bersih 7 hari ini';
     netEl.textContent = (displayNet >= 0 ? '+' : '') + fCur(displayNet);
     netEl.style.color = displayNet > 0 ? '#2ecc71' : displayNet < 0 ? '#ff4d4d' : 'inherit';
   }

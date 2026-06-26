@@ -131,9 +131,10 @@ function renderDash() {
     }
   }
 
-  // Anggaran %
+  // Anggaran % & Sisa Anggaran (Hero Card)
   const buds = getBud();
   const budEl = el('budgPctHero');
+  const budGrowthEl = el('budgGrowth');
   if (budEl) {
     if (buds.length) {
       const totLim = buds.reduce((s, b) => s + b.limit_amount, 0);
@@ -143,34 +144,68 @@ function renderDash() {
       }, 0);
       const pct = totLim > 0 ? Math.round((totSpent / totLim) * 100) : 0;
       budEl.textContent = pct + '%';
-      budEl.style.color = pct >= 100 ? '#fca5a5' : pct >= 80 ? '#fde68a' : '';
+      if (budGrowthEl) {
+        const sisaBudg = totLim - totSpent;
+        if (sisaBudg < 0) {
+          budGrowthEl.textContent = `Lebih ${fCur(Math.abs(sisaBudg), false, true)}`;
+          budGrowthEl.className = 'nw-item-growth neg';
+        } else {
+          budGrowthEl.textContent = `Sisa ${fCur(sisaBudg, false, true)}`;
+          budGrowthEl.className = 'nw-item-growth pos';
+        }
+      }
     } else {
       budEl.textContent = '—';
+      if (budGrowthEl) {
+        budGrowthEl.textContent = 'Belum diatur';
+        budGrowthEl.className = 'nw-item-growth neu';
+      }
     }
   }
 
-  // Tagihan aktif bulan ini (Notifikasi Bell Dot)
+  // Tagihan aktif & terdekat (Hero Card)
   const bills = getBills();
   const billEl = el('heroBillCount');
-  const billItem = el('heroItemBill');
+  const billGrowthEl = el('billGrowth');
   const activeBills = bills.filter(b => b.status !== 'paid');
   
   if (el('bellDot')) {
     el('bellDot').style.display = activeBills.length > 0 ? 'block' : 'none';
   }
 
-  if (billEl && billItem) {
-    const overdueBills = activeBills.filter(b => {
-      if (!b.due_date && !b.due_day) return false;
-      const st = billDueStatus(b);
-      return st.cls === 'overdue';
-    });
+  if (billEl) {
     if (activeBills.length === 0) {
       billEl.textContent = 'Nihil';
     } else {
       billEl.textContent = activeBills.length + ' aktif';
     }
-    billItem.classList.toggle('has-overdue', overdueBills.length > 0);
+  }
+
+  if (billGrowthEl) {
+    const ORDER = { overdue: 0, 'due-soon': 1, upcoming: 2 };
+    const sortedActiveBills = [...activeBills].sort((a, b) => {
+      const sa = billDueStatus(a), sb = billDueStatus(b);
+      const oa = ORDER[sa.cls] ?? 3, ob = ORDER[sb.cls] ?? 3;
+      if (oa !== ob) return oa - ob;
+      if (sa.due && sb.due) return sa.due - sb.due;
+      return 0;
+    });
+    const closestBill = sortedActiveBills[0];
+    if (closestBill) {
+      const st = billDueStatus(closestBill);
+      const shortName = closestBill.name.length > 10 ? closestBill.name.slice(0, 8) + '...' : closestBill.name;
+      billGrowthEl.textContent = `${shortName} · ${st.label}`;
+      if (st.cls === 'overdue') {
+        billGrowthEl.className = 'nw-item-growth neg';
+      } else if (st.cls === 'due-soon') {
+        billGrowthEl.className = 'nw-item-growth warn';
+      } else {
+        billGrowthEl.className = 'nw-item-growth pos';
+      }
+    } else {
+      billGrowthEl.textContent = 'Nihil';
+      billGrowthEl.className = 'nw-item-growth pos';
+    }
   }
 
   // ── Top bar greeting + avatar ──
@@ -354,7 +389,10 @@ function renderDCs(accs, total, txs, now) {
         <div class="ecard-bottom">
           <div class="ecard-lbl">${esc(acc.name)}</div>
           <div class="ecard-saldo">${fCur(acc.balance)}</div>
-          <div class="ecard-pct">${pct.toFixed(0)}% dari total</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
+            <span class="ecard-pct" style="margin-top:0;">${pct.toFixed(0)}% dari total</span>
+            <div class="dc-delta" style="margin-top:0;">${dStr}</div>
+          </div>
         </div>
       </div>`;
     } else {

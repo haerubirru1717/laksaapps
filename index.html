@@ -770,6 +770,16 @@
                 <span class="nw-item-val"><span id="mExpenseHero">Rp 0</span></span>
                 <span class="nw-item-growth neu" id="expGrowth">—</span>
               </div>
+              <div class="nw-item nw-item-bud">
+                <span class="nw-item-lbl">Anggaran</span>
+                <span class="nw-item-val"><span id="budgPctHero">0%</span></span>
+                <span class="nw-item-growth neu" id="budgGrowth">—</span>
+              </div>
+              <div class="nw-item nw-item-bill">
+                <span class="nw-item-lbl">Tagihan Aktif</span>
+                <span class="nw-item-val"><span id="heroBillCount">0 Aktif</span></span>
+                <span class="nw-item-growth neu" id="billGrowth">—</span>
+              </div>
             </div>
 
             <div class="nw-actions">
@@ -928,7 +938,18 @@
         <div class="tx-chart-card card" id="txChartCard">
           <div class="tx-chart-header">
             <div>
-              <span class="tx-chart-title">Analisis Tren</span>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <span class="tx-chart-title" style="margin-bottom:0;">Analisis Tren</span>
+                <div class="chart-nav">
+                  <button type="button" class="chart-nav-btn" id="chartBtnPrev" onclick="shiftChartRange(-1)" title="Sebelumnya">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6" /></svg>
+                  </button>
+                  <span id="chartRangeLabel">...</span>
+                  <button type="button" class="chart-nav-btn" id="chartBtnNext" onclick="shiftChartRange(1)" title="Berikutnya">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                  </button>
+                </div>
+              </div>
               <span class="tx-chart-sub" id="txChartSub">Memuat tren...</span>
             </div>
             <div class="tx-chart-net" id="txChartNet">Rp 0</div>

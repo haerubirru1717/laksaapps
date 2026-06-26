@@ -442,7 +442,7 @@
     /* inline stats grid */
     .nw-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: .5rem .85rem;
       position: relative;
       z-index: 1;
@@ -484,30 +484,115 @@
     /* Growth badge baris kedua */
     .nw-item-growth {
       font-family: 'JetBrains Mono', monospace;
-      font-size: .58rem;
+      font-size: .56rem;
       font-weight: 600;
       letter-spacing: .02em;
-      margin-top: .15rem;
+      margin-top: .25rem;
       line-height: 1;
-      opacity: .95;
-      background: rgba(15, 23, 42, 0.32);
-      padding: 2px 6px;
-      border-radius: 4px;
+      background: rgba(15, 23, 42, 0.06);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      padding: 3px 8px;
+      border-radius: 20px;
       display: inline-flex;
       align-items: center;
-      gap: 2px;
+      gap: 4px;
+      color: rgba(15, 23, 42, 0.6);
+      transition: all 0.2s ease;
     }
 
     .nw-item-growth.pos {
-      color: #4ade80
+      background: rgba(16, 185, 129, 0.08);
+      border-color: rgba(16, 185, 129, 0.18);
+      color: #059669;
     }
 
     .nw-item-growth.neg {
-      color: #ff8585
+      background: rgba(220, 38, 38, 0.08);
+      border-color: rgba(220, 38, 38, 0.18);
+      color: #dc2626;
+    }
+
+    .nw-item-growth.warn {
+      background: rgba(217, 119, 6, 0.08);
+      border-color: rgba(217, 119, 6, 0.18);
+      color: #d97706;
     }
 
     .nw-item-growth.neu {
-      color: rgba(255, 255, 255, .6)
+      background: rgba(15, 23, 42, 0.06);
+      border-color: rgba(15, 23, 42, 0.08);
+      color: rgba(15, 23, 42, 0.6);
+    }
+
+    /* Dark theme override */
+    html[data-theme="dark"] .nw-item-growth {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.65);
+    }
+    html[data-theme="dark"] .nw-item-growth.pos {
+      background: rgba(74, 222, 128, 0.08);
+      border-color: rgba(74, 222, 128, 0.18);
+      color: #4ade80;
+    }
+    html[data-theme="dark"] .nw-item-growth.neg {
+      background: rgba(255, 133, 133, 0.08);
+      border-color: rgba(255, 133, 133, 0.18);
+      color: #ff8585;
+    }
+    html[data-theme="dark"] .nw-item-growth.warn {
+      background: rgba(250, 204, 21, 0.08);
+      border-color: rgba(250, 204, 21, 0.18);
+      color: #facc15;
+    }
+    html[data-theme="dark"] .nw-item-growth.neu {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    /* Chart range navigation styling */
+    .chart-nav {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .chart-nav-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--ink2);
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+    .chart-nav-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.18);
+      color: var(--ink);
+    }
+    .chart-nav-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    html[data-theme="dark"] .chart-nav-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+    html[data-theme="education"] .chart-nav-btn {
+      background: #ffffff;
+      border: 2px solid #0f172a;
+      box-shadow: 2px 2px 0px #0f172a;
+      color: #0f172a;
+    }
+    html[data-theme="education"] .chart-nav-btn:hover:not(:disabled) {
+      background: #f1f5f9;
+    }
+    #chartRangeLabel {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--ink3);
     }
 
     .bank-lbl-desk {
@@ -843,16 +928,17 @@
 
     .dc-delta {
       font-family: 'JetBrains Mono', monospace;
-      font-size: .63rem;
+      font-size: .6rem;
       font-weight: 600;
-      background: rgba(15, 23, 42, 0.42);
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.15);
       padding: 2px 6px;
-      border-radius: 6px;
+      border-radius: 12px;
       display: inline-flex;
       align-items: center;
       margin-top: 4px;
       backdrop-filter: blur(2px);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
 
     .dc-pct {
