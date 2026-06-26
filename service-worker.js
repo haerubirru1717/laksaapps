@@ -1,8 +1,6 @@
 const CACHE_NAME = 'laksa-v1.3';
-const ASSETS = [
-  '/',
-  '/index.html',
-  '/css/core.css',
+
+'/css/core.css',
   '/css/layout.css',
   '/css/components.css',
   '/css/pages.css',
@@ -39,7 +37,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (
-    e.request.url.includes('workers.dev') || 
+    e.request.url.includes('workers.dev') ||
     e.request.url.includes('accounts.google.com') ||
     e.request.method !== 'GET'
   ) {
