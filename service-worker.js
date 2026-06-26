@@ -1,4 +1,4 @@
-const CACHE_NAME = 'laksa-v1';
+const CACHE_NAME = 'laksa-v1.1';
 const ASSETS = [
   '/',
   '/index.html',
