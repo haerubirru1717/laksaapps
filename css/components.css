@@ -504,6 +504,23 @@
       color: rgba(255, 255, 255, .38)
     }
 
+    .bank-lbl-desk {
+      display: inline;
+    }
+
+    .bank-lbl-mob {
+      display: none;
+    }
+
+    @media (max-width: 576px) {
+      .bank-lbl-desk {
+        display: none;
+      }
+      .bank-lbl-mob {
+        display: inline;
+      }
+    }
+
     /* Colour tokens per item */
     .nw-item-inc .nw-item-val {
       color: #2ecc71

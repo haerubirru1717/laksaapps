@@ -2,6 +2,21 @@
 // dashboard.js — Dashboard Page
 // ══════════════════════════════════════
 
+function getBankLabel(accName) {
+  if (!accName || accName === '—') return { desktop: '', mobile: '' };
+  let shortName = accName.replace(/bank/i, '').trim();
+  if (!shortName) shortName = accName;
+  let longName = accName;
+  const isWallet = /ovo|gopay|dana|linkaja|shopeepay|spay|wallet/i.test(accName);
+  if (!isWallet && !/bank/i.test(accName)) {
+    longName = 'Bank ' + accName;
+  }
+  return {
+    desktop: ` (${longName})`,
+    mobile: ` (${shortName})`
+  };
+}
+
 function renderDash() {
   const txs = getTx(), accs = getAccs(), now = thisMon();
   const total = accs.reduce((s, a) => s + (a.balance || 0), 0);
@@ -81,17 +96,24 @@ function renderDash() {
     .filter(t => t.type === 'expense')
     .sort((a, b) => b.date.localeCompare(a.date) || (b.created_at || b.id).localeCompare(a.created_at || a.id))[0];
 
-  const incGrowthText = lastIncome ? `↑ ${fCurS(lastIncome.amount, true)}` : '—';
-  const expGrowthText = lastExpense ? `↓ ${fCurS(-lastExpense.amount, true)}` : '—';
+  const getBankLabelHtml = (tx) => {
+    if (!tx) return '';
+    const acc = accBy(tx.account_id);
+    const labels = getBankLabel(acc.name);
+    return `<span class="bank-lbl-desk">${labels.desktop}</span><span class="bank-lbl-mob">${labels.mobile}</span>`;
+  };
+
+  const incGrowthText = lastIncome ? `↑ ${fCur(lastIncome.amount, true)}${getBankLabelHtml(lastIncome)}` : '—';
+  const expGrowthText = lastExpense ? `↓ ${fCur(-lastExpense.amount, true)}${getBankLabelHtml(lastExpense)}` : '—';
 
   const incG = el('incGrowth');
   const expG = el('expGrowth');
   if (incG) {
-    incG.textContent = incGrowthText;
+    incG.innerHTML = incGrowthText;
     incG.className = 'nw-item-growth ' + (lastIncome ? 'pos' : 'neu');
   }
   if (expG) {
-    expG.textContent = expGrowthText;
+    expG.innerHTML = expGrowthText;
     expG.className = 'nw-item-growth ' + (lastExpense ? 'neg' : 'neu');
   }
 
@@ -290,11 +312,11 @@ function renderDCs(accs, total, txs, now) {
     let dStr = '—';
     if (lastAccTx) {
       if (lastAccTx.type === 'income') {
-        dStr = `<span style="color:#2ecc71;font-weight:600">↑ +${fCurS(lastAccTx.amount)}</span>`;
+        dStr = `<span style="color:#2ecc71;font-weight:600">↑ ${fCur(lastAccTx.amount, true)}</span>`;
       } else if (lastAccTx.type === 'expense') {
-        dStr = `<span style="color:#ff4d4d;font-weight:600">↓ -${fCurS(lastAccTx.amount)}</span>`;
+        dStr = `<span style="color:#ff4d4d;font-weight:600">↓ ${fCur(-lastAccTx.amount, true)}</span>`;
       } else {
-        dStr = `<span style="color:rgba(255,255,255,0.6)">↔ ${fCurS(lastAccTx.amount)}</span>`;
+        dStr = `<span style="color:rgba(255,255,255,0.6)">↔ ${fCur(lastAccTx.amount)}</span>`;
       }
     }
     const isEwallet = b && b.isWallet || /ovo|gopay|dana|linkaja|shopeepay|spay|wallet/i.test(acc.name);
