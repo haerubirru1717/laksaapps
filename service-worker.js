@@ -1,4 +1,4 @@
-const CACHE_NAME = 'laksa-v1.6';
+const CACHE_NAME = 'laksa-v1.7';
 const ASSETS = [
   '/',
   '/index.html',
@@ -46,18 +46,21 @@ self.addEventListener('fetch', e => {
     return;
   }
   e.respondWith(
-    fetch(e.request)
-      .then(response => {
-        if (response && response.status === 200 && response.type === 'basic') {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(e.request, responseToCache);
-          });
-        }
-        return response;
-      })
-      .catch(() => {
-        return caches.match(e.request);
-      })
+    caches.match(e.request).then(cached => {
+      const networkFetch = fetch(e.request)
+        .then(response => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(e.request, responseToCache);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Ignore network errors in background revalidation
+        });
+      return cached || networkFetch;
+    })
   );
 });

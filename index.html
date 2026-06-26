@@ -1695,7 +1695,7 @@
       });
       let refreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
+        if (navigator.serviceWorker.controller && !refreshing) {
           refreshing = true;
           window.location.reload();
         }
