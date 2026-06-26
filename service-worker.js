@@ -1,4 +1,4 @@
-const CACHE_NAME = 'laksa-v1.1';
+const CACHE_NAME = 'laksa-v1.2';
 const ASSETS = [
   '/',
   '/index.html',
@@ -38,11 +38,26 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Jangan cache request ke API/Worker
-  if (e.request.url.includes('workers.dev') || e.request.url.includes('accounts.google.com')) {
+  if (
+    e.request.url.includes('workers.dev') || 
+    e.request.url.includes('accounts.google.com') ||
+    e.request.method !== 'GET'
+  ) {
     return;
   }
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    fetch(e.request)
+      .then(response => {
+        if (response && response.status === 200 && response.type === 'basic') {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(e.request, responseToCache);
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        return caches.match(e.request);
+      })
   );
 });

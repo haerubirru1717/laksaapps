@@ -50,8 +50,8 @@ function renderDash() {
   const eCount = accs.length - bCount;
   el('balSub').textContent = bCount + ' rekening' + (eCount > 0 ? ' • ' + eCount + ' e-wallet' : '');
   const mTx = txs.filter(t => mKey(t.date) === now);
-  const inc = mTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const exp = mTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const inc = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const exp = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
   // ── Hero 2×2 stats (Legacy ids - compatibility check) ──
   if (el('mIncomeHero')) el('mIncomeHero').textContent = fCur(inc);
@@ -70,7 +70,8 @@ function renderDash() {
     if (pct === 0) return { text: '=0% vs bln lalu', cls: 'neu' };
     return { text: (pct > 0 ? '+' : '') + pct + '% vs bln lalu', cls: pct > 0 ? 'pos' : 'neg' };
   }
-  const ig = growthLabel(inc, lInc);
+  const monInc = mTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const ig = growthLabel(monInc, lInc);
 
   // Transaksi terbaru masing-masing tipe untuk Hero stats (BUG-03)
   const lastIncome = [...txs]
@@ -80,8 +81,8 @@ function renderDash() {
     .filter(t => t.type === 'expense')
     .sort((a, b) => b.date.localeCompare(a.date) || (b.created_at || b.id).localeCompare(a.created_at || a.id))[0];
 
-  const incGrowthText = lastIncome ? `↑ terakhir ${fCurS(lastIncome.amount, true)}` : '—';
-  const expGrowthText = lastExpense ? `↓ terakhir ${fCurS(-lastExpense.amount, true)}` : '—';
+  const incGrowthText = lastIncome ? `↑ ${fCurS(lastIncome.amount, true)}` : '—';
+  const expGrowthText = lastExpense ? `↓ ${fCurS(-lastExpense.amount, true)}` : '—';
 
   const incG = el('incGrowth');
   const expG = el('expGrowth');
@@ -288,14 +289,12 @@ function renderDCs(accs, total, txs, now) {
     
     let dStr = '—';
     if (lastAccTx) {
-      const noteOrCat = lastAccTx.note || catBy(lastAccTx.category_id).name;
-      const shortNote = noteOrCat.length > 15 ? noteOrCat.slice(0, 12) + '...' : noteOrCat;
       if (lastAccTx.type === 'income') {
-        dStr = `↑ +${fCurS(lastAccTx.amount)} (${shortNote})`;
+        dStr = `<span style="color:#2ecc71;font-weight:600">↑ +${fCurS(lastAccTx.amount)}</span>`;
       } else if (lastAccTx.type === 'expense') {
-        dStr = `↓ -${fCurS(lastAccTx.amount)} (${shortNote})`;
+        dStr = `<span style="color:#ff4d4d;font-weight:600">↓ -${fCurS(lastAccTx.amount)}</span>`;
       } else {
-        dStr = `↔ ${fCurS(lastAccTx.amount)} (${shortNote})`;
+        dStr = `<span style="color:rgba(255,255,255,0.6)">↔ ${fCurS(lastAccTx.amount)}</span>`;
       }
     }
     const isEwallet = b && b.isWallet || /ovo|gopay|dana|linkaja|shopeepay|spay|wallet/i.test(acc.name);
@@ -348,7 +347,7 @@ function renderDCs(accs, total, txs, now) {
       bHtml += `<div class="dc" style="background:linear-gradient(135deg,${c1},${c2})" onclick="openAccDetail('${acc.id}')">
         <div class="dc-top">${topLeft}<div class="dc-logo-wrap" style="${logoWrapStyle}">${logo}</div></div>
         <div class="dc-mid"><div class="dc-bal-lbl">Saldo Tersedia</div><div class="dc-bal" style="color:${balColor}">${fCur(acc.balance)}</div><div class="dc-bar-wrap"><div class="dc-bar" style="width:${pct.toFixed(1)}%;${isNegBal ? 'background:rgba(255,120,120,.7)' : ''}"></div></div></div>
-        <div class="dc-bot"><div><div class="dc-name" style="text-transform:uppercase">${esc(acc.name)}</div><div class="dc-delta">${esc(dStr)}</div></div><div class="dc-pct">${isNegBal ? `<span style="color:rgba(255,150,150,1);font-size:.62rem;font-weight:700">MINUS</span>` : pct.toFixed(0) + '%<br><span style="font-size:.55rem">dari total</span>'}</div></div>
+        <div class="dc-bot"><div><div class="dc-name" style="text-transform:uppercase">${esc(acc.name)}</div><div class="dc-delta">${dStr}</div></div><div class="dc-pct">${isNegBal ? `<span style="color:rgba(255,150,150,1);font-size:.62rem;font-weight:700">MINUS</span>` : pct.toFixed(0) + '%<br><span style="font-size:.55rem">dari total</span>'}</div></div>
       </div>`;
     }
   });
