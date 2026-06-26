@@ -113,10 +113,10 @@ const BANKS = {
   shopee:    {color:'#EE4D2D',c2:'#c93b1e',domain:'shopee.co.id',slug:'shopeepay'},
 
   // ── Kas/Tunai ──
-  tunai:     {color:'#7c5a43',c2:'#593c2a',domain:null,slug:'dompet'},
-  cash:      {color:'#7c5a43',c2:'#593c2a',domain:null,slug:'dompet'},
-  dompet:    {color:'#70483c',c2:'#4e2e25',domain:null,slug:'dompet'},
-  kas:       {color:'#8c6239',c2:'#5f3e1b',domain:null,slug:'dompet'}
+  tunai:     {color:'#34d399',c2:'#10b981',domain:null,slug:'dompet'},
+  cash:      {color:'#34d399',c2:'#10b981',domain:null,slug:'dompet'},
+  dompet:    {color:'#5c6ac4',c2:'#4355b9',domain:null,slug:'dompet'},
+  kas:       {color:'#d4920a',c2:'#a87200',domain:null,slug:'dompet'}
 };
 
 // ── DAFTAR SEMUA FILE SVG ──
@@ -257,8 +257,8 @@ const detBank = (name) => {
   if (/dompet|tunai|cash|wallet|kas/i.test(n)) {
     const isKas = /kas/i.test(n);
     const isDompet = /dompet/i.test(n);
-    const col = isKas ? '#8c6239' : (isDompet ? '#70483c' : '#7c5a43');
-    const col2 = isKas ? '#5f3e1b' : (isDompet ? '#4e2e25' : '#593c2a');
+    const col = isKas ? '#d4920a' : (isDompet ? '#5c6ac4' : '#34d399');
+    const col2 = isKas ? '#a87200' : (isDompet ? '#4355b9' : '#10b981');
     return { color: col, c2: col2, domain: null, slug: 'dompet' };
   }
 
