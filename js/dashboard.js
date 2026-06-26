@@ -71,12 +71,28 @@ function renderDash() {
     return { text: (pct > 0 ? '+' : '') + pct + '% vs bln lalu', cls: pct > 0 ? 'pos' : 'neg' };
   }
   const ig = growthLabel(inc, lInc);
-  const eg = growthLabel(exp, lExp);
+
+  // Transaksi terbaru masing-masing tipe untuk Hero stats (BUG-03)
+  const lastIncome = [...txs]
+    .filter(t => t.type === 'income')
+    .sort((a, b) => b.date.localeCompare(a.date) || (b.created_at || b.id).localeCompare(a.created_at || a.id))[0];
+  const lastExpense = [...txs]
+    .filter(t => t.type === 'expense')
+    .sort((a, b) => b.date.localeCompare(a.date) || (b.created_at || b.id).localeCompare(a.created_at || a.id))[0];
+
+  const incGrowthText = lastIncome ? `↑ terakhir ${fCurS(lastIncome.amount, true)}` : '—';
+  const expGrowthText = lastExpense ? `↓ terakhir ${fCurS(-lastExpense.amount, true)}` : '—';
+
   const incG = el('incGrowth');
   const expG = el('expGrowth');
-  if (incG) { incG.textContent = ig.text; incG.className = 'nw-item-growth ' + ig.cls; }
-  // Untuk pengeluaran: naik = merah (buruk), turun = hijau (baik)
-  if (expG) { expG.textContent = eg.text; expG.className = 'nw-item-growth ' + (eg.cls === 'pos' ? 'neg' : eg.cls === 'neg' ? 'pos' : eg.cls); }
+  if (incG) {
+    incG.textContent = incGrowthText;
+    incG.className = 'nw-item-growth ' + (lastIncome ? 'pos' : 'neu');
+  }
+  if (expG) {
+    expG.textContent = expGrowthText;
+    expG.className = 'nw-item-growth ' + (lastExpense ? 'neg' : 'neu');
+  }
 
   // ── Render Growth Badge ──
   const balGrowthBadge = el('balGrowthBadge');
@@ -266,8 +282,22 @@ function renderDCs(accs, total, txs, now) {
   
   accs.forEach(acc => {
     const b = detBank(acc.name);
-    const delta = txs.filter(t => mKey(t.date) === now && t.account_id === acc.id).reduce((s, t) => t.type === 'income' ? s + t.amount : t.type === 'expense' ? s - t.amount : s, 0);
-    const dStr = delta !== 0 ? (delta > 0 ? '↑ +' : '↓ ') + fCur(Math.abs(delta)) : '—';
+    const lastAccTx = [...txs]
+      .filter(t => t.account_id === acc.id)
+      .sort((a, b) => b.date.localeCompare(a.date) || (b.created_at || b.id).localeCompare(a.created_at || a.id))[0];
+    
+    let dStr = '—';
+    if (lastAccTx) {
+      const noteOrCat = lastAccTx.note || catBy(lastAccTx.category_id).name;
+      const shortNote = noteOrCat.length > 15 ? noteOrCat.slice(0, 12) + '...' : noteOrCat;
+      if (lastAccTx.type === 'income') {
+        dStr = `↑ +${fCurS(lastAccTx.amount)} (${shortNote})`;
+      } else if (lastAccTx.type === 'expense') {
+        dStr = `↓ -${fCurS(lastAccTx.amount)} (${shortNote})`;
+      } else {
+        dStr = `↔ ${fCurS(lastAccTx.amount)} (${shortNote})`;
+      }
+    }
     const isEwallet = b && b.isWallet || /ovo|gopay|dana|linkaja|shopeepay|spay|wallet/i.test(acc.name);
     const isNegBal = acc.balance < 0;
     const pct = total > 0 ? Math.max(0, Math.min((acc.balance / total) * 100, 100)) : 0;

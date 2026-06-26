@@ -593,3 +593,21 @@
         display: none !important
       }
     }
+
+    /* BUG-13 & BUG-14 overrides */
+    body.is-404-page .sidebar,
+    body.is-404-page .bnav {
+      display: none !important;
+    }
+    body.is-404-page .main {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+
+    body.is-auth-page .sidebar,
+    body.is-auth-page .bnav,
+    body.is-auth-page .main {
+      display: none !important;
+    }

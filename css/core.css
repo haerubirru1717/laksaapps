@@ -1400,7 +1400,10 @@
     html[data-theme="dark"] .toast,
     html[data-theme="dark"] .tx-item,
     html[data-theme="dark"] .sidebar-profile,
-    html[data-theme="dark"] .acc-item {
+    html[data-theme="dark"] .acc-item,
+    html[data-theme="dark"] .settings-card,
+    html[data-theme="dark"] .bill-card,
+    html[data-theme="dark"] .keu-summary-card-redesign {
       background: rgba(10, 11, 20, 0.96) !important;
       border: 1px solid rgba(255, 255, 255, 0.08) !important;
       box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
@@ -1411,7 +1414,10 @@
     html[data-theme="dark"] .card:hover,
     html[data-theme="dark"] .gc:hover,
     html[data-theme="dark"] .tx-item:hover,
-    html[data-theme="dark"] .sidebar-profile:hover {
+    html[data-theme="dark"] .sidebar-profile:hover,
+    html[data-theme="dark"] .settings-card:hover,
+    html[data-theme="dark"] .bill-card:hover,
+    html[data-theme="dark"] .keu-summary-card-redesign:hover {
       border-color: rgba(99, 102, 241, 0.25) !important;
       background: rgba(15, 17, 30, 0.96) !important;
       box-shadow: 0 20px 60px rgba(99, 102, 241, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;

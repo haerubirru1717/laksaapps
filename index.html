@@ -761,22 +761,14 @@
 
             <div class="nw-grid">
               <div class="nw-item nw-item-inc">
-                <span class="nw-item-lbl">Pemasukan</span>
+                <span class="nw-item-lbl">Pemasukan Bulan Ini</span>
                 <span class="nw-item-val"><span class="sym">↑</span><span id="mIncomeHero">Rp 0</span></span>
                 <span class="nw-item-growth neu" id="incGrowth">—</span>
               </div>
               <div class="nw-item nw-item-exp">
-                <span class="nw-item-lbl">Pengeluaran</span>
+                <span class="nw-item-lbl">Keluar Bulan Ini</span>
                 <span class="nw-item-val"><span class="sym">↓</span><span id="mExpenseHero">Rp 0</span></span>
                 <span class="nw-item-growth neu" id="expGrowth">—</span>
-              </div>
-              <div class="nw-item nw-item-bud">
-                <span class="nw-item-lbl">Anggaran</span>
-                <span class="nw-item-val"><span class="sym">◎</span><span id="budgPctHero">—</span></span>
-              </div>
-              <div class="nw-item nw-item-bill" id="heroItemBill">
-                <span class="nw-item-lbl">Tagihan</span>
-                <span class="nw-item-val"><span class="sym">⚡</span><span id="heroBillCount">—</span></span>
               </div>
             </div>
 
@@ -952,7 +944,7 @@
             <button type="button" class="tx-tab-btn" id="txTabExpense" onclick="setTxTypeTab('expense')">Pengeluaran</button>
           </div>
         </div>
-        <div class="gc" style="padding:.5rem">
+        <div style="padding:0">
           <div id="txList"></div>
           <div class="empty" id="txEmpty" style="display:none;padding:2rem"><svg width="48" height="48"
               viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".25">

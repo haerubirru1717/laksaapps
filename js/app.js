@@ -599,6 +599,15 @@ function updateUrlAndTitle(page, tab = null, push = true) {
 }
 
 function parseUrlAndRoute(push = true) {
+  if (!isLoggedIn()) {
+    const profile = getProfile();
+    if (profile && profile.tgId && !profile.id) {
+      showSetupPage();
+    } else {
+      showAuthPage();
+    }
+    return;
+  }
   const path = window.location.pathname;
   if (path === '/' || path === '') {
     go('dashboard', push);
@@ -646,11 +655,27 @@ window.addEventListener('popstate', event => {
 });
 
 function go(page, push = true) {
+  if (!isLoggedIn() && page !== '404') {
+    const profile = getProfile();
+    if (profile && profile.tgId && !profile.id) {
+      showSetupPage();
+    } else {
+      showAuthPage();
+    }
+    return;
+  }
+
   // Bug #3 fix: handle alias pages SEBELUM DOM manipulation agar tidak ada flash blank screen
   if (page === 'budget')  { if (curPage !== 'keuangan') go('keuangan', false); setKeuTab('budget', null, push);  return; }
   if (page === 'goals')   { if (curPage !== 'keuangan') go('keuangan', false); setKeuTab('goals', null, push);   return; }
   if (page === 'bills')   { if (curPage !== 'keuangan') go('keuangan', false); setKeuTab('bills', null, push);   return; }
   if (page === 'piutang') { if (curPage !== 'keuangan') go('keuangan', false); setKeuTab('piutang', null, push); return; }
+
+  if (page === '404') {
+    document.body.classList.add('is-404-page');
+  } else {
+    document.body.classList.remove('is-404-page');
+  }
 
   if (curPage === page) {
     updateUrlAndTitle(page, null, push);
@@ -762,21 +787,28 @@ function setupPickTheme(theme, btn) {
   applyTheme(theme, null, false);
 }
 function showSetupPage() {
+  document.body.classList.add('is-auth-page');
   const o = el('setupOverlay'); if (o) o.style.display = 'flex';
   applyTheme('glass', null, false);
 }
 function hideSetupPage() {
+  const authVis = el('authOverlay') && el('authOverlay').style.display === 'flex';
+  if (!authVis) {
+    document.body.classList.remove('is-auth-page');
+  }
   const o = el('setupOverlay'); if (o) o.style.display = 'none';
 }
 
 // ── AUTH PAGE ──
 function showAuthPage() {
+  document.body.classList.add('is-auth-page');
   const o = el('authOverlay'); if (o) o.style.display = 'flex';
   hideSetupPage();
   switchAuthTab('login');
   authPitchStart();
 }
 function hideAuthPage() {
+  document.body.classList.remove('is-auth-page');
   const o = el('authOverlay'); if (o) o.style.display = 'none';
   authPitchStop();
 }

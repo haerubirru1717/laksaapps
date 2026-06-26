@@ -7,18 +7,44 @@ function renderBudg() {
   const strip = el('budgSummaryStrip');
   if (!buds.length) { grid.innerHTML = ''; if (strip) strip.style.display = 'none'; emp.style.display = 'flex'; return; }
   emp.style.display = 'none';
-  if (strip) strip.style.display = 'grid';
+  if (strip) strip.style.display = 'block';
   const mTx = getTx().filter(t => mKey(t.date) === thisMon() && t.type === 'expense');
   const totalLim   = buds.reduce((s, b) => s + (b.limit_amount || 0), 0);
   const totalSpent = buds.reduce((s, b) => {
     return s + mTx.filter(t => t.category_id === b.category_id).reduce((ss, t) => ss + t.amount, 0);
   }, 0);
-  const totalSisa = Math.max(0, totalLim - totalSpent);
-  if (el('budgTotalLim'))   el('budgTotalLim').textContent   = fCur(totalLim);
-  if (el('budgTotalSpent')) el('budgTotalSpent').textContent = fCur(totalSpent);
-  if (el('budgTotalSisa'))  {
-    el('budgTotalSisa').textContent = fCur(totalSisa);
-    el('budgTotalSisa').className = 'keu-summary-value ' + (totalSisa <= 0 ? 'red' : totalSpent / totalLim >= 0.7 ? 'amber' : 'green');
+  const totalSisa = totalLim - totalSpent;
+  const pct = totalLim > 0 ? (totalSpent / totalLim) * 100 : 0;
+  const dateStr = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+
+  if (strip) {
+    strip.innerHTML = `
+    <div class="keu-summary-card-redesign">
+      <div class="kscr-hdr">
+        <span class="kscr-title">Ringkasan Anggaran</span>
+        <span class="kscr-date">${dateStr}</span>
+      </div>
+      <div class="kscr-body">
+        <div class="kscr-row">
+          <span>Terpakai</span>
+          <strong class="red">${fCur(totalSpent)}</strong>
+        </div>
+        <div class="kscr-row">
+          <span>Batas</span>
+          <strong>${fCur(totalLim)}</strong>
+        </div>
+        <div class="kscr-row">
+          <span>Selisih</span>
+          <strong class="${totalSisa >= 0 ? 'green' : 'red'}">${totalSisa >= 0 ? '+' : ''}${fCur(totalSisa)} ${totalSisa >= 0 ? '' : '⚠️'}</strong>
+        </div>
+      </div>
+      <div class="kscr-progress-row">
+        <div class="ptrack" style="flex: 1; margin-bottom: 0;">
+          <div class="pfill ${totalSpent > totalLim ? 'bad' : totalSpent / totalLim >= 0.8 ? 'warn' : 'ok'}" style="width: ${Math.min(pct, 100)}%"></div>
+        </div>
+        <span class="kscr-pct-label">${pct.toFixed(0)}%</span>
+      </div>
+    </div>`;
   }
   grid.innerHTML = buds.map(b => {
     const cat = catBy(b.category_id);
@@ -85,19 +111,55 @@ function renderGoals() {
   const strip = el('goalsSummaryStrip');
   if (!goals.length) { grid.innerHTML = ''; if (strip) strip.style.display = 'none'; emp.style.display = 'flex'; return; }
   emp.style.display = 'none';
-  if (strip) strip.style.display = 'grid';
+  if (strip) strip.style.display = 'block';
   const totalTarget  = goals.reduce((s, g) => s + (g.target  || 0), 0);
   const totalCurrent = goals.reduce((s, g) => s + (g.current || 0), 0);
-  const incomplete = goals.filter(g => g.deadline && g.current < g.target);
-  let nearestLabel = '—';
-  if (incomplete.length) {
-    incomplete.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
-    const diff = Math.ceil((new Date(incomplete[0].deadline) - new Date()) / 86400000);
-    nearestLabel = diff > 0 ? diff + ' hari' : diff === 0 ? 'Hari ini!' : 'Lewat';
+  const incomplete = goals.filter(g => g.current < g.target);
+  
+  let nearestTargetInfo = '—';
+  const incompleteWithDl = incomplete.filter(g => g.deadline);
+  if (incompleteWithDl.length) {
+    incompleteWithDl.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+    const gNear = incompleteWithDl[0];
+    const nearPct = gNear.target > 0 ? (gNear.current / gNear.target) * 100 : 0;
+    nearestTargetInfo = `${esc(gNear.name)} → ${nearPct.toFixed(0)}%`;
+  } else if (incomplete.length) {
+    const gNear = incomplete[0];
+    const nearPct = gNear.target > 0 ? (gNear.current / gNear.target) * 100 : 0;
+    nearestTargetInfo = `${esc(gNear.name)} → ${nearPct.toFixed(0)}%`;
   }
-  if (el('goalsTotalTarget'))  el('goalsTotalTarget').textContent  = fCur(totalTarget);
-  if (el('goalsTotalCurrent')) el('goalsTotalCurrent').textContent = fCur(totalCurrent);
-  if (el('goalsNearest'))      el('goalsNearest').textContent      = nearestLabel;
+
+  const pct = totalTarget > 0 ? (totalCurrent / totalTarget) * 100 : 0;
+
+  if (strip) {
+    strip.innerHTML = `
+    <div class="keu-summary-card-redesign">
+      <div class="kscr-hdr">
+        <span class="kscr-title">Target Tabungan</span>
+        <span class="kscr-date">Semua Target</span>
+      </div>
+      <div class="kscr-body">
+        <div class="kscr-row">
+          <span>Total Target</span>
+          <strong>${fCur(totalTarget)}</strong>
+        </div>
+        <div class="kscr-row">
+          <span>Terkumpul</span>
+          <strong class="green">${fCur(totalCurrent)}</strong>
+        </div>
+        <div class="kscr-row">
+          <span>Terdekat</span>
+          <strong>${nearestTargetInfo}</strong>
+        </div>
+      </div>
+      <div class="kscr-progress-row">
+        <div class="ptrack" style="flex: 1; margin-bottom: 0;">
+          <div class="pfill ok" style="width: ${Math.min(pct, 100)}%"></div>
+        </div>
+        <span class="kscr-pct-label">${pct.toFixed(0)}%</span>
+      </div>
+    </div>`;
+  }
   grid.innerHTML = goals.map(g => {
     const rawPct = g.target > 0 ? (g.current / g.target) * 100 : 0;
     const isAchieved = rawPct >= 100;
@@ -116,9 +178,11 @@ function renderGoals() {
     const pctBadgeClass = isAchieved ? 'green' : '';
     const pctLabel = isAchieved ? '100% ✓' : rawPct.toFixed(0) + '%';
     const shortageText = !isAchieved && kurang > 0 ? 'Kurang ' + fCur(kurang) : isAchieved ? 'Tercapai! 🎉' : '';
-    const hintHtml = savingsPerMonth
-      ? `<div class="gcard-glass-hint">Nabung <strong>${fCur(savingsPerMonth)}/bln</strong> untuk mencapai target</div>`
-      : `<div class="gcard-glass-hint" style="color:var(--income);font-weight:600">Target tercapai! 🎉</div>`;
+    const hintHtml = isAchieved
+      ? `<div class="gcard-glass-hint" style="color:var(--income);font-weight:600">Target tercapai! 🎉</div>`
+      : (savingsPerMonth 
+          ? `<div class="gcard-glass-hint">Nabung <strong>${fCur(savingsPerMonth)}/bln</strong> untuk mencapai target</div>`
+          : `<div class="gcard-glass-hint">Target ini tidak memiliki batas waktu (deadline).</div>`);
     return `<div class="gcard-glass">
       <div class="gcard-glass-hdr">
         <div class="gcard-glass-identity">
@@ -226,30 +290,45 @@ function renderBillsHero(bills) {
   const paidBills   = bills.filter(b => b.status === 'paid');
   const total = activeBills.reduce((s, b) => s + (b.amount || 0), 0);
   const paidTotal = paidBills.reduce((s, b) => s + (b.amount || 0), 0);
+  const overallTotal = total + paidTotal;
+  const pctPaid = overallTotal > 0 ? (paidTotal / overallTotal) * 100 : 0;
 
   const criticalBills = activeBills.filter(b => { const st = billDueStatus(b); return st.cls === 'overdue'; });
   const warnBills    = activeBills.filter(b => { const st = billDueStatus(b); return st.cls === 'due-soon'; });
   const safeBills    = activeBills.filter(b => { const st = billDueStatus(b); return st.cls === 'upcoming'; });
 
-  if (el('heroTotalAmt')) el('heroTotalAmt').textContent = fCur(total);
-  if (el('heroTotalPaid')) el('heroTotalPaid').textContent = fCur(paidTotal);
-  if (el('heroSubText')) el('heroSubText').textContent = activeBills.length + ' tagihan aktif · ' + new Date().toLocaleDateString('id-ID', {month:'long', year:'numeric'});
-  if (el('heroStatCritical')) el('heroStatCritical').textContent = criticalBills.length;
-  if (el('heroStatWarn')) el('heroStatWarn').textContent = warnBills.length;
-  if (el('heroStatSafe')) el('heroStatSafe').textContent = safeBills.length;
+  const dateStr = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 
-  // Segmented bar
-  const bar = el('heroSegBar');
-  if (bar && total > 0) {
-    const critAmt = criticalBills.reduce((s,b) => s + (b.amount||0), 0);
-    const warnAmt = warnBills.reduce((s,b) => s + (b.amount||0), 0);
-    const safeAmt = safeBills.reduce((s,b) => s + (b.amount||0), 0);
-    bar.innerHTML = [
-      critAmt > 0 ? `<div class="bills-hero-segbar-seg" style="width:${(critAmt/total*100).toFixed(1)}%;background:rgba(239,68,68,0.85);"></div>` : '',
-      warnAmt > 0 ? `<div class="bills-hero-segbar-seg" style="width:${(warnAmt/total*100).toFixed(1)}%;background:rgba(245,158,11,0.85);"></div>` : '',
-      safeAmt > 0 ? `<div class="bills-hero-segbar-seg" style="width:${(safeAmt/total*100).toFixed(1)}%;background:rgba(34,197,120,0.85);"></div>` : '',
-    ].join('');
-  } else if (bar) bar.innerHTML = `<div class="bills-hero-segbar-seg" style="width:100%;background:var(--gs-border);"></div>`;
+  if (hero) {
+    hero.innerHTML = `
+    <div class="keu-summary-card-redesign">
+      <div class="kscr-hdr">
+        <span class="kscr-title">Tagihan Bulan Ini</span>
+        <span class="kscr-date">${dateStr}</span>
+      </div>
+      <div class="kscr-body">
+        <div class="kscr-row">
+          <span>Total Belum Lunas</span>
+          <strong class="red">${fCur(total)}</strong>
+        </div>
+        <div class="kscr-row">
+          <span>Sudah Dibayar</span>
+          <strong class="green">${fCur(paidTotal)}</strong>
+        </div>
+      </div>
+      <div class="kscr-progress-row" style="margin-bottom: 0.8rem;">
+        <div class="ptrack" style="flex: 1; margin-bottom: 0;">
+          <div class="pfill ok" style="width: ${pctPaid}%"></div>
+        </div>
+        <span class="kscr-pct-label">${pctPaid.toFixed(0)}%</span>
+      </div>
+      <div class="bills-summary-urgency" style="display:flex;justify-content:space-between;font-size:0.76rem;color:var(--ink2);border-top:1px solid var(--gs-border);padding-top:0.6rem;">
+        <span style="display:inline-flex;align-items:center;gap:4px;"><span style="color:#ef4444">🔴</span> <strong>${criticalBills.length}</strong> Kritis</span>
+        <span style="display:inline-flex;align-items:center;gap:4px;"><span style="color:#f59e0b">🟡</span> <strong>${warnBills.length}</strong> Mendekat</span>
+        <span style="display:inline-flex;align-items:center;gap:4px;"><span style="color:#22c578">🟢</span> <strong>${safeBills.length}</strong> Aman</span>
+      </div>
+    </div>`;
+  }
 }
 
 let showPaidBills = false;
@@ -601,16 +680,43 @@ function renderPiutang() {
     return;
   }
   if (emp) emp.style.display = 'none';
-  if (strip) strip.style.display = 'grid';
+  if (strip) strip.style.display = 'block';
 
   // Summary calculations
   const totalAmt      = list.reduce((s, p) => s + (p.amount   || 0), 0);
   const totalReturned = list.reduce((s, p) => s + (p.returned || 0), 0);
   const totalSisa     = Math.max(0, totalAmt - totalReturned);
+  const pctReturned   = totalAmt > 0 ? (totalReturned / totalAmt) * 100 : 0;
 
-  if (el('piutangTotalAmt'))      el('piutangTotalAmt').textContent      = fCur(totalAmt);
-  if (el('piutangTotalReturned')) el('piutangTotalReturned').textContent = fCur(totalReturned);
-  if (el('piutangTotalSisa'))     el('piutangTotalSisa').textContent     = fCur(totalSisa);
+  if (strip) {
+    strip.innerHTML = `
+    <div class="keu-summary-card-redesign">
+      <div class="kscr-hdr">
+        <span class="kscr-title">Piutang Aktif</span>
+        <span class="kscr-date">Total Ringkasan</span>
+      </div>
+      <div class="kscr-body">
+        <div class="kscr-row">
+          <span>Dipinjamkan</span>
+          <strong>${fCur(totalAmt)}</strong>
+        </div>
+        <div class="kscr-row">
+          <span>Dikembalikan</span>
+          <strong class="green">${fCur(totalReturned)}</strong>
+        </div>
+        <div class="kscr-row">
+          <span>Sisa Piutang</span>
+          <strong class="amber">${fCur(totalSisa)} (${(totalAmt > 0 ? (totalSisa/totalAmt)*100 : 0).toFixed(0)}%)</strong>
+        </div>
+      </div>
+      <div class="kscr-progress-row">
+        <div class="ptrack" style="flex: 1; margin-bottom: 0;">
+          <div class="pfill ok" style="width: ${Math.min(pctReturned, 100)}%"></div>
+        </div>
+        <span class="kscr-pct-label">${pctReturned.toFixed(0)}% balik</span>
+      </div>
+    </div>`;
+  }
 
   const today_ = new Date(); today_.setHours(0,0,0,0);
 
