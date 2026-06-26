@@ -550,19 +550,121 @@ function applyTheme(theme, btn, save = true) {
 
 
 // ── NAVIGATION ──
-function go(page) {
-  // Bug #3 fix: handle alias pages SEBELUM DOM manipulation agar tidak ada flash blank screen
-  if (page === 'budget')  { if (curPage !== 'keuangan') go('keuangan'); setKeuTab('budget', null);  return; }
-  if (page === 'goals')   { if (curPage !== 'keuangan') go('keuangan'); setKeuTab('goals', null);   return; }
-  if (page === 'bills')   { if (curPage !== 'keuangan') go('keuangan'); setKeuTab('bills', null);   return; }
-  if (page === 'piutang') { if (curPage !== 'keuangan') go('keuangan'); setKeuTab('piutang', null); return; }
+function updateUrlAndTitle(page, tab = null, push = true) {
+  let path = '/dashboard';
+  let title = 'Dashboard — Laksa';
 
-  if (curPage === page) return;
+  if (page === '404') {
+    path = window.location.pathname;
+    title = 'Halaman Tidak Ditemukan — Laksa';
+  } else if (page === 'keuangan') {
+    const activeTab = tab || keuActiveTab || 'budget';
+    if (activeTab === 'budget') {
+      path = '/keuangan/budget';
+      title = 'Anggaran — Laksa';
+    } else if (activeTab === 'goals') {
+      path = '/keuangan/goals';
+      title = 'Target — Laksa';
+    } else if (activeTab === 'bills') {
+      path = '/keuangan/bills';
+      title = 'Tagihan — Laksa';
+    } else if (activeTab === 'piutang') {
+      path = '/keuangan/piutang';
+      title = 'Piutang — Laksa';
+    }
+  } else {
+    if (page === 'dashboard') {
+      path = '/dashboard';
+      title = 'Dashboard — Laksa';
+    } else if (page === 'transactions') {
+      path = '/transactions';
+      title = 'Transaksi — Laksa';
+    } else if (page === 'receipt') {
+      path = '/receipt';
+      title = 'Scan Struk — Laksa';
+    } else if (page === 'reports') {
+      path = '/reports';
+      title = 'Laporan — Laksa';
+    } else if (page === 'settings') {
+      path = '/settings';
+      title = 'Pengaturan — Laksa';
+    }
+  }
+
+  document.title = title;
+
+  if (push) {
+    history.pushState({ page, tab }, title, path);
+  }
+}
+
+function parseUrlAndRoute(push = true) {
+  const path = window.location.pathname;
+  if (path === '/' || path === '') {
+    go('dashboard', push);
+  } else if (path === '/dashboard') {
+    go('dashboard', push);
+  } else if (path === '/transactions') {
+    go('transactions', push);
+  } else if (path === '/receipt') {
+    go('receipt', push);
+  } else if (path === '/reports') {
+    go('reports', push);
+  } else if (path === '/settings') {
+    go('settings', push);
+  } else if (path === '/keuangan' || path === '/keuangan/') {
+    go('keuangan', push);
+  } else if (path === '/keuangan/budget') {
+    go('keuangan', false);
+    setKeuTab('budget', null, push);
+  } else if (path === '/keuangan/goals') {
+    go('keuangan', false);
+    setKeuTab('goals', null, push);
+  } else if (path === '/keuangan/bills') {
+    go('keuangan', false);
+    setKeuTab('bills', null, push);
+  } else if (path === '/keuangan/piutang') {
+    go('keuangan', false);
+    setKeuTab('piutang', null, push);
+  } else {
+    go('404', push);
+  }
+}
+
+window.addEventListener('popstate', event => {
+  const state = event.state;
+  if (state && state.page) {
+    if (state.page === 'keuangan') {
+      go('keuangan', false);
+      setKeuTab(state.tab || 'budget', null, false);
+    } else {
+      go(state.page, false);
+    }
+  } else {
+    parseUrlAndRoute(false);
+  }
+});
+
+function go(page, push = true) {
+  // Bug #3 fix: handle alias pages SEBELUM DOM manipulation agar tidak ada flash blank screen
+  if (page === 'budget')  { if (curPage !== 'keuangan') go('keuangan', false); setKeuTab('budget', null, push);  return; }
+  if (page === 'goals')   { if (curPage !== 'keuangan') go('keuangan', false); setKeuTab('goals', null, push);   return; }
+  if (page === 'bills')   { if (curPage !== 'keuangan') go('keuangan', false); setKeuTab('bills', null, push);   return; }
+  if (page === 'piutang') { if (curPage !== 'keuangan') go('keuangan', false); setKeuTab('piutang', null, push); return; }
+
+  if (curPage === page) {
+    updateUrlAndTitle(page, null, push);
+    return;
+  }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item,.bnav-item').forEach(n => n.classList.remove('active'));
   const pg = el('page-' + page); if (pg) pg.classList.add('active');
   document.querySelectorAll('[data-page="' + page + '"]').forEach(n => n.classList.add('active'));
   curPage = page;
+  
+  window.scrollTo(0, 0);
+  updateUrlAndTitle(page, null, push);
+
   requestAnimationFrame(() => {
     if (page === 'dashboard') renderDash();
     else if (page === 'transactions') renderTxPage();
@@ -573,7 +675,7 @@ function go(page) {
   });
 }
 let keuActiveTab = 'budget';
-function setKeuTab(tab, btn) {
+function setKeuTab(tab, btn, push = true) {
   keuActiveTab = tab;
   document.querySelectorAll('.keu-tab').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
@@ -588,6 +690,9 @@ function setKeuTab(tab, btn) {
   el('keuPanelGoals').style.display = tab === 'goals' ? '' : 'none';
   el('keuPanelBills').style.display = tab === 'bills' ? '' : 'none';
   const ptgPanel = el('keuPanelPiutang'); if (ptgPanel) ptgPanel.style.display = tab === 'piutang' ? '' : 'none';
+  
+  updateUrlAndTitle('keuangan', tab, push);
+  
   if (tab === 'budget') renderBudg();
   else if (tab === 'goals') renderGoals();
   else if (tab === 'piutang') { if (typeof renderPiutang === 'function') renderPiutang(); }
@@ -1174,6 +1279,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Cek auth: token exists = logged in, otherwise show auth page
+  const initialPath = window.location.pathname;
   const profile = getProfile();
   if (!isLoggedIn()) {
     // No token — show auth page (new users) or legacy setup (existing users without auth)
@@ -1183,7 +1289,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       showAuthPage();
     }
-    go('dashboard');
+    parseUrlAndRoute(false);
+    history.replaceState({ page: curPage, tab: curPage === 'keuangan' ? keuActiveTab : null }, document.title, initialPath);
     return;
   }
 
@@ -1193,7 +1300,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateSidebarProfile();
 
   // Load data dari D1 — tampilkan skeleton dulu
-  go('dashboard');
+  parseUrlAndRoute(false);
+  history.replaceState({ page: curPage, tab: curPage === 'keuangan' ? keuActiveTab : null }, document.title, initialPath);
   showLoadingOverlay(true);
   try {
     await loadAll(thisMon());
