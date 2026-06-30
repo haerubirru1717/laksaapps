@@ -931,7 +931,7 @@ const AI_HTML = `
   <div class="ai-panel" id="aiPanel">
     <div class="ai-hdr">
       <div class="ai-hdr-ava" style="background:none;box-shadow:none;overflow:hidden;border-radius:50%">
-        <img src="/icons/laksa-na.svg" alt="Laksa.na" width="38" height="38" style="border-radius:50%">
+        <img src="/icons/laksa-na.svg" alt="Laksa.na" width="38" height="38" style="border-radius:50%;transform:scale(1.35)">
       </div>
       <div class="ai-hdr-info">
         <div class="ai-hdr-name">Laksa.na</div>
@@ -2216,7 +2216,7 @@ function aiAppendTyping() {
   div.className = 'ai-msg bot';
   div.innerHTML = `
         <div class="ai-hdr-ava" style="width:32px;height:32px;margin-bottom:4px;box-shadow:none!important;background:none;border-radius:50%;animation:pulseLogo 1.5s ease-in-out infinite">
-          <img src="/icons/laksa-na.svg" alt="Laksa.na" width="32" height="32" style="border-radius:50%">
+          <img src="/icons/laksa-na.svg" alt="Laksa.na" width="32" height="32" style="border-radius:50%;transform:scale(1.35)">
         </div>`;
   wrap.appendChild(div);
   requestAnimationFrame(() => { wrap.scrollTop = wrap.scrollHeight; });
