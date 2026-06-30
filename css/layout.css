@@ -575,8 +575,8 @@
 
     /* AI FAB button above (+) */
     .ai-fab-btn {
-      width: 42px;
-      height: 42px;
+      width: 52px;
+      height: 52px;
       border-radius: 50%;
       border: none;
       background: linear-gradient(135deg, #0F6E56, #534AB7);
@@ -584,28 +584,31 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      box-shadow: 0 3px 14px rgba(15, 110, 86, 0.4);
+      box-shadow: 0 4px 18px rgba(15, 110, 86, 0.45);
       transition: transform 0.2s, box-shadow 0.2s;
-      margin-bottom: 10px;
-      position: relative;
+      position: absolute;
+      bottom: 68px;
+      left: 50%;
+      transform: translateX(-50%);
       overflow: hidden;
+      z-index: 2;
     }
 
     .ai-fab-btn img {
-      width: 28px;
-      height: 28px;
+      width: 52px;
+      height: 52px;
       border-radius: 50%;
       object-fit: cover;
       transform: scale(1.35);
     }
 
     .ai-fab-btn:hover {
-      transform: scale(1.1);
-      box-shadow: 0 5px 20px rgba(15, 110, 86, 0.5);
+      transform: translateX(-50%) scale(1.08);
+      box-shadow: 0 5px 22px rgba(15, 110, 86, 0.55);
     }
 
     .ai-fab-btn:active {
-      transform: scale(0.92);
+      transform: translateX(-50%) scale(0.92);
     }
 
     /* Shimmer effect */
@@ -616,7 +619,7 @@
       background: linear-gradient(
         120deg,
         transparent 30%,
-        rgba(255, 255, 255, 0.4) 50%,
+        rgba(255, 255, 255, 0.45) 50%,
         transparent 70%
       );
       background-size: 200% 100%;
