@@ -1,4 +1,4 @@
-const CACHE_NAME = 'laksa-v2.2';
+const CACHE_NAME = 'laksa-v2.3';
 const ASSETS = [
   '/',
   '/index.html',
@@ -18,7 +18,8 @@ const ASSETS = [
   '/banks.js',
   '/ai-chat.js',
   '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  '/icons/icon-512.png',
+  '/icons/laksa-na.svg'
 ];
 
 self.addEventListener('install', e => {
