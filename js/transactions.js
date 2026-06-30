@@ -333,12 +333,6 @@ function drawTxChart(txs) {
     }
   }
 
-  // Full month dates for cumulative calculation
-  const allMonthDates = [];
-  for (let d = 1; d <= daysInMonth; d++) {
-    allMonthDates.push(`${yearStr}-${String(mm).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
-  }
-
   // 7-day window
   const chartDates = [];
   for (let i = 0; i < 7; i++) {
@@ -346,19 +340,14 @@ function drawTxChart(txs) {
     chartDates.push(`${yearStr}-${String(mm).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
   }
 
-  // Cumulative income & expense
+  // Daily income & expense (non-cumulative)
   const incPoints = [];
   const expPoints = [];
-  let runInc = 0, runExp = 0;
 
-  allMonthDates.forEach(d => {
+  chartDates.forEach(d => {
     const val = daily[d] || { inc: 0, exp: 0 };
-    runInc += val.inc;
-    runExp += val.exp;
-    if (chartDates.includes(d)) {
-      incPoints.push(runInc);
-      expPoints.push(runExp);
-    }
+    incPoints.push(val.inc);
+    expPoints.push(val.exp);
   });
 
   // Labels
@@ -389,7 +378,7 @@ function drawTxChart(txs) {
   });
 
   const displayNet = totalInc - totalExp;
-  subEl.textContent = 'Selisih bersih 7 hari ini';
+  subEl.textContent = 'Pemasukan vs Pengeluaran harian';
   netEl.textContent = (displayNet >= 0 ? '+' : '') + fCur(displayNet);
   netEl.style.color = displayNet > 0 ? '#2ecc71' : displayNet < 0 ? '#ff4d4d' : 'inherit';
 
