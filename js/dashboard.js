@@ -427,7 +427,7 @@ function renderRecent(txs) {
   list.innerHTML = r.map(tx => {
     const cat = catBy(tx.category_id);
     const sign = tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : '↔';
-    const ico = tx.type === 'transfer' ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>` : getCatIcon(tx.category_id);
+    const ico = tx.type === 'transfer' ? `<img src="icons/icon-transfer.svg" class="cat-icon-sm" width="20" height="20" alt="">` : getCatIcon(tx.category_id);
     const dispName = tx.store ? `${tx.note || cat.name} • 🏪 ${tx.store}` : (tx.note || cat.name);
     return `<li class="tx-item"><div class="tx-ico ${tx.type === 'income' ? 'inc' : tx.type === 'expense' ? 'exp' : 'trf'}">${ico}</div><div class="tx-info"><div class="tx-name">${esc(dispName)}</div><div class="tx-cat">${fDate(tx.date)} · ${esc(cat.name)}</div></div><div class="tx-amt ${tx.type === 'income' ? 'inc' : tx.type === 'expense' ? 'exp' : 'trf'}">${sign}${fCur(tx.amount)}</div></li>`;
   }).join('');
