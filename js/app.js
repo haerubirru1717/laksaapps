@@ -36,25 +36,37 @@ const DEF_ACCS = [{ id: 'a1', name: 'Dompet Tunai', balance: 0, color: '#fbbf24'
 const DEF_SET = { name: 'Pengguna', currency: 'Rp', theme: 'warm' };
 // BANKS, SVG_FILES, detBank, getLogoHtml → dipindahkan ke banks.js
 
-const CAT_ICONS = {
-  'c1': `<img src="icons/icon-makanan.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
-  'c2': `<img src="icons/icon-transportasi.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
-  'c3': `<img src="icons/icon-belanja.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
-  'c4': `<img src="icons/icon-tagihan.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
-  'c5': `<img src="icons/icon-hiburan.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
-  'c6': `<img src="icons/icon-kesehatan.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
-  'c7': `<img src="icons/icon-pendidikan.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
-  'c8': `<img src="icons/icon-gaji.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
-  'c9': `<img src="icons/icon-freelance.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
-  'c10': `<img src="icons/icon-investasi.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
-  'c11': `<img src="icons/icon-hadiah.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
-  'c12': `<img src="icons/icon-pengeluaran-lain.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
-  'default': `<img src="icons/icon-pengeluaran-lain.svg" class="cat-icon-sm" width="20" height="20" alt="">`
-};
+function getCatSvgFile(catName, catType) {
+  const n = (catName || '').toLowerCase();
+  if (n.includes('makan') || n.includes('minum') || n.includes('kopi') || n.includes('cafe') || n.includes('restoran') || n.includes('kuliner') || n.includes('warung') || n.includes('bakso')) return 'icon-makanan';
+  if (n.includes('belanja') || n.includes('mall') || n.includes('shopee') || n.includes('tokopedia') || n.includes('pasar') || n.includes('supermarket') || n.includes('indomaret') || n.includes('alfamart')) return 'icon-belanja';
+  if (n.includes('transport') || n.includes('ojek') || n.includes('grab') || n.includes('gojek') || n.includes('mobil') || n.includes('motor') || n.includes('bensin') || n.includes('parkir') || n.includes('tol') || n.includes('tiket')) return 'icon-transportasi';
+  if (n.includes('listrik') || n.includes('tagihan') || n.includes('utilitas') || n.includes('air') || n.includes('internet') || n.includes('pulsa') || n.includes('token') || n.includes('wifi')) return 'icon-tagihan';
+  if (n.includes('hiburan') || n.includes('game') || n.includes('nonton') || n.includes('bioskop') || n.includes('liburan') || n.includes('wisata') || n.includes('travel')) return 'icon-hiburan';
+  if (n.includes('sehat') || n.includes('obat') || n.includes('klinik') || n.includes('sakit') || n.includes('dokter') || n.includes('apotek') || n.includes('medis')) return 'icon-kesehatan';
+  if (n.includes('pendidikan') || n.includes('buku') || n.includes('kuliah') || n.includes('sekolah') || n.includes('kursus')) return 'icon-pendidikan';
+  if (n.includes('perawatan') || n.includes('kecantikan') || n.includes('salon') || n.includes('spa') || n.includes('skincare')) return 'icon-perawatan-diri';
+  if (n.includes('rumah') || n.includes('tangga') || n.includes('renovasi') || n.includes('furniture') || n.includes('peralatan')) return 'icon-rumah-tangga';
+  if (n.includes('pajak') || n.includes('denda')) return 'icon-pajak';
+  if (n.includes('cicilan') || n.includes('kredit') || n.includes('hutang') || n.includes('angsuran')) return 'icon-cicilan';
+  if (n.includes('sosial') || n.includes('donasi') || n.includes('zakat') || n.includes('sedekah') || n.includes('infaq') || n.includes('amal')) return 'icon-sosial';
+  if (n.includes('tabungan') || n.includes('menabung') || n.includes('saving')) return 'icon-tabungan';
+  if (n.includes('gaji') || n.includes('salary')) return 'icon-gaji';
+  if (n.includes('freelance')) return 'icon-freelance';
+  if (n.includes('bonus')) return 'icon-bonus';
+  if (n.includes('investasi') || n.includes('saham') || n.includes('dividen') || n.includes('reksadana')) return 'icon-investasi';
+  if (n.includes('hadiah') || n.includes('gift')) return 'icon-hadiah';
+  if (n.includes('penjualan') || n.includes('jual')) return 'icon-penjualan';
+  if (n.includes('refund') || n.includes('pengembalian') || n.includes('cashback')) return 'icon-refund';
+  if (catType === 'transfer' || n.includes('transfer') || n.includes('kirim') || n.includes('pindah')) return 'icon-transfer';
+  return catType === 'income' ? 'icon-pemasukan-lain' : 'icon-pengeluaran-lain';
+}
 const getCatIcon = (id) => {
   const c = typeof getCats === 'function' ? getCats().find(x => x.id === id) : null;
-  if (c && c.emoji) return `<span style="font-size:1.1em;line-height:1;display:inline-flex;align-items:center;">${c.emoji}</span>`;
-  return CAT_ICONS[id] || CAT_ICONS['default'];
+  const name = c ? c.name : '';
+  const type = c ? c.type : 'expense';
+  const file = getCatSvgFile(name, type);
+  return `<img src="icons/${file}.svg" class="cat-icon-sm" width="20" height="20" alt="">`;
 };
 // ── STATE ──
 let curPage = 'dashboard', txPg = 1, TX_PER = 15, sortF = 'date', sortA = false, cfDays = 7, curTxMonth = '';

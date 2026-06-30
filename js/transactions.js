@@ -107,7 +107,6 @@ function renderTxTbl(txs, empty) {
     
     dayTxs.forEach(tx => {
       const catName = tx.category_name || catBy(tx.category_id).name;
-      const catEmoji = tx.category_emoji || '';
       const accName = tx.account_name || accBy(tx.account_id).name;
       const sign = tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : '';
       const tc = tx.type === 'income' ? 'inc' : tx.type === 'expense' ? 'exp' : 'trf';
@@ -225,7 +224,9 @@ function openTxDetail(id) {
   const tx = getTx().find(t => t.id === id); if (!tx) return;
   // D1 join sudah bawa account_name, category_name, category_emoji
   const catName = tx.category_name || catBy(tx.category_id).name;
-  const catEmoji = tx.category_emoji || catBy(tx.category_id).emoji || '';
+  const catType = tx.type === 'transfer' ? 'transfer' : tx.type || 'expense';
+  const catSvgFile = getCatSvgFile(catName, catType);
+  const catIconHtml = `<img src="icons/${catSvgFile}.svg" class="cat-icon-sm" width="18" height="18" alt="">`;
   const accName = tx.account_name || accBy(tx.account_id).name;
   const sign = tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : '↔';
   const tc = tx.type === 'income' ? 'inc' : tx.type === 'expense' ? 'exp' : 'trf';
@@ -246,7 +247,7 @@ function openTxDetail(id) {
   <div style="background:var(--gs-2);backdrop-filter:blur(12px);border:1.5px solid var(--gs-border);border-radius:16px;padding:.2rem .9rem;margin-bottom:.85rem">
     <div class="tx-detail-row"><span class="tx-detail-lbl">Keterangan</span><span class="tx-detail-val">${esc(tx.note || catName)}</span></div>
     ${tx.store ? `<div class="tx-detail-row"><span class="tx-detail-lbl">Toko</span><span class="tx-detail-val">${esc(tx.store)}</span></div>` : ''}
-    <div class="tx-detail-row"><span class="tx-detail-lbl">Kategori</span><span class="tx-detail-val" style="display:flex;align-items:center;gap:.35rem;justify-content:flex-end"><span>${catEmoji}</span><span>${esc(catName)}</span></span></div>
+    <div class="tx-detail-row"><span class="tx-detail-lbl">Kategori</span><span class="tx-detail-val" style="display:flex;align-items:center;gap:.35rem;justify-content:flex-end">${catIconHtml}<span>${esc(catName)}</span></span></div>
     <div class="tx-detail-row"><span class="tx-detail-lbl">Rekening</span><span class="tx-detail-val">${esc(accName)}</span></div>
     <div class="tx-detail-row"><span class="tx-detail-lbl">Tanggal</span><span class="tx-detail-val">${dateTimeStr}</span></div>
   </div>
@@ -485,31 +486,8 @@ function drawTxChart(txs) {
 }
 
 function getPremiumCategorySvg(catName, tc) {
-  const name = (catName || '').toLowerCase();
-  const svgIcon = (file) => `<img src="icons/${file}.svg" class="cat-svg-icon" width="42" height="42" alt="">`;
-
-  if (name.includes('makan') || name.includes('minum') || name.includes('kopi') || name.includes('cafe') || name.includes('restoran') || name.includes('kuliner') || name.includes('sarapan') || name.includes('siang') || name.includes('warung') || name.includes('bakso')) return svgIcon('icon-makanan');
-  if (name.includes('belanja') || name.includes('mall') || name.includes('shopee') || name.includes('tokopedia') || name.includes('pasar') || name.includes('supermarket') || name.includes('indomaret') || name.includes('alfamart')) return svgIcon('icon-belanja');
-  if (name.includes('transport') || name.includes('ojek') || name.includes('grab') || name.includes('gojek') || name.includes('mobil') || name.includes('motor') || name.includes('bensin') || name.includes('parkir') || name.includes('tol') || name.includes('tiket')) return svgIcon('icon-transportasi');
-  if (name.includes('listrik') || name.includes('tagihan') || name.includes('utilitas') || name.includes('air') || name.includes('internet') || name.includes('pulsa') || name.includes('token') || name.includes('wifi')) return svgIcon('icon-tagihan');
-  if (name.includes('hiburan') || name.includes('game') || name.includes('nonton') || name.includes('bioskop') || name.includes('liburan') || name.includes('wisata') || name.includes('travel')) return svgIcon('icon-hiburan');
-  if (name.includes('sehat') || name.includes('obat') || name.includes('klinik') || name.includes('sakit') || name.includes('dokter') || name.includes('apotek') || name.includes('medis')) return svgIcon('icon-kesehatan');
-  if (name.includes('pendidikan') || name.includes('buku') || name.includes('kuliah') || name.includes('sekolah') || name.includes('kursus') || name.includes('print') || name.includes('tugas')) return svgIcon('icon-pendidikan');
-  if (name.includes('perawatan') || name.includes('kecantikan') || name.includes('salon') || name.includes('spa') || name.includes('skincare')) return svgIcon('icon-perawatan-diri');
-  if (name.includes('rumah') || name.includes('tangga') || name.includes('renovasi') || name.includes('furniture') || name.includes('peralatan')) return svgIcon('icon-rumah-tangga');
-  if (name.includes('pajak') || name.includes('denda')) return svgIcon('icon-pajak');
-  if (name.includes('cicilan') || name.includes('kredit') || name.includes('hutang') || name.includes('angsuran')) return svgIcon('icon-cicilan');
-  if (name.includes('sosial') || name.includes('donasi') || name.includes('zakat') || name.includes('sedekah') || name.includes('infaq') || name.includes('amal')) return svgIcon('icon-sosial');
-  if (name.includes('tabungan') || name.includes('menabung') || name.includes('saving')) return svgIcon('icon-tabungan');
-  if (name.includes('gaji') || name.includes('salary')) return svgIcon('icon-gaji');
-  if (name.includes('freelance')) return svgIcon('icon-freelance');
-  if (name.includes('bonus')) return svgIcon('icon-bonus');
-  if (name.includes('investasi') || name.includes('saham') || name.includes('dividen') || name.includes('reksadana')) return svgIcon('icon-investasi');
-  if (name.includes('hadiah') || name.includes('gift')) return svgIcon('icon-hadiah');
-  if (name.includes('penjualan') || name.includes('jual')) return svgIcon('icon-penjualan');
-  if (name.includes('refund') || name.includes('pengembalian') || name.includes('cashback')) return svgIcon('icon-refund');
-  if (tc === 'trf' || name.includes('transfer') || name.includes('kirim') || name.includes('pindah')) return svgIcon('icon-transfer');
-  if (tc === 'inc') return svgIcon('icon-pemasukan-lain');
-  return svgIcon('icon-pengeluaran-lain');
+  const type = tc === 'inc' ? 'income' : tc === 'trf' ? 'transfer' : 'expense';
+  const file = getCatSvgFile(catName, type);
+  return `<img src="icons/${file}.svg" class="cat-svg-icon" width="42" height="42" alt="">`;
 }
 

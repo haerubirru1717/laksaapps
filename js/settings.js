@@ -503,7 +503,7 @@ function renderAccSheetBody() {
       const isTrf = tx.type === 'transfer';
       const cls = isTrf ? 'trf' : isIn ? 'inc' : 'exp';
       const sign = isTrf ? '↔' : isIn ? '+' : '−';
-      const ico = isTrf ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>` : getCatIcon(tx.category_id);
+      const ico = isTrf ? `<img src="icons/icon-transfer.svg" class="cat-icon-sm" width="20" height="20" alt="">` : getCatIcon(tx.category_id);
       const toAcc = tx.to_acc_id ? getAccs().find(a => a.id === tx.to_acc_id) : null;
       const subLabel = isTrf ? (isIn ? `dari ${accBy(tx.account_id).name}` : `ke ${toAcc ? toAcc.name : '-'}`) : `${esc(cat.name)}`;
       return `<div class="acc-tx-item">

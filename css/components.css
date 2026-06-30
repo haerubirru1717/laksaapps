@@ -1043,6 +1043,16 @@
       background: rgba(28, 63, 255, .08)
     }
 
+    .tx-ico:has(.cat-icon-sm) {
+      background: none !important
+    }
+
+    .tx-ico .cat-icon-sm {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%
+    }
+
     .tx-info {
       flex: 1;
       min-width: 0
@@ -3399,6 +3409,16 @@
     .acc-tx-ico.trf {
       background: rgba(37, 99, 235, .08);
       color: var(--accent)
+    }
+
+    .acc-tx-ico:has(.cat-icon-sm) {
+      background: none !important
+    }
+
+    .acc-tx-ico .cat-icon-sm {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%
     }
 
     .acc-tx-info {
