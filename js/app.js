@@ -19,18 +19,31 @@ const PROFILE_KEY = 'laksa_profile';
 const K = { tx: 'ft_tx', bud: 'ft_bud', goals: 'ft_goals', accs: 'ft_acc', cats: 'ft_cats', set: 'ft_set', rec: 'ft_rec' };
 const COLORS = ['#ff4d1c', '#00a878', '#1c3fff', '#d4920a', '#6b4fff', '#e63c1e', '#00c4a0', '#e8a020', '#2dd4bf'];
 const DEF_CATS = [
-  { id: 'c1', name: 'Makanan & Minuman', emoji: '🍜', type: 'expense' },
-  { id: 'c2', name: 'Transportasi', emoji: '🚗', type: 'expense' },
-  { id: 'c3', name: 'Belanja', emoji: '🛍️', type: 'expense' },
-  { id: 'c4', name: 'Tagihan & Utilitas', emoji: '💡', type: 'expense' },
-  { id: 'c5', name: 'Hiburan', emoji: '🎮', type: 'expense' },
-  { id: 'c6', name: 'Kesehatan', emoji: '🏥', type: 'expense' },
-  { id: 'c7', name: 'Pendidikan', emoji: '📚', type: 'expense' },
-  { id: 'c8', name: 'Gaji', emoji: '💼', type: 'income' },
-  { id: 'c9', name: 'Freelance', emoji: '💻', type: 'income' },
-  { id: 'c10', name: 'Investasi', emoji: '📈', type: 'income' },
-  { id: 'c11', name: 'Hadiah', emoji: '🎁', type: 'income' },
-  { id: 'c12', name: 'Lainnya', emoji: '📌', type: 'both' }
+  // Expense
+  { id: 'c1',  name: 'Makanan & Minuman', type: 'expense' },
+  { id: 'c2',  name: 'Transportasi',      type: 'expense' },
+  { id: 'c3',  name: 'Belanja',           type: 'expense' },
+  { id: 'c4',  name: 'Tagihan',           type: 'expense' },
+  { id: 'c5',  name: 'Hiburan',           type: 'expense' },
+  { id: 'c6',  name: 'Kesehatan',         type: 'expense' },
+  { id: 'c7',  name: 'Pendidikan',        type: 'expense' },
+  { id: 'c13', name: 'Rumah Tangga',      type: 'expense' },
+  { id: 'c14', name: 'Perawatan Diri',    type: 'expense' },
+  { id: 'c15', name: 'Pajak',             type: 'expense' },
+  { id: 'c16', name: 'Cicilan',           type: 'expense' },
+  { id: 'c17', name: 'Sosial',            type: 'expense' },
+  // Income
+  { id: 'c8',  name: 'Gaji',              type: 'income' },
+  { id: 'c9',  name: 'Freelance',         type: 'income' },
+  { id: 'c10', name: 'Investasi',         type: 'income' },
+  { id: 'c11', name: 'Hadiah',            type: 'income' },
+  { id: 'c18', name: 'Bonus',             type: 'income' },
+  { id: 'c19', name: 'Penjualan',         type: 'income' },
+  { id: 'c20', name: 'Refund',            type: 'income' },
+  // Both
+  { id: 'c21', name: 'Tabungan',          type: 'both' },
+  { id: 'c22', name: 'Pemasukan Lainnya', type: 'income' },
+  { id: 'c23', name: 'Pengeluaran Lainnya', type: 'expense' },
 ];
 const DEF_ACCS = [{ id: 'a1', name: 'Dompet Tunai', balance: 0, color: '#fbbf24' }, { id: 'a2', name: 'Bank Mandiri', balance: 0, color: '#E6B800' }];
 const DEF_SET = { name: 'Pengguna', currency: 'Rp', theme: 'warm' };
@@ -506,7 +519,7 @@ function animateValue(obj, start, end, duration) {
 }
 
 // ── Helpers (sinkron, dari cache) ──
-const catBy = (id) => getCats().find(c => c.id === id) || { name: 'Lainnya', emoji: '📌', id: '?' };
+const catBy = (id) => getCats().find(c => c.id === id) || { name: 'Pengeluaran Lainnya', id: '?' };
 const accBy = (id) => getAccs().find(a => a.id === id) || { name: '-', id: '?' };
 
 // ── HELPERS ──
