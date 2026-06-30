@@ -163,8 +163,18 @@ async function delAcc(id) {
     toast('Rekening dihapus.', 'info'); renderAccList(); if (curPage === 'dashboard') refresh();
   } catch (e) { toast('Gagal: ' + e.message, 'err'); }
 }
+let catListExpanded = false;
+const CAT_VISIBLE_COUNT = 10;
 function renderCatList() {
-  el('catList').innerHTML = getCats().map(c => `<li class="chip"><span>${esc(c.name)}</span><button class="chip-del" onclick="delCat('${c.id}')"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></li>`).join('');
+  const cats = getCats();
+  const chipHtml = (c) => `<li class="chip"><img src="icons/${getCatSvgFile(c.name, c.type)}.svg" class="cat-icon-sm" width="16" height="16" alt="" style="margin-right:4px">${esc(c.name)}<button class="chip-del" onclick="delCat('${c.id}')"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></li>`;
+  const visible = catListExpanded ? cats : cats.slice(0, CAT_VISIBLE_COUNT);
+  let html = visible.map(chipHtml).join('');
+  if (cats.length > CAT_VISIBLE_COUNT) {
+    const label = catListExpanded ? 'Sembunyikan' : `Lihat Lainnya (${cats.length - CAT_VISIBLE_COUNT})`;
+    html += `<li class="chip cat-toggle-chip" onclick="catListExpanded=!catListExpanded;renderCatList()" style="cursor:pointer;color:var(--accent);border-color:var(--accent);font-weight:600">${label}</li>`;
+  }
+  el('catList').innerHTML = html;
 }
 async function addCat(data) {
   try {
