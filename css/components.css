@@ -5605,65 +5605,32 @@ html[data-theme="education"] .tx-chart-card {
 }
 
 /* Segmented tabs like the iOS/Android financial app */
-.tx-tabs {
+.tx-chart-legend {
   display: flex;
-  background: rgba(15, 23, 42, 0.05);
-  border-radius: 99px;
-  padding: 3.5px;
-  margin-top: 0.8rem;
-  gap: 2px;
+  justify-content: center;
+  gap: 1.2rem;
+  margin-top: 0.6rem;
+  padding: 0.3rem 0;
 }
 
-html[data-theme="dark"] .tx-tabs {
-  background: rgba(255, 255, 255, 0.06);
-}
-
-html[data-theme="education"] .tx-tabs {
-  background: #f1f5f9;
-  border: 2px solid #0f172a;
-  border-radius: 12px;
-}
-
-.tx-tab-btn {
-  flex: 1;
-  border: none;
-  background: transparent;
-  padding: 0.55rem 0.5rem;
-  font-size: 0.78rem;
-  font-weight: 700;
+.tx-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
   color: var(--ink2, #475569);
-  border-radius: 99px;
-  cursor: pointer;
-  transition: all 0.24s cubic-bezier(0.4, 0, 0.2, 1);
-  text-align: center;
-  outline: none;
-  font-family: inherit;
 }
 
-html[data-theme="dark"] .tx-tab-btn {
-  color: rgba(255, 255, 255, 0.6);
+html[data-theme="dark"] .tx-legend-item {
+  color: rgba(255, 255, 255, 0.7);
 }
 
-.tx-tab-btn.active {
-  background: #ffffff;
-  color: #0f172a !important;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
-}
-
-html[data-theme="dark"] .tx-tab-btn.active {
-  background: rgba(255, 255, 255, 0.16);
-  color: #ffffff !important;
-  box-shadow: none;
-}
-
-html[data-theme="education"] .tx-tab-btn {
-  border-radius: 8px;
-}
-
-html[data-theme="education"] .tx-tab-btn.active {
-  background: #0f172a;
-  color: #ffffff !important;
-  border: none;
+.tx-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 /* Beautiful Rounded White Cards for Daily Transactions */
