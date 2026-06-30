@@ -77,6 +77,30 @@ const AI_STYLE = `<style>
       100% { opacity: 0; }
     }
 
+    /* ── AI ORB LOGO (replaces animated orb) ── */
+    .ai-orb-logo {
+      width: 38px;
+      height: 38px;
+      cursor: pointer;
+      flex-shrink: 0;
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform .2s, box-shadow .2s;
+      box-shadow: 0 3px 12px rgba(15,110,86,.3);
+    }
+    .ai-orb-logo:hover {
+      transform: scale(1.08);
+      box-shadow: 0 5px 20px rgba(15,110,86,.45);
+    }
+    .ai-orb-logo:active {
+      transform: scale(.95);
+    }
+    .ai-orb-logo img {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
     /* ── AI CHAT SCRIM & PANEL — Frosted Premium ── */
     .ai-scrim {
       position: fixed;
@@ -906,21 +930,8 @@ const AI_HTML = `
   <div class="ai-scrim" id="aiScrim" onclick="toggleAiChat()"></div>
   <div class="ai-panel" id="aiPanel">
     <div class="ai-hdr">
-      <div class="ai-hdr-ava">
-        <svg width="22" height="22" viewBox="0 0 72 72" fill="none">
-          <g style="transform-origin:36px 36px;animation:spinOrbit 12s linear infinite">
-            <ellipse cx="36" cy="36" rx="22" ry="9" stroke="#22d3ee" stroke-width="2" transform="rotate(-30 36 36)"/>
-            <circle cx="14" cy="36" r="2.5" fill="#818cf8" opacity="0.85" transform="rotate(-30 36 36)"/>
-          </g>
-          <g style="transform-origin:36px 36px;animation:spinOrbitRev 15s linear infinite">
-            <ellipse cx="36" cy="36" rx="22" ry="9" stroke="#818cf8" stroke-width="1.8" transform="rotate(30 36 36)" opacity="0.75"/>
-          </g>
-          <g style="transform-origin:36px 36px;animation:spinOrbit 18s linear infinite">
-            <ellipse cx="36" cy="36" rx="22" ry="9" stroke="#a78bfa" stroke-width="1.5" transform="rotate(90 36 36)" opacity="0.55"/>
-            <circle cx="52" cy="22" r="2" fill="#a78bfa" opacity="0.75" transform="rotate(90 36 36)"/>
-          </g>
-          <circle cx="36" cy="36" r="4" fill="#22d3ee"/>
-        </svg>
+      <div class="ai-hdr-ava" style="background:none;box-shadow:none;overflow:hidden;border-radius:12px">
+        <img src="/icons/laksa-na.svg" alt="Laksa.na" width="38" height="38" style="border-radius:12px">
       </div>
       <div class="ai-hdr-info">
         <div class="ai-hdr-name">Laksa.na</div>
@@ -2204,21 +2215,8 @@ function aiAppendTyping() {
   const div = document.createElement('div');
   div.className = 'ai-msg bot';
   div.innerHTML = `
-        <div class="ai-hdr-ava" style="width:32px;height:32px;margin-bottom:4px;box-shadow:none!important;background:transparent;animation:pulseLogo 1.5s ease-in-out infinite">
-          <svg width="24" height="24" viewBox="0 0 72 72" fill="none">
-            <g style="transform-origin:36px 36px;animation:spinOrbit 1.5s linear infinite">
-              <ellipse cx="36" cy="36" rx="22" ry="9" stroke="#22d3ee" stroke-width="2" transform="rotate(-30 36 36)"/>
-              <circle cx="14" cy="36" r="2.5" fill="#818cf8" opacity="0.85" transform="rotate(-30 36 36)"/>
-            </g>
-            <g style="transform-origin:36px 36px;animation:spinOrbitRev 2s linear infinite">
-              <ellipse cx="36" cy="36" rx="22" ry="9" stroke="#818cf8" stroke-width="1.8" transform="rotate(30 36 36)" opacity="0.75"/>
-            </g>
-            <g style="transform-origin:36px 36px;animation:spinOrbit 2.5s linear infinite">
-              <ellipse cx="36" cy="36" rx="22" ry="9" stroke="#a78bfa" stroke-width="1.5" transform="rotate(90 36 36)" opacity="0.55"/>
-              <circle cx="52" cy="22" r="2" fill="#a78bfa" opacity="0.75" transform="rotate(90 36 36)"/>
-            </g>
-            <circle cx="36" cy="36" r="4" fill="#22d3ee"/>
-          </svg>
+        <div class="ai-hdr-ava" style="width:32px;height:32px;margin-bottom:4px;box-shadow:none!important;background:none;border-radius:8px;animation:pulseLogo 1.5s ease-in-out infinite">
+          <img src="/icons/laksa-na.svg" alt="Laksa.na" width="32" height="32" style="border-radius:8px">
         </div>`;
   wrap.appendChild(div);
   requestAnimationFrame(() => { wrap.scrollTop = wrap.scrollHeight; });

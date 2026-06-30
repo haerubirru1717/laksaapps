@@ -20,7 +20,7 @@ function shiftChartRange(direction) {
     chartStartDay = Math.min(Math.max(1, daysInMonth - 6), chartStartDay + 7);
   }
 
-  drawTxChart(lastFilteredTxs, lastActiveTab);
+  drawTxChart(lastFilteredTxs);
 }
 
 function renderTxPage() {
@@ -74,7 +74,7 @@ function _doFilterTx(mon) {
   // Draw premium dynamic hermite bezier spline chart
   lastFilteredTxs = txs;
   lastActiveTab = type;
-  drawTxChart(txs, type);
+  drawTxChart(txs);
 
   renderTxTbl(txs.slice((txPg - 1) * TX_PER, txPg * TX_PER), txs.length === 0);
   renderPgn(tot);
@@ -273,20 +273,18 @@ function openEditTx(id) { const tx = getTx().find(t => t.id === id); if (tx) ope
 
 // ── BUDGET (D1) ──
 
-// ── PREMIUM CHART & SEGMENTED TABS LOGIC ──
-function drawTxChart(txs, activeTab) {
+// ── PREMIUM CHART — DUAL LINE (Income + Expense) ──
+function drawTxChart(txs) {
   const canvas = el('txChartCanvas');
   const netEl = el('txChartNet');
   const subEl = el('txChartSub');
   if (!canvas || !netEl || !subEl) return;
 
-  // Destroy previous chart instance if it exists
   if (CH.txChart) {
     try { CH.txChart.destroy(); } catch (e) {}
     delete CH.txChart;
   }
 
-  // Ensure placeholder element exists
   let placeholder = el('txChartPlaceholder');
   if (!placeholder) {
     placeholder = document.createElement('div');
@@ -312,24 +310,19 @@ function drawTxChart(txs, activeTab) {
   // Group transactions by date
   const daily = {};
   txs.forEach(t => {
-    const d = t.date || today(); // YYYY-MM-DD
+    const d = t.date || today();
     if (!daily[d]) daily[d] = { inc: 0, exp: 0 };
     const amt = parseFloat(t.amount) || 0;
     if (t.type === 'income') daily[d].inc += amt;
     else if (t.type === 'expense') daily[d].exp += amt;
   });
 
-  // Sort dates
-  const sortedDates = Object.keys(daily).sort();
-
-  // Generate dates for the entire selected month
-  const selectedMonth = el('txMonth').value || thisMon(); // e.g. "2026-06"
+  const selectedMonth = el('txMonth').value || thisMon();
   const [yearStr, monthStr] = selectedMonth.split('-');
   const yyyy = parseInt(yearStr);
   const mm = parseInt(monthStr);
   const daysInMonth = new Date(yyyy, mm, 0).getDate();
 
-  // Reset or initialize chartStartDay if month changed
   if (currentChartMonth !== selectedMonth) {
     currentChartMonth = selectedMonth;
     if (selectedMonth === thisMon()) {
@@ -340,63 +333,53 @@ function drawTxChart(txs, activeTab) {
     }
   }
 
-  // Generate dates for the entire month to compute cumulative sums correctly
+  // Full month dates for cumulative calculation
   const allMonthDates = [];
   for (let d = 1; d <= daysInMonth; d++) {
-    const dayStr = String(d).padStart(2, '0');
-    allMonthDates.push(`${yearStr}-${String(monthStr).padStart(2, '0')}-${dayStr}`);
+    allMonthDates.push(`${yearStr}-${String(mm).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
   }
 
-  // Generate the 7 dates for the active window
+  // 7-day window
   const chartDates = [];
   for (let i = 0; i < 7; i++) {
     const d = chartStartDay + i;
-    const dayStr = String(d).padStart(2, '0');
-    chartDates.push(`${yearStr}-${String(monthStr).padStart(2, '0')}-${dayStr}`);
+    chartDates.push(`${yearStr}-${String(mm).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
   }
 
-  // Calculate cumulative values
-  const points = [];
-  let runningSum = 0;
+  // Cumulative income & expense
+  const incPoints = [];
+  const expPoints = [];
+  let runInc = 0, runExp = 0;
 
   allMonthDates.forEach(d => {
     const val = daily[d] || { inc: 0, exp: 0 };
-    if (activeTab === 'income') {
-      runningSum += val.inc;
-    } else if (activeTab === 'expense') {
-      runningSum += val.exp;
-    } else {
-      runningSum += (val.inc - val.exp);
-    }
-
+    runInc += val.inc;
+    runExp += val.exp;
     if (chartDates.includes(d)) {
-      points.push(runningSum);
+      incPoints.push(runInc);
+      expPoints.push(runExp);
     }
   });
 
-  // Generate formatted labels (e.g. "19 Jun")
+  // Labels
+  const monthsList = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
   const labels = chartDates.map(d => {
     const dateObj = new Date(d + 'T00:00:00');
-    const day = dateObj.getDate();
-    const monthsList = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-    return `${day} ${monthsList[dateObj.getMonth()]}`;
+    return `${dateObj.getDate()} ${monthsList[dateObj.getMonth()]}`;
   });
 
-  // Display range label in the navigation controls
+  // Range label
   const rangeLbl = el('chartRangeLabel');
-  if (rangeLbl) {
-    rangeLbl.textContent = `${labels[0]} - ${labels[6]}`;
-  }
+  if (rangeLbl) rangeLbl.textContent = `${labels[0]} - ${labels[6]}`;
 
-  // Set disabled state for Prev/Next buttons
+  // Nav button states
   const btnPrev = el('chartBtnPrev');
   const btnNext = el('chartBtnNext');
   if (btnPrev) btnPrev.disabled = (chartStartDay === 1);
   if (btnNext) btnNext.disabled = (chartStartDay === Math.max(1, daysInMonth - 6));
 
-  // Calculate 7-day window totals for the header
-  let totalInc = 0;
-  let totalExp = 0;
+  // 7-day totals for header
+  let totalInc = 0, totalExp = 0;
   txs.forEach(t => {
     if (chartDates.includes(t.date)) {
       const amt = parseFloat(t.amount) || 0;
@@ -405,70 +388,74 @@ function drawTxChart(txs, activeTab) {
     }
   });
 
-  let displayNet = 0;
-  let themeColor = '#38bdf8'; // Blue for 'all'
-  if (activeTab === 'income') {
-    displayNet = totalInc;
-    themeColor = '#2ecc71'; // Green
-    subEl.textContent = 'Total pemasukan 7 hari ini';
-    netEl.textContent = '+' + fCur(displayNet);
-    netEl.style.color = '#2ecc71';
-  } else if (activeTab === 'expense') {
-    displayNet = totalExp;
-    themeColor = '#ff4d4d'; // Red
-    subEl.textContent = 'Total pengeluaran 7 hari ini';
-    netEl.textContent = '−' + fCur(displayNet);
-    netEl.style.color = '#ff4d4d';
-  } else {
-    displayNet = totalInc - totalExp;
-    themeColor = '#38bdf8'; // Blue
-    subEl.textContent = 'Selisih bersih 7 hari ini';
-    netEl.textContent = (displayNet >= 0 ? '+' : '') + fCur(displayNet);
-    netEl.style.color = displayNet > 0 ? '#2ecc71' : displayNet < 0 ? '#ff4d4d' : 'inherit';
-  }
+  const displayNet = totalInc - totalExp;
+  subEl.textContent = 'Selisih bersih 7 hari ini';
+  netEl.textContent = (displayNet >= 0 ? '+' : '') + fCur(displayNet);
+  netEl.style.color = displayNet > 0 ? '#2ecc71' : displayNet < 0 ? '#ff4d4d' : 'inherit';
 
-  // Determine dark mode
+  // Theme detection
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const isEd = document.documentElement.getAttribute('data-theme') === 'education';
-  
-  // Set Chart.js defaults
   Chart.defaults.color = isDark ? 'rgba(210,220,240,0.7)' : (isEd ? '#0f172a' : 'rgba(15,23,42,0.55)');
   Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : (isEd ? 'rgba(15,23,42,0.15)' : 'rgba(15,23,42,0.08)');
 
-  // Create gradient
+  // Gradients
   const ctx = canvas.getContext('2d');
-  const grad = ctx.createLinearGradient(0, 0, 0, 130);
-  grad.addColorStop(0, themeColor + (isDark ? '40' : '25')); // ~25% opacity
-  grad.addColorStop(1, themeColor + '00'); // 0% opacity
+  const gradInc = ctx.createLinearGradient(0, 0, 0, 130);
+  gradInc.addColorStop(0, isDark ? 'rgba(46,204,113,0.25)' : 'rgba(46,204,113,0.15)');
+  gradInc.addColorStop(1, 'rgba(46,204,113,0)');
+
+  const gradExp = ctx.createLinearGradient(0, 0, 0, 130);
+  gradExp.addColorStop(0, isDark ? 'rgba(255,77,77,0.25)' : 'rgba(255,77,77,0.15)');
+  gradExp.addColorStop(1, 'rgba(255,77,77,0)');
 
   const config = {
     type: 'line',
     data: {
       labels: labels,
-      datasets: [{
-        data: points,
-        borderColor: themeColor,
-        borderWidth: 3,
-        backgroundColor: grad,
-        fill: true,
-        tension: 0.4,
-        pointRadius: 2.5,
-        pointBackgroundColor: themeColor,
-        pointBorderColor: isDark ? '#1e293b' : '#ffffff',
-        pointBorderWidth: 1.5,
-        pointHoverRadius: 6,
-        pointHoverBackgroundColor: themeColor,
-        pointHoverBorderColor: '#ffffff',
-        pointHoverBorderWidth: 2,
-      }]
+      datasets: [
+        {
+          label: 'Pemasukan',
+          data: incPoints,
+          borderColor: '#2ecc71',
+          borderWidth: 2.5,
+          backgroundColor: gradInc,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 3,
+          pointBackgroundColor: '#2ecc71',
+          pointBorderColor: isDark ? '#1e293b' : '#ffffff',
+          pointBorderWidth: 1.5,
+          pointHoverRadius: 6,
+          pointHoverBackgroundColor: '#2ecc71',
+          pointHoverBorderColor: '#ffffff',
+          pointHoverBorderWidth: 2,
+        },
+        {
+          label: 'Pengeluaran',
+          data: expPoints,
+          borderColor: '#ff4d4d',
+          borderWidth: 2.5,
+          backgroundColor: gradExp,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 3,
+          pointBackgroundColor: '#ff4d4d',
+          pointBorderColor: isDark ? '#1e293b' : '#ffffff',
+          pointBorderWidth: 1.5,
+          pointHoverRadius: 6,
+          pointHoverBackgroundColor: '#ff4d4d',
+          pointHoverBorderColor: '#ffffff',
+          pointHoverBorderWidth: 2,
+        }
+      ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: {
-          display: false
-        },
+        legend: { display: false },
         tooltip: {
           backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
           titleColor: isDark ? '#ffffff' : '#0f172a',
@@ -477,64 +464,25 @@ function drawTxChart(txs, activeTab) {
           borderWidth: 1,
           padding: 10,
           cornerRadius: 12,
-          displayColors: false,
-          titleFont: {
-            family: "'Inter', sans-serif",
-            size: 11,
-            weight: 'bold'
-          },
-          bodyFont: {
-            family: "'JetBrains Mono', monospace",
-            size: 12,
-            weight: 'bold'
-          },
+          titleFont: { family: "'Inter', sans-serif", size: 11, weight: 'bold' },
+          bodyFont: { family: "'JetBrains Mono', monospace", size: 11, weight: 'bold' },
           callbacks: {
-            title: function(context) {
-              const idx = context[0].dataIndex;
-              return fDate(chartDates[idx]);
-            },
+            title: function(context) { return fDate(chartDates[context[0].dataIndex]); },
             label: function(context) {
-              const val = context.raw;
-              let labelPrefix = '';
-              if (activeTab === 'income') labelPrefix = 'Total Pemasukan: ';
-              else if (activeTab === 'expense') labelPrefix = 'Total Pengeluaran: ';
-              else labelPrefix = 'Saldo Kumulatif: ';
-              return labelPrefix + fCur(val, activeTab === 'all');
+              const prefix = context.datasetIndex === 0 ? '↑ Pemasukan: ' : '↓ Pengeluaran: ';
+              return prefix + fCur(context.raw);
             }
           }
         }
       },
       scales: {
         x: {
-          grid: {
-            display: false
-          },
-          ticks: {
-            autoSkip: true,
-            maxTicksLimit: 6,
-            font: {
-              family: "'JetBrains Mono', monospace",
-              size: 9,
-              weight: '600'
-            }
-          }
+          grid: { display: false },
+          ticks: { autoSkip: true, maxTicksLimit: 6, font: { family: "'JetBrains Mono', monospace", size: 9, weight: '600' } }
         },
         y: {
-          grid: {
-            borderDash: [3, 3],
-            color: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.06)'
-          },
-          ticks: {
-            callback: function(value) {
-              return fCurS(value);
-            },
-            maxTicksLimit: 4,
-            font: {
-              family: "'JetBrains Mono', monospace",
-              size: 9,
-              weight: '600'
-            }
-          }
+          grid: { borderDash: [3, 3], color: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.06)' },
+          ticks: { callback: function(v) { return fCurS(v); }, maxTicksLimit: 4, font: { family: "'JetBrains Mono', monospace", size: 9, weight: '600' } }
         }
       }
     }
@@ -544,21 +492,6 @@ function drawTxChart(txs, activeTab) {
     CH.txChart = new Chart(canvas, config);
   } catch (e) {
     console.error('Gagal membuat Chart.js transaksi:', e);
-  }
-}
-
-function setTxTypeTab(type) {
-  // Toggle active class on segmented tab buttons
-  document.querySelectorAll('.tx-tab-btn').forEach(btn => btn.classList.remove('active'));
-  if (type === 'all') el('txTabAll').classList.add('active');
-  else if (type === 'income') el('txTabIncome').classList.add('active');
-  else if (type === 'expense') el('txTabExpense').classList.add('active');
-
-  const select = el('txType');
-  if (select) {
-    select.value = type;
-    txPg = 1; // Reset to page 1 when changing tabs
-    filterTx();
   }
 }
 

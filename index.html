@@ -908,11 +908,8 @@
             <h1 class="ptitle">Transaksi</h1>
             <p class="psub" id="txSub">Semua catatan</p>
           </div>
-          <div class="ai-orb" onclick="toggleAiChat()">
-            <div class="ai-orb-core">
-              <svg width="16" height="16" viewBox="0 0 72 72" fill="none"><g style="transform-origin:36px 36px;animation:spinOrbit 12s linear infinite"><ellipse cx="36" cy="36" rx="22" ry="9" stroke="white" stroke-width="2.5" transform="rotate(-30 36 36)"/></g><g style="transform-origin:36px 36px;animation:spinOrbitRev 15s linear infinite"><ellipse cx="36" cy="36" rx="22" ry="9" stroke="white" stroke-width="2" transform="rotate(30 36 36)" opacity=".65"/></g><circle cx="36" cy="36" r="4" fill="white"/></svg>
-            </div>
-            <svg class="ai-orb-ring ring-a" viewBox="0 0 100 100"><defs><path id="orbA1" d="M50,50 m-40,0 a40,40 0 1,1 80,0 a40,40 0 1,1 -80,0"/></defs><text><textPath href="#orbA1">Laksa.na • Laksa.na •&#160;</textPath></text></svg>
+          <div class="ai-orb-logo" onclick="toggleAiChat()">
+            <img src="/icons/laksa-na.svg" alt="Laksa.na AI" width="38" height="38">
           </div>
         </div>
 
@@ -958,11 +955,10 @@
             <canvas id="txChartCanvas"></canvas>
           </div>
           
-          <!-- SEGMENTED TABS -->
-          <div class="tx-tabs">
-            <button type="button" class="tx-tab-btn active" id="txTabAll" onclick="setTxTypeTab('all')">Semua</button>
-            <button type="button" class="tx-tab-btn" id="txTabIncome" onclick="setTxTypeTab('income')">Pemasukan</button>
-            <button type="button" class="tx-tab-btn" id="txTabExpense" onclick="setTxTypeTab('expense')">Pengeluaran</button>
+          <!-- LEGEND (dual line) -->
+          <div class="tx-chart-legend">
+            <span class="tx-legend-item"><span class="tx-legend-dot" style="background:#2ecc71"></span>Pemasukan</span>
+            <span class="tx-legend-item"><span class="tx-legend-dot" style="background:#ff4d4d"></span>Pengeluaran</span>
           </div>
         </div>
         <div style="padding:0">
@@ -1159,12 +1155,8 @@
             <h1 class="ptitle">Keuangan</h1>
             <p class="psub">Anggaran, Target &amp; Tagihan</p>
           </div>
-          <div class="ai-orb" onclick="toggleAiChat()">
-            <div class="ai-orb-core">
-              <svg width="16" height="16" viewBox="0 0 72 72" fill="none"><g style="transform-origin:36px 36px;animation:spinOrbit 12s linear infinite"><ellipse cx="36" cy="36" rx="22" ry="9" stroke="white" stroke-width="2.5" transform="rotate(-30 36 36)"/></g><g style="transform-origin:36px 36px;animation:spinOrbitRev 15s linear infinite"><ellipse cx="36" cy="36" rx="22" ry="9" stroke="white" stroke-width="2" transform="rotate(30 36 36)" opacity=".65"/></g><circle cx="36" cy="36" r="4" fill="white"/></svg>
-            </div>
-            <svg class="ai-orb-ring ring-a" viewBox="0 0 100 100"><defs><path id="orbA2" d="M50,50 m-40,0 a40,40 0 1,1 80,0 a40,40 0 1,1 -80,0"/></defs><text><textPath href="#orbA2">Laksa.na • Laksa.na •&#160;</textPath></text></svg>
-            <svg class="ai-orb-ring ring-b" viewBox="0 0 100 100"><defs><path id="orbB2" d="M50,50 m-40,0 a40,40 0 1,1 80,0 a40,40 0 1,1 -80,0"/></defs><text><textPath href="#orbB2">AI Financial Agent •&#160;</textPath></text></svg>
+          <div class="ai-orb-logo" onclick="toggleAiChat()">
+            <img src="/icons/laksa-na.svg" alt="Laksa.na AI" width="38" height="38">
           </div>
         </div>
         <div class="keu-seg-wrap">
@@ -1336,12 +1328,8 @@
             <p class="psub">Analisis keuangan mendalam</p>
           </div>
           <div style="display:flex;align-items:center;gap:.5rem">
-            <div class="ai-orb" onclick="toggleAiChat()">
-              <div class="ai-orb-core">
-                <svg width="16" height="16" viewBox="0 0 72 72" fill="none"><g style="transform-origin:36px 36px;animation:spinOrbit 12s linear infinite"><ellipse cx="36" cy="36" rx="22" ry="9" stroke="white" stroke-width="2.5" transform="rotate(-30 36 36)"/></g><g style="transform-origin:36px 36px;animation:spinOrbitRev 15s linear infinite"><ellipse cx="36" cy="36" rx="22" ry="9" stroke="white" stroke-width="2" transform="rotate(30 36 36)" opacity=".65"/></g><circle cx="36" cy="36" r="4" fill="white"/></svg>
-              </div>
-              <svg class="ai-orb-ring ring-a" viewBox="0 0 100 100"><defs><path id="orbA3" d="M50,50 m-40,0 a40,40 0 1,1 80,0 a40,40 0 1,1 -80,0"/></defs><text><textPath href="#orbA3">Laksa.na • Laksa.na •&#160;</textPath></text></svg>
-              <svg class="ai-orb-ring ring-b" viewBox="0 0 100 100"><defs><path id="orbB3" d="M50,50 m-40,0 a40,40 0 1,1 80,0 a40,40 0 1,1 -80,0"/></defs><text><textPath href="#orbB3">AI Financial Agent •&#160;</textPath></text></svg>
+            <div class="ai-orb-logo" onclick="toggleAiChat()">
+              <img src="/icons/laksa-na.svg" alt="Laksa.na AI" width="38" height="38">
             </div>
             <select class="fsel" id="repYear" onchange="renderReports()"></select>
           </div>
