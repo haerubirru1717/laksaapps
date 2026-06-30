@@ -1,4 +1,4 @@
-const CACHE_NAME = 'laksa-v2.5';
+const CACHE_NAME = 'laksa-v3';
 const ASSETS = [
   '/',
   '/index.html',
@@ -38,6 +38,7 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
+// Network-first strategy: always try fresh from server, fallback to cache if offline
 self.addEventListener('fetch', e => {
   if (
     e.request.url.includes('workers.dev') || 
@@ -47,21 +48,16 @@ self.addEventListener('fetch', e => {
     return;
   }
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      const networkFetch = fetch(e.request)
-        .then(response => {
-          if (response && response.status === 200 && response.type === 'basic') {
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(e.request, responseToCache);
-            });
-          }
-          return response;
-        })
-        .catch(() => {
-          // Ignore network errors in background revalidation
-        });
-      return cached || networkFetch;
-    })
+    fetch(e.request)
+      .then(response => {
+        if (response && response.status === 200 && response.type === 'basic') {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(e.request, responseToCache);
+          });
+        }
+        return response;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
