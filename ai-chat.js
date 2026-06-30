@@ -83,7 +83,7 @@ const AI_STYLE = `<style>
       height: 38px;
       cursor: pointer;
       flex-shrink: 0;
-      border-radius: 12px;
+      border-radius: 50%;
       overflow: hidden;
       transition: transform .2s, box-shadow .2s;
       box-shadow: 0 3px 12px rgba(15,110,86,.3);
@@ -930,8 +930,8 @@ const AI_HTML = `
   <div class="ai-scrim" id="aiScrim" onclick="toggleAiChat()"></div>
   <div class="ai-panel" id="aiPanel">
     <div class="ai-hdr">
-      <div class="ai-hdr-ava" style="background:none;box-shadow:none;overflow:hidden;border-radius:12px">
-        <img src="/icons/laksa-na.svg" alt="Laksa.na" width="38" height="38" style="border-radius:12px">
+      <div class="ai-hdr-ava" style="background:none;box-shadow:none;overflow:hidden;border-radius:50%">
+        <img src="/icons/laksa-na.svg" alt="Laksa.na" width="38" height="38" style="border-radius:50%">
       </div>
       <div class="ai-hdr-info">
         <div class="ai-hdr-name">Laksa.na</div>
@@ -2215,8 +2215,8 @@ function aiAppendTyping() {
   const div = document.createElement('div');
   div.className = 'ai-msg bot';
   div.innerHTML = `
-        <div class="ai-hdr-ava" style="width:32px;height:32px;margin-bottom:4px;box-shadow:none!important;background:none;border-radius:8px;animation:pulseLogo 1.5s ease-in-out infinite">
-          <img src="/icons/laksa-na.svg" alt="Laksa.na" width="32" height="32" style="border-radius:8px">
+        <div class="ai-hdr-ava" style="width:32px;height:32px;margin-bottom:4px;box-shadow:none!important;background:none;border-radius:50%;animation:pulseLogo 1.5s ease-in-out infinite">
+          <img src="/icons/laksa-na.svg" alt="Laksa.na" width="32" height="32" style="border-radius:50%">
         </div>`;
   wrap.appendChild(div);
   requestAnimationFrame(() => { wrap.scrollTop = wrap.scrollHeight; });
