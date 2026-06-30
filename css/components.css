@@ -5702,6 +5702,25 @@ html[data-theme="education"] .tx-date-group-card {
   display: block !important;
 }
 
+.txcl-ico:has(.cat-svg-icon) {
+  background: none !important;
+  box-shadow: none !important;
+}
+
+.txcl-ico .cat-svg-icon {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 50%;
+  display: block !important;
+}
+
+.cat-icon-sm {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+
 /* Beautiful typography and layouts */
 .txcl-name {
   font-size: 0.92rem !important;

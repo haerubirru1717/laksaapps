@@ -37,19 +37,19 @@ const DEF_SET = { name: 'Pengguna', currency: 'Rp', theme: 'warm' };
 // BANKS, SVG_FILES, detBank, getLogoHtml → dipindahkan ke banks.js
 
 const CAT_ICONS = {
-  'c1': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 00-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>`,
-  'c2': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`,
-  'c3': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>`,
-  'c4': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
-  'c5': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
-  'c6': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`,
-  'c7': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>`,
-  'c8': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>`,
-  'c9': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
-  'c10': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>`,
-  'c11': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>`,
-  'c12': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
-  'default': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
+  'c1': `<img src="icons/icon-makanan.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
+  'c2': `<img src="icons/icon-transportasi.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
+  'c3': `<img src="icons/icon-belanja.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
+  'c4': `<img src="icons/icon-tagihan.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
+  'c5': `<img src="icons/icon-hiburan.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
+  'c6': `<img src="icons/icon-kesehatan.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
+  'c7': `<img src="icons/icon-pendidikan.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
+  'c8': `<img src="icons/icon-gaji.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
+  'c9': `<img src="icons/icon-freelance.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
+  'c10': `<img src="icons/icon-investasi.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
+  'c11': `<img src="icons/icon-hadiah.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
+  'c12': `<img src="icons/icon-pengeluaran-lain.svg" class="cat-icon-sm" width="20" height="20" alt="">`,
+  'default': `<img src="icons/icon-pengeluaran-lain.svg" class="cat-icon-sm" width="20" height="20" alt="">`
 };
 const getCatIcon = (id) => {
   const c = typeof getCats === 'function' ? getCats().find(x => x.id === id) : null;
