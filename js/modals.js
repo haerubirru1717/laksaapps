@@ -299,28 +299,37 @@ function cddSelectAcc(id, val, optEl) {
   closeCdds();
 }
 
+function filteredCatsForType(type) {
+  const all = getCats();
+  if (type === 'income') return all.filter(c => c.type === 'income' || c.type === 'both');
+  if (type === 'expense') return all.filter(c => c.type === 'expense' || c.type === 'both');
+  return all;
+}
 function buildTxForm(data) {
-  const cats = getCats(), accs = getAccs(), isEdit = !!data, d = data || { type: 'expense', date: today() };
+  const accs = getAccs(), isEdit = !!data, d = data || { type: 'expense', date: today() };
+  const txType = d.type || 'expense';
+  const cats = filteredCatsForType(txType);
   const catDD = buildCatDropdown('txC', cats, d.category_id || cats[0]?.id);
   const accDD = buildAccDropdown('txA', accs, d.account_id || accs[0]?.id);
   const accTA = buildAccDropdown('txTA', accs, d.to_acc_id || accs[0]?.id);
   const html = `<form id="txf">
 <div class="type-sel">
-  <button type="button" class="tbtn ${d.type === 'income' ? 'inc' : ''}" onclick="setTT('income',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Pemasukan</button>
-  <button type="button" class="tbtn ${d.type === 'expense' ? 'exp' : ''}" onclick="setTT('expense',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>Pengeluaran</button>
-  <button type="button" class="tbtn ${d.type === 'transfer' ? 'trf' : ''}" onclick="setTT('transfer',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>Transfer</button>
+  <button type="button" class="tbtn ${txType === 'income' ? 'inc' : ''}" onclick="setTT('income',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Pemasukan</button>
+  <button type="button" class="tbtn ${txType === 'expense' ? 'exp' : ''}" onclick="setTT('expense',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>Pengeluaran</button>
+  <button type="button" class="tbtn ${txType === 'transfer' ? 'trf' : ''}" onclick="setTT('transfer',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>Transfer</button>
 </div>
-<input type="hidden" id="txT" value="${d.type || 'expense'}"/>
+<input type="hidden" id="txT" value="${txType}"/>
 <input type="hidden" id="txEid" value="${isEdit ? d.id : ''}"/>
 <div class="frow">
   <div class="fg"><label class="flbl">Jumlah *</label><input type="number" class="finp" id="txAmt" min="0" step="any" placeholder="0" value="${d.amount || ''}" required/></div>
   <div class="fg"><label class="flbl">Tanggal *</label><input type="date" class="finp" id="txDt" value="${d.date || today()}" required/></div>
 </div>
-<div class="frow">
+<div class="frow" id="catRow" style="display:${txType === 'transfer' ? 'none' : ''}">
   <div class="fg"><label class="flbl">Kategori</label>${catDD}</div>
   <div class="fg"><label class="flbl">Rekening</label>${accDD}</div>
 </div>
-<div class="fg" id="toAG" style="display:${d.type === 'transfer' ? 'block' : 'none'}"><label class="flbl">Rekening Tujuan</label>${accTA}</div>
+<div class="fg" id="accRowSolo" style="display:${txType === 'transfer' ? 'block' : 'none'}"><label class="flbl">Rekening Asal</label>${txType === 'transfer' ? buildAccDropdown('txASolo', accs, d.account_id || accs[0]?.id) : ''}</div>
+<div class="fg" id="toAG" style="display:${txType === 'transfer' ? 'block' : 'none'}"><label class="flbl">Rekening Tujuan</label>${accTA}</div>
 <div class="frow">
   <div class="fg"><label class="flbl">Keterangan</label><input type="text" class="finp" id="txN" placeholder="Opsional…" value="${esc(d.note || '')}"/></div>
   <div class="fg"><label class="flbl">Toko / Merchant</label><input type="text" class="finp" id="txS" placeholder="Opsional…" value="${esc(d.store || '')}"/></div>
@@ -329,7 +338,9 @@ function buildTxForm(data) {
   </form>`;
   return {
     t: isEdit ? 'Edit Transaksi' : 'Tambah Transaksi', html, onSubmit: () => {
-      const payload = { type: el('txT').value, amount: getRawAmt('txAmt'), date: el('txDt').value, category_id: el('txC').value, account_id: el('txA').value, to_acc_id: el('txTA')?.value || '', note: el('txN').value.trim(), store: el('txS').value.trim() || null };
+      const txType = el('txT').value;
+      const accId = txType === 'transfer' ? (el('txASolo')?.value || el('txA')?.value) : el('txA').value;
+      const payload = { type: txType, amount: getRawAmt('txAmt'), date: el('txDt').value, category_id: txType === 'transfer' ? null : el('txC').value, account_id: accId, to_acc_id: el('txTA')?.value || '', note: el('txN').value.trim(), store: el('txS').value.trim() || null };
       if (!payload.amount || payload.amount <= 0) { toast('Jumlah harus >0', 'err'); throw new Error('Jumlah harus >0'); }
       const id = el('txEid').value; if (id) return updateTx(id, payload); else return addTx(payload);
     }
@@ -340,6 +351,22 @@ function setTT(type, btn) {
   document.querySelectorAll('.tbtn').forEach(b => b.className = 'tbtn');
   btn.classList.add(type === 'income' ? 'inc' : type === 'expense' ? 'exp' : 'trf');
   const g = el('toAG'); if (g) g.style.display = type === 'transfer' ? 'block' : 'none';
+  const catRow = el('catRow'); if (catRow) catRow.style.display = type === 'transfer' ? 'none' : '';
+  const accSolo = el('accRowSolo');
+  if (accSolo) {
+    accSolo.style.display = type === 'transfer' ? 'block' : 'none';
+    if (type === 'transfer' && !accSolo.querySelector('.cdd')) {
+      const accs = getAccs();
+      accSolo.innerHTML = `<label class="flbl">Rekening Asal</label>${buildAccDropdown('txASolo', accs, accs[0]?.id)}`;
+    }
+  }
+  if (type !== 'transfer') {
+    const cats = filteredCatsForType(type);
+    const container = document.querySelector('#cdd-txC')?.parentElement;
+    if (container) {
+      container.innerHTML = buildCatDropdown('txC', cats, cats[0]?.id);
+    }
+  }
 }
 function buildBudForm() {
   const cats = getCats().filter(c => c.type === 'expense' || c.type === 'both');
