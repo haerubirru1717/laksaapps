@@ -486,53 +486,30 @@ function drawTxChart(txs) {
 
 function getPremiumCategorySvg(catName, tc) {
   const name = (catName || '').toLowerCase();
-  
-  // BILLS / UTILITIES (Lightning Bolt - sharp filled)
-  if (name.includes('listrik') || name.includes('tagihan') || name.includes('utilitas') || name.includes('air') || name.includes('internet') || name.includes('pulsa') || name.includes('token') || name.includes('wifi')) {
-    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M13 2v9h6L11 22v-9H5L13 2z"/></svg>`;
-  }
-  
-  // SHOPPING / GROCERIES (Shopping Cart - clean outline)
-  if (name.includes('belanja') || name.includes('mall') || name.includes('shopee') || name.includes('tokopedia') || name.includes('pasar') || name.includes('supermarket') || name.includes('indomaret') || name.includes('alfamart')) {
-    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>`;
-  }
-  
-  // FOOD / COFFEE (Utensils - clean outline)
-  if (name.includes('makan') || name.includes('minum') || name.includes('kopi') || name.includes('cafe') || name.includes('restoran') || name.includes('kuliner') || name.includes('sarapan') || name.includes('siang') || name.includes('warung') || name.includes('bakso')) {
-    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8V2M14 2v6c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2M12 2v20M9 18H5a3 3 0 0 1-3-3V2h4v13a3 3 0 0 0 3 3z"/></svg>`;
-  }
-  
-  // TRANSPORTATION (Car - beautifully filled)
-  if (name.includes('transport') || name.includes('ojek') || name.includes('grab') || name.includes('gojek') || name.includes('mobil') || name.includes('motor') || name.includes('bensin') || name.includes('parkir') || name.includes('tol') || name.includes('tiket')) {
-    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 11v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-4.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.27-3.82c.14-.4.51-.68.94-.68h9.58c.43 0 .8.28.94.68L19 11H5z"/></svg>`;
-  }
-  
-  // EDUCATION (Book - clean outline)
-  if (name.includes('pendidikan') || name.includes('buku') || name.includes('kuliah') || name.includes('sekolah') || name.includes('kursus') || name.includes('print') || name.includes('tugas')) {
-    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`;
-  }
+  const svgIcon = (file) => `<img src="icons/${file}.svg" class="cat-svg-icon" width="42" height="42" alt="">`;
 
-  // ENTERTAINMENT / HIBURAN (Gamepad - clean outline)
-  if (name.includes('hiburan') || name.includes('game') || name.includes('nonton') || name.includes('bioskop') || name.includes('liburan') || name.includes('wisata') || name.includes('travel')) {
-    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="3"/><path d="M6 12h4m-2-2v4m7-2h.01m2.99-2h.01"/></svg>`;
-  }
-  
-  // HEALTH / DRUGS (Heartbeat - clean outline)
-  if (name.includes('sehat') || name.includes('obat') || name.includes('klinik') || name.includes('sakit') || name.includes('dokter') || name.includes('apotek') || name.includes('medis')) {
-    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`;
-  }
-  
-  // INCOME / SALARY / CASHBACK (Dollar Sign - clean outline)
-  if (tc === 'inc' || name.includes('gaji') || name.includes('pendapatan') || name.includes('bonus') || name.includes('transfer dari') || name.includes('cashback') || name.includes('hibah')) {
-    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`;
-  }
-  
-  // TRANSFER (Double Arrows - clean outline)
-  if (tc === 'trf' || name.includes('transfer') || name.includes('kirim') || name.includes('pindah')) {
-    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>`;
-  }
-  
-  // DEFAULT FALLBACK (Beautiful clean tag - outline)
-  return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
+  if (name.includes('makan') || name.includes('minum') || name.includes('kopi') || name.includes('cafe') || name.includes('restoran') || name.includes('kuliner') || name.includes('sarapan') || name.includes('siang') || name.includes('warung') || name.includes('bakso')) return svgIcon('icon-makanan');
+  if (name.includes('belanja') || name.includes('mall') || name.includes('shopee') || name.includes('tokopedia') || name.includes('pasar') || name.includes('supermarket') || name.includes('indomaret') || name.includes('alfamart')) return svgIcon('icon-belanja');
+  if (name.includes('transport') || name.includes('ojek') || name.includes('grab') || name.includes('gojek') || name.includes('mobil') || name.includes('motor') || name.includes('bensin') || name.includes('parkir') || name.includes('tol') || name.includes('tiket')) return svgIcon('icon-transportasi');
+  if (name.includes('listrik') || name.includes('tagihan') || name.includes('utilitas') || name.includes('air') || name.includes('internet') || name.includes('pulsa') || name.includes('token') || name.includes('wifi')) return svgIcon('icon-tagihan');
+  if (name.includes('hiburan') || name.includes('game') || name.includes('nonton') || name.includes('bioskop') || name.includes('liburan') || name.includes('wisata') || name.includes('travel')) return svgIcon('icon-hiburan');
+  if (name.includes('sehat') || name.includes('obat') || name.includes('klinik') || name.includes('sakit') || name.includes('dokter') || name.includes('apotek') || name.includes('medis')) return svgIcon('icon-kesehatan');
+  if (name.includes('pendidikan') || name.includes('buku') || name.includes('kuliah') || name.includes('sekolah') || name.includes('kursus') || name.includes('print') || name.includes('tugas')) return svgIcon('icon-pendidikan');
+  if (name.includes('perawatan') || name.includes('kecantikan') || name.includes('salon') || name.includes('spa') || name.includes('skincare')) return svgIcon('icon-perawatan-diri');
+  if (name.includes('rumah') || name.includes('tangga') || name.includes('renovasi') || name.includes('furniture') || name.includes('peralatan')) return svgIcon('icon-rumah-tangga');
+  if (name.includes('pajak') || name.includes('denda')) return svgIcon('icon-pajak');
+  if (name.includes('cicilan') || name.includes('kredit') || name.includes('hutang') || name.includes('angsuran')) return svgIcon('icon-cicilan');
+  if (name.includes('sosial') || name.includes('donasi') || name.includes('zakat') || name.includes('sedekah') || name.includes('infaq') || name.includes('amal')) return svgIcon('icon-sosial');
+  if (name.includes('tabungan') || name.includes('menabung') || name.includes('saving')) return svgIcon('icon-tabungan');
+  if (name.includes('gaji') || name.includes('salary')) return svgIcon('icon-gaji');
+  if (name.includes('freelance')) return svgIcon('icon-freelance');
+  if (name.includes('bonus')) return svgIcon('icon-bonus');
+  if (name.includes('investasi') || name.includes('saham') || name.includes('dividen') || name.includes('reksadana')) return svgIcon('icon-investasi');
+  if (name.includes('hadiah') || name.includes('gift')) return svgIcon('icon-hadiah');
+  if (name.includes('penjualan') || name.includes('jual')) return svgIcon('icon-penjualan');
+  if (name.includes('refund') || name.includes('pengembalian') || name.includes('cashback')) return svgIcon('icon-refund');
+  if (tc === 'trf' || name.includes('transfer') || name.includes('kirim') || name.includes('pindah')) return svgIcon('icon-transfer');
+  if (tc === 'inc') return svgIcon('icon-pemasukan-lain');
+  return svgIcon('icon-pengeluaran-lain');
 }
 

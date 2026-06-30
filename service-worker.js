@@ -19,7 +19,30 @@ const ASSETS = [
   '/ai-chat.js',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
-  '/icons/laksa-na.svg'
+  '/icons/laksa-na.svg',
+  '/icons/icon-makanan.svg',
+  '/icons/icon-belanja.svg',
+  '/icons/icon-transportasi.svg',
+  '/icons/icon-tagihan.svg',
+  '/icons/icon-hiburan.svg',
+  '/icons/icon-kesehatan.svg',
+  '/icons/icon-pendidikan.svg',
+  '/icons/icon-perawatan-diri.svg',
+  '/icons/icon-rumah-tangga.svg',
+  '/icons/icon-pajak.svg',
+  '/icons/icon-cicilan.svg',
+  '/icons/icon-sosial.svg',
+  '/icons/icon-tabungan.svg',
+  '/icons/icon-gaji.svg',
+  '/icons/icon-freelance.svg',
+  '/icons/icon-bonus.svg',
+  '/icons/icon-investasi.svg',
+  '/icons/icon-hadiah.svg',
+  '/icons/icon-penjualan.svg',
+  '/icons/icon-refund.svg',
+  '/icons/icon-transfer.svg',
+  '/icons/icon-pemasukan-lain.svg',
+  '/icons/icon-pengeluaran-lain.svg'
 ];
 
 self.addEventListener('install', e => {
