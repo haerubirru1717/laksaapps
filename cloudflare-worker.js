@@ -1870,13 +1870,15 @@ Field yang diekstrak:
 - account_name: nama rekening jika disebutkan (mandiri, bca, jago, gopay, ovo, dana, tunai/dompet/cash, dll), null jika tidak. "tunai"/"cash"/"dompet" = rekening kas/dompet fisik, BUKAN metode pembayaran. Untuk transfer: null.
 - from_account: rekening asal jika type=transfer, null jika bukan transfer
 - to_account: rekening tujuan jika type=transfer, null jika bukan transfer
-- category_name: pilih PALING TEPAT dari: Makanan & Minuman, Transportasi, Belanja, Kesehatan, Hiburan, Tagihan, Pendidikan, Gaji, Investasi, Lainnya
+- category_name: pilih PALING TEPAT dari: Makanan & Minuman, Transportasi, Belanja, Tagihan, Hiburan, Kesehatan, Pendidikan, Rumah Tangga, Perawatan Diri, Pajak, Cicilan, Sosial, Gaji, Freelance, Investasi, Hadiah, Bonus, Penjualan, Refund, Tabungan, Pemasukan Lainnya, Pengeluaran Lainnya
   PANDUAN KATEGORI:
   • Gaji/honor/upah → "Gaji"
+  • Freelance/jasa/proyek → "Freelance"
+  • Bonus/THR/insentif → "Bonus"
   • Dividen/bunga/return/capital gain/jual saham → "Investasi"
-  • Freelance/jasa/proyek → "Gaji"
-  • Bonus/THR/insentif → "Gaji"
-  • Cashback/refund/hadiah/jual barang bekas → "Lainnya"
+  • Cashback/refund → "Refund"
+  • Hadiah/gift → "Hadiah"
+  • Jual barang bekas/jual online → "Penjualan"
   • Makan/minum/kopi/snack → "Makanan & Minuman"
   • Grab/Gojek/bensin/parkir/tol → "Transportasi"
   • Listrik/air/internet/pulsa → "Tagihan"
@@ -1884,7 +1886,13 @@ Field yang diekstrak:
   • Bioskop/game/Netflix/Spotify → "Hiburan"
   • Kursus/buku/sekolah → "Pendidikan"
   • Belanja online/baju/sepatu → "Belanja"
-  • Topup e-wallet → "Lainnya"
+  • Renovasi/perabot/peralatan rumah → "Rumah Tangga"
+  • Salon/skincare/spa → "Perawatan Diri"
+  • Pajak/denda → "Pajak"
+  • Cicilan/kredit/angsuran → "Cicilan"
+  • Donasi/zakat/sedekah/infaq → "Sosial"
+  • Nabung/tabungan → "Tabungan"
+  • Topup e-wallet → "Pengeluaran Lainnya"
 
 CONTOH PENGELUARAN:
 "beli rokok 25000 di warung madura pakai mandiri"
@@ -1962,7 +1970,7 @@ async function parseCorrection(text, currentTx, env) {
     `- note     : deskripsi/keterangan, string bebas maks 60 karakter\n` +
     `- store    : nama toko/merchant/tempat. Title Case. Jika user bilang "toko X" atau "merchant X" \u2192 store: "X"\n` +
     `- account  : nama rekening (mandiri, bca, jago, gopay, ovo, dana, tunai, dll)\n` +
-    `- category : pilih dari: Makanan & Minuman, Transportasi, Belanja, Kesehatan, Hiburan, Tagihan, Pendidikan, Gaji, Investasi, Lainnya\n` +
+    `- category : pilih dari: Makanan & Minuman, Transportasi, Belanja, Tagihan, Hiburan, Kesehatan, Pendidikan, Rumah Tangga, Perawatan Diri, Pajak, Cicilan, Sosial, Gaji, Freelance, Investasi, Hadiah, Bonus, Penjualan, Refund, Tabungan, Pemasukan Lainnya, Pengeluaran Lainnya\n` +
     `- type     : HANYA jika user EKSPLISIT bilang "tipe income"/"tipe expense"/"ubah ke pemasukan"/"ubah ke pengeluaran"\n` +
     `- date     : YYYY-MM-DD. Referensi: hari ini=${today}, kemarin=${yesterday}\n\n` +
     `WHITELIST NAMA REKENING:\n` +
@@ -2201,25 +2209,61 @@ function resolveCategory(catName, note, store, type, cats) {
   if (text.includes("beli") || text.includes("belanja") || text.includes("baju") || text.includes("sepatu") || text.includes("tokopedia") || text.includes("shopee") || text.includes("indomaret") || text.includes("alfamart") || text.includes("supermarket")) {
     return cats.find(c => c.id === "c3") || cats.find(c => c.name.includes("Belanja"));
   }
-  if (text.includes("obat") || text.includes("sakit") || text.includes("dokter") || text.includes("klinik") || text.includes("apotek") || text.includes("rs") || text.includes("sehat")) {
-    return cats.find(c => c.id === "c4") || cats.find(c => c.name.includes("Kesehatan"));
+  if (text.includes("listrik") || text.includes("air") || text.includes("pdam") || text.includes("wifi") || text.includes("pulsa") || text.includes("internet") || text.includes("bpjs") || text.includes("kontrakan") || text.includes("kos")) {
+    return cats.find(c => c.id === "c4") || cats.find(c => c.name.includes("Tagihan"));
   }
   if (text.includes("bioskop") || text.includes("nonton") || text.includes("game") || text.includes("travel") || text.includes("hiburan") || text.includes("wisata") || text.includes("staycation")) {
     return cats.find(c => c.id === "c5") || cats.find(c => c.name.includes("Hiburan"));
   }
-  if (text.includes("listrik") || text.includes("air") || text.includes("pdam") || text.includes("wifi") || text.includes("pulsa") || text.includes("internet") || text.includes("bpjs") || text.includes("kontrakan") || text.includes("kos")) {
-    return cats.find(c => c.id === "c6") || cats.find(c => c.name.includes("Tagihan"));
+  if (text.includes("obat") || text.includes("sakit") || text.includes("dokter") || text.includes("klinik") || text.includes("apotek") || text.includes("rs") || text.includes("sehat")) {
+    return cats.find(c => c.id === "c6") || cats.find(c => c.name.includes("Kesehatan"));
   }
   if (text.includes("buku") || text.includes("sekolah") || text.includes("kuliah") || text.includes("kursus") || text.includes("pendidikan") || text.includes("spp") || text.includes("latihan")) {
     return cats.find(c => c.id === "c7") || cats.find(c => c.name.includes("Pendidikan"));
   }
-  if (text.includes("gaji") || text.includes("bonus") || text.includes("thr") || text.includes("income")) {
+  if (text.includes("rumah") || text.includes("renovasi") || text.includes("furniture") || text.includes("perabot") || text.includes("peralatan")) {
+    return cats.find(c => c.id === "c13") || cats.find(c => c.name.includes("Rumah Tangga"));
+  }
+  if (text.includes("salon") || text.includes("skincare") || text.includes("perawatan") || text.includes("kecantikan") || text.includes("spa")) {
+    return cats.find(c => c.id === "c14") || cats.find(c => c.name.includes("Perawatan"));
+  }
+  if (text.includes("pajak") || text.includes("denda")) {
+    return cats.find(c => c.id === "c15") || cats.find(c => c.name.includes("Pajak"));
+  }
+  if (text.includes("cicilan") || text.includes("kredit") || text.includes("angsuran") || text.includes("hutang")) {
+    return cats.find(c => c.id === "c16") || cats.find(c => c.name.includes("Cicilan"));
+  }
+  if (text.includes("donasi") || text.includes("zakat") || text.includes("sedekah") || text.includes("infaq") || text.includes("amal") || text.includes("sosial")) {
+    return cats.find(c => c.id === "c17") || cats.find(c => c.name.includes("Sosial"));
+  }
+  if (text.includes("gaji") || text.includes("honor") || text.includes("upah")) {
     return cats.find(c => c.id === "c8") || cats.find(c => c.name.includes("Gaji"));
   }
-  if (text.includes("reksa") || text.includes("saham") || text.includes("crypto") || text.includes("investasi") || text.includes("emas") || text.includes("obligasi")) {
-    return cats.find(c => c.id === "c9") || cats.find(c => c.name.includes("Investasi"));
+  if (text.includes("freelance") || text.includes("jasa") || text.includes("proyek")) {
+    return cats.find(c => c.id === "c9") || cats.find(c => c.name.includes("Freelance"));
   }
-  return cats.find(c => c.id === "c12") || cats.find(c => c.type === "both") || cats[0];
+  if (text.includes("reksa") || text.includes("saham") || text.includes("crypto") || text.includes("investasi") || text.includes("emas") || text.includes("obligasi") || text.includes("dividen")) {
+    return cats.find(c => c.id === "c10") || cats.find(c => c.name.includes("Investasi"));
+  }
+  if (text.includes("hadiah") || text.includes("gift")) {
+    return cats.find(c => c.id === "c11") || cats.find(c => c.name.includes("Hadiah"));
+  }
+  if (text.includes("bonus") || text.includes("thr") || text.includes("insentif")) {
+    return cats.find(c => c.id === "c18") || cats.find(c => c.name.includes("Bonus"));
+  }
+  if (text.includes("jual") || text.includes("penjualan")) {
+    return cats.find(c => c.id === "c19") || cats.find(c => c.name.includes("Penjualan"));
+  }
+  if (text.includes("refund") || text.includes("cashback") || text.includes("pengembalian")) {
+    return cats.find(c => c.id === "c20") || cats.find(c => c.name.includes("Refund"));
+  }
+  if (text.includes("tabung") || text.includes("nabung") || text.includes("saving")) {
+    return cats.find(c => c.id === "c21") || cats.find(c => c.name.includes("Tabungan"));
+  }
+  if (type === "income") {
+    return cats.find(c => c.id === "c22") || cats.find(c => c.name.includes("Pemasukan Lainnya")) || cats[0];
+  }
+  return cats.find(c => c.id === "c23") || cats.find(c => c.name.includes("Pengeluaran Lainnya")) || cats[0];
 }
 
 // ─────────────────────────────────────────────────────
@@ -2962,22 +3006,34 @@ async function setupDatabase(env) {
 
 async function seedCategories(userId, env) {
   const cats = [
-    { id: "c1",  name: "Makanan & Minuman", emoji: "🍜", type: "expense" },
-    { id: "c2",  name: "Transportasi",      emoji: "🚗", type: "expense" },
-    { id: "c3",  name: "Belanja",           emoji: "🛍️", type: "expense" },
-    { id: "c4",  name: "Kesehatan",         emoji: "🏥", type: "expense" },
-    { id: "c5",  name: "Hiburan",           emoji: "🎮", type: "expense" },
-    { id: "c6",  name: "Tagihan",           emoji: "💡", type: "expense" },
-    { id: "c7",  name: "Pendidikan",        emoji: "📚", type: "expense" },
-    { id: "c8",  name: "Gaji",              emoji: "💼", type: "income"  },
-    { id: "c9",  name: "Investasi",         emoji: "📈", type: "income"  },
-    { id: "c12", name: "Lainnya",           emoji: "📌", type: "both"    },
+    { id: "c1",  name: "Makanan & Minuman", type: "expense" },
+    { id: "c2",  name: "Transportasi",      type: "expense" },
+    { id: "c3",  name: "Belanja",           type: "expense" },
+    { id: "c4",  name: "Tagihan",           type: "expense" },
+    { id: "c5",  name: "Hiburan",           type: "expense" },
+    { id: "c6",  name: "Kesehatan",         type: "expense" },
+    { id: "c7",  name: "Pendidikan",        type: "expense" },
+    { id: "c13", name: "Rumah Tangga",      type: "expense" },
+    { id: "c14", name: "Perawatan Diri",    type: "expense" },
+    { id: "c15", name: "Pajak",             type: "expense" },
+    { id: "c16", name: "Cicilan",           type: "expense" },
+    { id: "c17", name: "Sosial",            type: "expense" },
+    { id: "c8",  name: "Gaji",              type: "income"  },
+    { id: "c9",  name: "Freelance",         type: "income"  },
+    { id: "c10", name: "Investasi",         type: "income"  },
+    { id: "c11", name: "Hadiah",            type: "income"  },
+    { id: "c18", name: "Bonus",             type: "income"  },
+    { id: "c19", name: "Penjualan",         type: "income"  },
+    { id: "c20", name: "Refund",            type: "income"  },
+    { id: "c21", name: "Tabungan",          type: "both"    },
+    { id: "c22", name: "Pemasukan Lainnya", type: "income"  },
+    { id: "c23", name: "Pengeluaran Lainnya", type: "expense" },
   ];
   for (const c of cats) {
     await env.DB.prepare(`
       INSERT OR IGNORE INTO categories (id, user_id, name, emoji, type)
-      VALUES (?, ?, ?, ?, ?)
-    `).bind(c.id, userId, c.name, c.emoji, c.type).run();
+      VALUES (?, ?, ?, '', ?)
+    `).bind(c.id, userId, c.name, c.type).run();
   }
 }
 
