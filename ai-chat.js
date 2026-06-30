@@ -1389,11 +1389,22 @@ Jika user meminta menambahkan tagihan atau daftar tagihan (misal daftar tagihan 
 
 ## 9. REKENING & FORMAT TABEL MODERN UNTUK DATA TERSTRUKTUR
 - Jika pengguna meminta daftar rekening, akun keuangan, saldo, anggaran (budget), tagihan (bills), atau ringkasan data finansial terstruktur lainnya, **KAMU WAJIB MENYAJIKANNYA DALAM BENTUK TABEL MARKDOWN YANG INDAH DAN RAPI**.
-- Contoh Format Tabel Rekening/Saldo:
-| Rekening / E-Wallet | Tipe | Saldo |
-| :--- | :--- | :--- |
-| BNI | Bank | Rp 9.666.838 |
-| GoPay | E-Wallet | Rp 800.000 |
+- PISAHKAN rekening bank dan e-wallet ke section terpisah. JANGAN gabung dalam 1 tabel.
+- Contoh Format Tabel Rekening Bank:
+
+**Rekening Bank**
+
+| Rekening | Saldo |
+| :--- | :--- |
+| BNI | Rp 9.666.838 |
+| Mandiri | Rp 51.254.734 |
+
+**E-Wallet**
+
+| E-Wallet | Saldo |
+| :--- | :--- |
+| GoPay | Rp 800.000 |
+| OVO | Rp 250.000 |
 
 - Contoh Format Tabel Anggaran (Budget):
 | Kategori Anggaran | Batas Anggaran | Terpakai | Status |
