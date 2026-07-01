@@ -86,27 +86,24 @@ function renderDash() {
   if (el('mIncomeHero')) el('mIncomeHero').textContent = fCur(inc);
   if (el('mExpenseHero')) el('mExpenseHero').textContent = fCur(exp);
 
-  // Pertumbuhan vs bulan lalu
-  const prevDate = new Date(); prevDate.setMonth(prevDate.getMonth() - 1);
-  const lm = prevDate.toISOString().slice(0, 7);
-  const lmTx = txs.filter(t => mKey(t.date) === lm);
-  const lInc = lmTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const lExp = lmTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-  function growthLabel(cur, prev) {
-    if (prev === 0 && cur === 0) return { text: '—', cls: 'neu' };
-    if (prev === 0) return { text: 'baru', cls: 'pos' };
-    const pct = Math.round(((cur - prev) / prev) * 100);
-    if (pct === 0) return { text: '=0% vs bln lalu', cls: 'neu' };
-    return { text: (pct > 0 ? '+' : '') + pct + '% vs bln lalu', cls: pct > 0 ? 'pos' : 'neg' };
+  // Pertumbuhan kekayaan bersih bulanan (Net Worth Growth)
+  const netChange = inc - exp;
+  const prevTotal = total - netChange;
+  let nwGrowthText = '';
+  let nwGrowthCls = 'neu';
+  
+  if (prevTotal > 0 && netChange !== 0) {
+    const pct = (netChange / prevTotal) * 100;
+    const pctStr = Math.abs(pct) < 1 ? pct.toFixed(2) : pct.toFixed(1);
+    nwGrowthText = (pct > 0 ? '+' : '-') + pctStr + '%';
+    nwGrowthCls = pct > 0 ? 'pos' : 'neg';
   }
-  const monInc = mTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const ig = growthLabel(monInc, lInc);
 
-  // Transaksi terbaru masing-masing tipe untuk Hero stats (BUG-03)
-  const lastIncome = [...txs]
+  // Transaksi terbaru masing-masing tipe untuk Hero stats (BUG-03) - disaring hanya bulan berjalan
+  const lastIncome = [...mTx]
     .filter(t => t.type === 'income')
     .sort((a, b) => b.date.localeCompare(a.date) || (b.created_at || b.id).localeCompare(a.created_at || a.id))[0];
-  const lastExpense = [...txs]
+  const lastExpense = [...mTx]
     .filter(t => t.type === 'expense')
     .sort((a, b) => b.date.localeCompare(a.date) || (b.created_at || b.id).localeCompare(a.created_at || a.id))[0];
 
@@ -144,14 +141,14 @@ function renderDash() {
   // ── Render Growth Badge ──
   const balGrowthBadge = el('balGrowthBadge');
   if (balGrowthBadge) {
-    if (ig.text === '—' || ig.text === '=0% vs bln lalu') {
+    if (!nwGrowthText || nwGrowthText === '0.0%' || nwGrowthText === '0.00%') {
       balGrowthBadge.style.display = 'none';
     } else {
       balGrowthBadge.style.display = 'inline-flex';
-      const isPos = ig.cls === 'pos';
+      const isPos = nwGrowthCls === 'pos';
       const arrow = isPos ? '↑' : '↓';
-      balGrowthBadge.className = 'nw-growth-badge ' + ig.cls;
-      balGrowthBadge.innerHTML = `<span>${arrow}</span> <span>${ig.text.replace(' vs bln lalu', '')}</span>`;
+      balGrowthBadge.className = 'nw-growth-badge ' + nwGrowthCls;
+      balGrowthBadge.innerHTML = `<span>${arrow}</span> <span>${nwGrowthText.replace(/^[+-]/, '')}</span>`;
     }
   }
 
@@ -365,7 +362,7 @@ function renderDCs(accs, total, txs, now) {
   accs.forEach(acc => {
     const b = detBank(acc.name);
     const lastAccTx = [...txs]
-      .filter(t => t.account_id === acc.id)
+      .filter(t => t.account_id === acc.id && mKey(t.date) === now)
       .sort((a, b) => b.date.localeCompare(a.date) || (b.created_at || b.id).localeCompare(a.created_at || a.id))[0];
     
     let dStr = '';
