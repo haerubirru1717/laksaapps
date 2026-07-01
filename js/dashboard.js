@@ -24,7 +24,10 @@ function renderDash() {
   const periodEl = el('dashPeriod');
   if (periodEl) {
     try {
-      periodEl.textContent = new Date(now + '-02T00:00:00').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+      const parts = now.split('-');
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      periodEl.textContent = new Date(y, m, 2).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
     } catch {
       periodEl.textContent = now;
     }
