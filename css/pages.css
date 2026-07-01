@@ -250,6 +250,15 @@ html[data-theme="dark"] .auth-split-container {
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
+.auth-google-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+  background: var(--bg2, #f8fafc) !important;
+  border-color: var(--border, rgba(0, 0, 0, 0.08)) !important;
+}
+
 .auth-google-btn svg {
   flex-shrink: 0;
   width: 16px;

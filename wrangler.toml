@@ -1,0 +1,12 @@
+name = "laksana"
+main = "cloudflare-worker.js"
+compatibility_date = "2024-03-01"
+
+[vars]
+JWT_SECRET = "laksa-local-dev-secret-key-32-chars-long"
+SETUP_SECRET = "laksa-local-setup-secret"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "laksa-db"
+database_id = "local-db"

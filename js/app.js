@@ -374,8 +374,8 @@ function closeUpgradeModal() {
 
 // ── Transactions ──
 async function fetchTx(month) {
-  const m = month || thisMon();
-  const data = await api('GET', `/transactions?month=${m}&limit=500`);
+  const url = (month && month !== 'all') ? `/transactions?month=${month}&limit=500` : `/transactions?limit=500`;
+  const data = await api('GET', url);
   _cache.tx = data;
   return data;
 }
@@ -446,7 +446,8 @@ async function loadAll(month) {
   try {
     const uid = getUserId();
     if (!uid) { _cache.loading = false; return; } // Bug #6 fix: reset flag agar loadAll bisa dipanggil ulang
-    await Promise.all([fetchTx(month), fetchAccs(), fetchCats(), fetchBuds(), fetchGoals(), fetchBills(), fetchPiutang(), fetchUsageStatus()]);
+    const targetMonth = month === thisMon() ? 'all' : month;
+    await Promise.all([fetchTx(targetMonth), fetchAccs(), fetchCats(), fetchBuds(), fetchGoals(), fetchBills(), fetchPiutang(), fetchUsageStatus()]);
   } catch (e) {
     console.error('loadAll error:', e);
     toast('Gagal memuat data: ' + e.message, 'err');
@@ -1303,8 +1304,46 @@ function updateSidebarProfile() {
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeFab(); closeDeskCompose(); if (aiOpen) toggleAiChat(); if (accSheetId) closeAccSheet(); closeTxSheet(); } });
 
+let _googleLoadAttempts = 0;
+function checkAndEnableGoogleLogin() {
+  const btnLogin = document.getElementById('authGoogleLoginBtn');
+  const btnRegister = document.getElementById('authGoogleRegisterBtn');
+  
+  if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+    if (btnLogin) {
+      btnLogin.removeAttribute('disabled');
+      const span = btnLogin.querySelector('span');
+      if (span) span.textContent = 'Lanjutkan dengan Google';
+      btnLogin.title = '';
+    }
+    if (btnRegister) {
+      btnRegister.removeAttribute('disabled');
+      const span = btnRegister.querySelector('span');
+      if (span) span.textContent = 'Daftar dengan Google';
+      btnRegister.title = '';
+    }
+  } else {
+    _googleLoadAttempts++;
+    if (_googleLoadAttempts < 15) {
+      setTimeout(checkAndEnableGoogleLogin, 500);
+    } else {
+      if (btnLogin) {
+        const span = btnLogin.querySelector('span');
+        if (span) span.textContent = 'Google API tidak tersedia';
+        btnLogin.title = 'Google API gagal dimuat. Pastikan Anda tidak memblokir script Google.';
+      }
+      if (btnRegister) {
+        const span = btnRegister.querySelector('span');
+        if (span) span.textContent = 'Google API tidak tersedia';
+        btnRegister.title = 'Google API gagal dimuat. Pastikan Anda tidak memblokir script Google.';
+      }
+    }
+  }
+}
+
 // ── Init ──
 document.addEventListener('DOMContentLoaded', async () => {
+  checkAndEnableGoogleLogin();
   // Tema dari localStorage
   const s = getSet();
   let theme = s.theme || 'glass';

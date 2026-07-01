@@ -3393,7 +3393,8 @@ function cors(response, request = null) {
     if (reqOrigin) {
       const isAllowed = ALLOWED_ORIGINS.includes(reqOrigin) || 
                         reqOrigin.startsWith("http://localhost:") || 
-                        reqOrigin.startsWith("http://127.0.0.1:");
+                        reqOrigin.startsWith("http://127.0.0.1:") ||
+                        reqOrigin === "null";
       if (isAllowed) {
         origin = reqOrigin;
         headers.set("Vary", "Origin");

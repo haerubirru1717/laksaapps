@@ -18,7 +18,18 @@ function getBankLabel(accName) {
 }
 
 function renderDash() {
-  const txs = getTx(), accs = getAccs(), now = thisMon();
+  const txs = getTx(), accs = getAccs();
+  const now = curTxMonth || thisMon();
+  
+  const periodEl = el('dashPeriod');
+  if (periodEl) {
+    try {
+      periodEl.textContent = new Date(now + '-02T00:00:00').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    } catch {
+      periodEl.textContent = now;
+    }
+  }
+
   const total = accs.reduce((s, a) => s + (a.balance || 0), 0);
   const balEl = el('totalBal');
   
@@ -65,8 +76,8 @@ function renderDash() {
   const eCount = accs.length - bCount;
   el('balSub').textContent = bCount + ' rekening' + (eCount > 0 ? ' • ' + eCount + ' e-wallet' : '');
   const mTx = txs.filter(t => mKey(t.date) === now);
-  const inc = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const exp = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const inc = mTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const exp = mTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
   // ── Hero 2×2 stats (Legacy ids - compatibility check) ──
   if (el('mIncomeHero')) el('mIncomeHero').textContent = fCur(inc);
@@ -109,12 +120,22 @@ function renderDash() {
   const incG = el('incGrowth');
   const expG = el('expGrowth');
   if (incG) {
-    incG.innerHTML = incGrowthText;
-    incG.className = 'nw-item-growth ' + (lastIncome ? 'pos' : 'neu');
+    if (lastIncome) {
+      incG.innerHTML = incGrowthText;
+      incG.className = 'nw-item-growth pos';
+      incG.style.display = 'inline-flex';
+    } else {
+      incG.style.display = 'none';
+    }
   }
   if (expG) {
-    expG.innerHTML = expGrowthText;
-    expG.className = 'nw-item-growth ' + (lastExpense ? 'neg' : 'neu');
+    if (lastExpense) {
+      expG.innerHTML = expGrowthText;
+      expG.className = 'nw-item-growth neg';
+      expG.style.display = 'inline-flex';
+    } else {
+      expG.style.display = 'none';
+    }
   }
 
   // ── Render Growth Badge ──
@@ -132,7 +153,7 @@ function renderDash() {
   }
 
   // Anggaran % & Sisa Anggaran (Hero Card)
-  const buds = getBud();
+  const buds = getBud().filter(b => b.month === now);
   const budEl = el('budgPctHero');
   const budGrowthEl = el('budgGrowth');
   if (budEl) {
@@ -220,7 +241,7 @@ function renderDash() {
   renderDCs(accs, total, txs, now);
   renderRecent(txs);
   renderCatDonut(mTx);
-  renderBudgProg(mTx);
+  renderBudgProg(mTx, now);
   renderDashBills();
 }
 
@@ -344,7 +365,7 @@ function renderDCs(accs, total, txs, now) {
       .filter(t => t.account_id === acc.id)
       .sort((a, b) => b.date.localeCompare(a.date) || (b.created_at || b.id).localeCompare(a.created_at || a.id))[0];
     
-    let dStr = '—';
+    let dStr = '';
     if (lastAccTx) {
       if (lastAccTx.type === 'income') {
         dStr = `<span style="color:#2ecc71;font-weight:600">↑ ${fCur(lastAccTx.amount, true)}</span>`;
@@ -391,7 +412,7 @@ function renderDCs(accs, total, txs, now) {
           <div class="ecard-saldo">${fCur(acc.balance)}</div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
             <span class="ecard-pct" style="margin-top:0;">${pct.toFixed(0)}% dari total</span>
-            <div class="dc-delta" style="margin-top:0;">${dStr}</div>
+            ${dStr ? `<div class="dc-delta" style="margin-top:0;">${dStr}</div>` : ''}
           </div>
         </div>
       </div>`;
@@ -407,7 +428,7 @@ function renderDCs(accs, total, txs, now) {
       bHtml += `<div class="dc" style="background:linear-gradient(135deg,${c1},${c2})" onclick="openAccDetail('${acc.id}')">
         <div class="dc-top">${topLeft}<div class="dc-logo-wrap" style="${logoWrapStyle}">${logo}</div></div>
         <div class="dc-mid"><div class="dc-bal-lbl">Saldo Tersedia</div><div class="dc-bal" style="color:${balColor}">${fCur(acc.balance)}</div><div class="dc-bar-wrap"><div class="dc-bar" style="width:${pct.toFixed(1)}%;${isNegBal ? 'background:rgba(255,120,120,.7)' : ''}"></div></div></div>
-        <div class="dc-bot"><div><div class="dc-name" style="text-transform:uppercase">${esc(acc.name)}</div><div class="dc-delta">${dStr}</div></div><div class="dc-pct">${isNegBal ? `<span style="color:rgba(255,150,150,1);font-size:.62rem;font-weight:700">MINUS</span>` : pct.toFixed(0) + '%<br><span style="font-size:.55rem">dari total</span>'}</div></div>
+        <div class="dc-bot"><div><div class="dc-name" style="text-transform:uppercase">${esc(acc.name)}</div>${dStr ? `<div class="dc-delta">${dStr}</div>` : ''}</div><div class="dc-pct">${isNegBal ? `<span style="color:rgba(255,150,150,1);font-size:.62rem;font-weight:700">MINUS</span>` : pct.toFixed(0) + '%<br><span style="font-size:.55rem">dari total</span>'}</div></div>
       </div>`;
     }
   });
@@ -433,8 +454,8 @@ function renderRecent(txs) {
   }).join('');
 }
 
-function renderBudgProg(mTx) {
-  const buds = getBud(), list = el('budgProg');
+function renderBudgProg(mTx, now) {
+  const buds = getBud().filter(b => b.month === now), list = el('budgProg');
   if (!buds.length) { list.innerHTML = '<li style="color:var(--t3);font-size:.8rem;padding:.4rem 0">Belum ada anggaran. <button class="lbtn" onclick="go(\'budget\')">Buat →</button></li>'; return; }
   list.innerHTML = buds.slice(0, 4).map(b => {
     const spent = mTx.filter(t => t.type === 'expense' && t.category_id === b.category_id).reduce((s, t) => s + t.amount, 0);
