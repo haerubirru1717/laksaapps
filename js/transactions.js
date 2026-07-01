@@ -226,7 +226,7 @@ function openTxDetail(id) {
   const catName = tx.category_name || catBy(tx.category_id).name;
   const catType = tx.type === 'transfer' ? 'transfer' : tx.type || 'expense';
   const catSvgFile = getCatSvgFile(catName, catType);
-  const catIconHtml = `<img src="icons/${catSvgFile}.svg" class="cat-icon-sm" width="18" height="18" alt="">`;
+  const catIconHtml = `<img src="/icons/${catSvgFile}.svg" class="cat-icon-sm" width="18" height="18" alt="">`;
   const accName = tx.account_name || accBy(tx.account_id).name;
   const sign = tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : '↔';
   const tc = tx.type === 'income' ? 'inc' : tx.type === 'expense' ? 'exp' : 'trf';
@@ -488,6 +488,6 @@ function drawTxChart(txs) {
 function getPremiumCategorySvg(catName, tc) {
   const type = tc === 'inc' ? 'income' : tc === 'trf' ? 'transfer' : 'expense';
   const file = getCatSvgFile(catName, type);
-  return `<img src="icons/${file}.svg" class="cat-svg-icon" width="42" height="42" alt="">`;
+  return `<img src="/icons/${file}.svg" class="cat-svg-icon" width="42" height="42" alt="">`;
 }
 

@@ -167,7 +167,7 @@ let catListExpanded = false;
 const CAT_VISIBLE_COUNT = 10;
 function renderCatList() {
   const cats = getCats();
-  const chipHtml = (c) => `<li class="chip"><img src="icons/${getCatSvgFile(c.name, c.type)}.svg" class="cat-icon-sm" width="16" height="16" alt="" style="margin-right:4px">${esc(c.name)}<button class="chip-del" onclick="delCat('${c.id}')"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></li>`;
+  const chipHtml = (c) => `<li class="chip"><img src="/icons/${getCatSvgFile(c.name, c.type)}.svg" class="cat-icon-sm" width="16" height="16" alt="" style="margin-right:4px">${esc(c.name)}<button class="chip-del" onclick="delCat('${c.id}')"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></li>`;
   const visible = catListExpanded ? cats : cats.slice(0, CAT_VISIBLE_COUNT);
   let html = visible.map(chipHtml).join('');
   if (cats.length > CAT_VISIBLE_COUNT) {
@@ -513,7 +513,7 @@ function renderAccSheetBody() {
       const isTrf = tx.type === 'transfer';
       const cls = isTrf ? 'trf' : isIn ? 'inc' : 'exp';
       const sign = isTrf ? '↔' : isIn ? '+' : '−';
-      const ico = isTrf ? `<img src="icons/icon-transfer.svg" class="cat-icon-sm" width="20" height="20" alt="">` : getCatIcon(tx.category_id);
+      const ico = isTrf ? `<img src="/icons/icon-transfer.svg" class="cat-icon-sm" width="20" height="20" alt="">` : getCatIcon(tx.category_id);
       const toAcc = tx.to_acc_id ? getAccs().find(a => a.id === tx.to_acc_id) : null;
       const subLabel = isTrf ? (isIn ? `dari ${accBy(tx.account_id).name}` : `ke ${toAcc ? toAcc.name : '-'}`) : `${esc(cat.name)}`;
       return `<div class="acc-tx-item">

@@ -79,7 +79,7 @@ const getCatIcon = (id) => {
   const name = c ? c.name : '';
   const type = c ? c.type : 'expense';
   const file = getCatSvgFile(name, type);
-  return `<img src="icons/${file}.svg" class="cat-icon-sm" width="20" height="20" alt="">`;
+  return `<img src="/icons/${file}.svg" class="cat-icon-sm" width="20" height="20" alt="">`;
 };
 // ── STATE ──
 let curPage = 'dashboard', txPg = 1, TX_PER = 15, sortF = 'date', sortA = false, cfDays = 7, curTxMonth = '';
