@@ -43,6 +43,17 @@ function toggleRepDetail() {
   arrow.style.transform = visible ? '' : 'rotate(180deg)';
 }
 
+function onPeriodTypeChange() {
+  const type = el('repPeriodType').value;
+  const monthSel = el('repMonth');
+  if (type === 'monthly') {
+    monthSel.style.display = 'inline-block';
+  } else {
+    monthSel.style.display = 'none';
+  }
+  renderReports();
+}
+
 async function renderReports() {
   // Usage limit check for report_view
   const usageData = getUsageStatus();
@@ -56,6 +67,21 @@ async function renderReports() {
     try { await api('GET', '/usage/track/report_view'); } catch (_) {}
     fetchUsageStatus();
   }
+
+  // Populate month selector if not done
+  const monthSel = el('repMonth');
+  if (monthSel && !monthSel.options.length) {
+    const MFULL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    monthSel.innerHTML = MFULL.map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}">${m}</option>`).join('');
+    monthSel.value = String(new Date().getMonth() + 1).padStart(2, '0');
+  }
+
+  const periodTypeSel = el('repPeriodType');
+  const isMonthly = periodTypeSel ? periodTypeSel.value === 'monthly' : true;
+  if (periodTypeSel) {
+    monthSel.style.display = isMonthly ? 'inline-block' : 'none';
+  }
+
   const sel = el('repYear');
   const cy = String(new Date().getFullYear());
   const cur = sel.value || cy;
@@ -64,11 +90,42 @@ async function renderReports() {
   const years = [...new Set(allTx.map(t => t.date.slice(0, 4)))].sort((a, b) => b - a);
   if (!years.includes(cy)) years.unshift(cy);
   sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join(''); sel.value = cur;
-  const txs = allTx.filter(t => t.date.startsWith(cur));
+
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
   const MFULL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-  _repInc = Array(12).fill(0); _repExp = Array(12).fill(0);
-  txs.forEach(t => { const m = parseInt(t.date.slice(5, 7)) - 1; if (t.type === 'income') _repInc[m] += t.amount; if (t.type === 'expense') _repExp[m] += t.amount; });
+  
+  let txs = [];
+  let labels = [];
+
+  if (isMonthly) {
+    const cm = monthSel.value || String(new Date().getMonth() + 1).padStart(2, '0');
+    const prefix = cur + '-' + cm;
+    txs = allTx.filter(t => t.date.startsWith(prefix));
+    
+    const daysInMonth = new Date(parseInt(cur, 10), parseInt(cm, 10), 0).getDate();
+    labels = Array.from({ length: daysInMonth }, (_, i) => String(i + 1));
+    _repInc = Array(daysInMonth).fill(0);
+    _repExp = Array(daysInMonth).fill(0);
+    
+    txs.forEach(t => {
+      const d = parseInt(t.date.slice(8, 10)) - 1;
+      if (d >= 0 && d < daysInMonth) {
+        if (t.type === 'income') _repInc[d] += t.amount;
+        if (t.type === 'expense') _repExp[d] += t.amount;
+      }
+    });
+  } else {
+    txs = allTx.filter(t => t.date.startsWith(cur));
+    labels = MONTHS;
+    _repInc = Array(12).fill(0);
+    _repExp = Array(12).fill(0);
+    
+    txs.forEach(t => {
+      const m = parseInt(t.date.slice(5, 7)) - 1;
+      if (t.type === 'income') _repInc[m] += t.amount;
+      if (t.type === 'expense') _repExp[m] += t.amount;
+    });
+  }
 
   // Restore saved chart type toggle state
   const toggleBtns = document.querySelectorAll('#page-reports .tgl-grp .tgl');
@@ -77,7 +134,7 @@ async function renderReports() {
   const typeIdx = repChartType === 'line' ? 1 : 0;
   if (toggleBtns[typeIdx]) toggleBtns[typeIdx].classList.add('active');
 
-  upsert('mChart', buildRepChartCfg(repChartType, MONTHS, _repInc, _repExp));
+  upsert('mChart', buildRepChartCfg(repChartType, labels, _repInc, _repExp));
 
   // Summary card
   const totalInc = _repInc.reduce((s, v) => s + v, 0);
@@ -95,16 +152,81 @@ async function renderReports() {
       </div>`;
   }
 
-  // Detail table (hidden by default, skip months with zero data)
-  el('mRepBody').innerHTML = MFULL.map((m, i) => {
-    const mk = cur + '-' + String(i + 1).padStart(2, '0');
-    const mTx = txs.filter(t => mKey(t.date) === mk);
-    const mi = mTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const me = mTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-    if (mi === 0 && me === 0) return '';
-    const d = mi - me; const r = mi > 0 ? ((d / mi) * 100).toFixed(1) : '0.0';
-    return `<tr><td>${m}</td><td class="t-inc">${fCur(mi)}</td><td class="t-exp">${fCur(me)}</td><td class="${d >= 0 ? 't-inc' : 't-exp'}">${fCur(d, true)}</td><td>${r}%</td></tr>`;
-  }).join('');
+  // Detail table (hidden by default)
+  const tblHeader = el('repTblHeader');
+  const detailToggle = el('repDetailToggle');
+  const repBody = el('mRepBody');
+
+  if (isMonthly) {
+    if (tblHeader) {
+      tblHeader.innerHTML = `
+        <th>Kategori</th>
+        <th>Pemasukan</th>
+        <th>Pengeluaran</th>
+        <th>Selisih</th>
+        <th>Porsi%</th>
+      `;
+    }
+    if (detailToggle) {
+      detailToggle.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" id="repDetailArrow" style="transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+        Lihat detail kategori
+      `;
+    }
+
+    const catMap = {};
+    getCats().forEach(c => {
+      catMap[c.id] = { name: c.name, type: c.type, income: 0, expense: 0 };
+    });
+    txs.forEach(t => {
+      if (catMap[t.category_id]) {
+        if (t.type === 'income') catMap[t.category_id].income += t.amount;
+        if (t.type === 'expense') catMap[t.category_id].expense += t.amount;
+      }
+    });
+
+    const rows = Object.values(catMap).filter(c => c.income > 0 || c.expense > 0);
+    if (!rows.length) {
+      repBody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--t3);padding:1rem;">Tidak ada transaksi di bulan ini</td></tr>`;
+    } else {
+      repBody.innerHTML = rows.map(r => {
+        const d = r.income - r.expense;
+        let porsi = '0.0';
+        if (r.expense > 0 && totalExp > 0) {
+          porsi = ((r.expense / totalExp) * 100).toFixed(1);
+        } else if (r.income > 0 && totalInc > 0) {
+          porsi = ((r.income / totalInc) * 100).toFixed(1);
+        }
+        return `<tr><td>${esc(r.name)}</td><td class="t-inc">${fCur(r.income)}</td><td class="t-exp">${fCur(r.expense)}</td><td class="${d >= 0 ? 't-inc' : 't-exp'}">${fCur(d, true)}</td><td>${porsi}%</td></tr>`;
+      }).join('');
+    }
+  } else {
+    if (tblHeader) {
+      tblHeader.innerHTML = `
+        <th>Bulan</th>
+        <th>Pemasukan</th>
+        <th>Pengeluaran</th>
+        <th>Selisih</th>
+        <th>Tabungan%</th>
+      `;
+    }
+    if (detailToggle) {
+      detailToggle.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" id="repDetailArrow" style="transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+        Lihat detail bulanan
+      `;
+    }
+
+    repBody.innerHTML = MFULL.map((m, i) => {
+      const mk = cur + '-' + String(i + 1).padStart(2, '0');
+      const mTx = allTx.filter(t => mKey(t.date) === mk);
+      const mi = mTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+      const me = mTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+      if (mi === 0 && me === 0) return '';
+      const d = mi - me; const r = mi > 0 ? ((d / mi) * 100).toFixed(1) : '0.0';
+      return `<tr><td>${m}</td><td class="t-inc">${fCur(mi)}</td><td class="t-exp">${fCur(me)}</td><td class="${d >= 0 ? 't-inc' : 't-exp'}">${fCur(d, true)}</td><td>${r}%</td></tr>`;
+    }).join('');
+  }
 }
 
 // ── SETTINGS ──

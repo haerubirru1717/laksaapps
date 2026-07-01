@@ -1316,8 +1316,13 @@
             <h1 class="ptitle">Laporan</h1>
             <p class="psub">Analisis keuangan mendalam</p>
           </div>
-          <div style="display:flex;align-items:center;gap:.5rem">
-            <select class="fsel" id="repYear" onchange="renderReports()"></select>
+          <div style="display:flex;align-items:center;gap:.3rem">
+            <select class="fsel" id="repPeriodType" onchange="onPeriodTypeChange()" style="font-size: 0.72rem; padding: 0.3rem 0.5rem;">
+              <option value="monthly">Bulanan</option>
+              <option value="annual">Tahunan</option>
+            </select>
+            <select class="fsel" id="repMonth" onchange="renderReports()" style="font-size: 0.72rem; padding: 0.3rem 0.5rem; display: none;"></select>
+            <select class="fsel" id="repYear" onchange="renderReports()" style="font-size: 0.72rem; padding: 0.3rem 0.5rem;"></select>
           </div>
         </div>
         <div class="widget" style="margin-bottom:.9rem">
@@ -1348,7 +1353,7 @@
             <div class="tbl-wrap">
               <table class="tbl">
                 <thead>
-                  <tr>
+                  <tr id="repTblHeader">
                     <th>Bulan</th>
                     <th>Pemasukan</th>
                     <th>Pengeluaran</th>
