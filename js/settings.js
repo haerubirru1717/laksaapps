@@ -348,16 +348,7 @@ async function doRestore(ev) {
   toast(`Direstore! ${parts.join(', ')} berhasil dipulihkan.` + (txFail > 0 ? ` ${txFail} transaksi gagal.` : ''), 'ok');
   setTimeout(() => location.reload(), 1200);
 }
-function expCSV() {
-  // Bug #2 fix: el('repYear') bisa null jika dipanggil dari halaman Settings (bukan Reports)
-  const yearEl = el('repYear');
-  const year = yearEl ? yearEl.value : new Date().getFullYear().toString();
-  const MFULL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-  const txs = (typeof getTxYear === 'function' ? getTxYear() : getTx()).filter(t => t.date.startsWith(year));
-  const rows = [['Bulan', 'Pemasukan', 'Pengeluaran', 'Selisih', 'Tabungan%']];
-  MFULL.forEach((m, i) => { const mk = year + '-' + String(i + 1).padStart(2, '0'); const mTx = txs.filter(t => mKey(t.date) === mk); const mi = mTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0); const me = mTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0); const diff = mi - me; rows.push([m, mi, me, diff, mi > 0 ? ((diff / mi) * 100).toFixed(1) + '%' : '0%']); });
-  dlF(rows.map(r => r.join(',')).join('\n'), 'laksa_' + year + '.csv', 'text/csv'); toast('CSV diunduh!', 'ok');
-}
+
 async function resetAll() {
   const typed = prompt('HAPUS SEMUA DATA?\\nKetik "HAPUS" (tanpa tanda kutip) untuk mengonfirmasi. Ini akan menghapus semua transaksi, rekening, dan kategori dari server.');
   if (typed !== 'HAPUS') {

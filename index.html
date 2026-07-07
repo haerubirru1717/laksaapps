@@ -10,6 +10,8 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
     rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
   <script src="/banks.js?v=1.4.0" defer></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <link rel="stylesheet" href="/css/core.css?v=1.5.0" />
@@ -1329,7 +1331,7 @@
         <div class="widget" style="margin-bottom:.9rem">
           <div class="wh">
             <h3 class="wt">Ringkasan</h3>
-            <button class="btn2" onclick="expCSV()">↓ CSV</button>
+
           </div>
           <div class="rep-summary" id="repSummary"></div>
           <button class="lbtn" id="repDetailToggle" onclick="toggleRepDetail()" style="display:flex;align-items:center;gap:.3rem;margin-top:.6rem;font-size:.76rem">
@@ -1514,13 +1516,13 @@
                 </div>
               </div>
 
-              <!-- Ekspor CSV -->
-              <div class="sett-list-item" onclick="expCSV()">
+              <!-- Laporan Keuangan -->
+              <div class="sett-list-item" onclick="openReportExport()">
                 <div class="sett-item-icon" style="color:var(--accent)">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                 </div>
                 <div class="sett-item-info">
-                  <div class="sett-item-title">Ekspor Laporan (CSV)</div>
+                  <div class="sett-item-title">Laporan Keuangan</div>
                 </div>
                 <div class="sett-item-action">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
@@ -1629,6 +1631,7 @@
   <script src="/js/receipt.js?v=1.4.0" defer></script>
   <script src="/js/keuangan.js?v=1.4.0" defer></script>
   <script src="/js/reports.js?v=1.4.0" defer></script>
+  <script src="/js/report-export.js?v=1.4.0" defer></script>
   <script src="/js/settings.js?v=1.4.0" defer></script>
   <script src="/js/modals.js?v=1.4.0" defer></script>
 

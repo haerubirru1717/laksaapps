@@ -13,6 +13,7 @@ const ASSETS = [
   '/js/receipt.js',
   '/js/keuangan.js',
   '/js/reports.js',
+  '/js/report-export.js',
   '/js/settings.js',
   '/js/modals.js',
   '/banks.js',
