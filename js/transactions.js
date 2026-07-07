@@ -112,7 +112,7 @@ function renderTxTbl(txs, empty) {
       const tc = tx.type === 'income' ? 'inc' : tx.type === 'expense' ? 'exp' : 'trf';
       const srcPip = tx.source === 'telegram' ? `<div class="txcl-pip"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012.18 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.15a16 16 0 006.29 6.29l1.51-1.52a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>` : '';
       const timeStr = tx.created_at ? new Date(tx.created_at.replace(' ', 'T') + 'Z').toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '';
-      const dispName = tx.store ? `${tx.note || catName} • 🏪 ${tx.store}` : (tx.note || catName);
+      const dispName = tx.note || catName;
       
       const premiumIcon = getPremiumCategorySvg(catName, tc);
       
@@ -124,14 +124,13 @@ function renderTxTbl(txs, empty) {
     <div class="txcl-body">
       <div class="txcl-name">${esc(dispName)}</div>
       <div class="txcl-meta">
+        ${timeStr ? `<span class="txcl-time">${timeStr}</span><span class="txcl-dot">•</span>` : ''}
         <span class="txcl-cat ${tc}">${esc(catName)}</span>
-        <span>•</span>
-        <span class="txcl-acc">${esc(accName)}</span>
       </div>
     </div>
     <div class="txcl-right">
       <div class="txcl-amt ${tc}">${sign}${fCur(tx.amount)}</div>
-      ${timeStr ? `<div class="txcl-time">${timeStr}</div>` : ''}
+      <div class="txcl-acc-badge">${esc(accName)}</div>
     </div>
   </li>`;
     });
