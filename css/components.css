@@ -443,10 +443,10 @@
     .nw-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: .3rem .85rem;
+      gap: .4rem .85rem;
       position: relative;
       z-index: 1;
-      padding-top: .3rem;
+      padding-top: .55rem;
       border-top: 1px solid rgba(255, 255, 255, .12)
     }
 
@@ -1365,8 +1365,8 @@
     .txcl-item {
       display: flex;
       align-items: center;
-      gap: .8rem;
-      padding: .82rem .92rem;
+      gap: .65rem;
+      padding: .65rem .92rem;
       border-radius: 11px;
       cursor: pointer;
       transition: background .13s;
@@ -3821,7 +3821,7 @@
       }
 
       .nw-card {
-        padding: 0.45rem 0.9rem 0.4rem;
+        padding: 0.85rem 1.15rem 0.75rem;
         border-radius: 20px !important
       }
 
@@ -5250,7 +5250,7 @@ html[data-theme="dark"] .plan-expiry {
 /* 2. HERO CARD REDESIGN */
 .nw-card {
   width: 100%;
-  padding: 0.55rem 1.25rem 0.5rem !important;
+  padding: 1rem 1.35rem 0.9rem !important;
   background: var(--hero-grad) !important;
   border-radius: 24px !important;
   border: 1.5px solid var(--border) !important;
@@ -5258,7 +5258,7 @@ html[data-theme="dark"] .plan-expiry {
   box-shadow: var(--shd-lg) !important;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 0.5rem;
   position: relative;
   overflow: hidden;
   transition: all 0.25s ease;
@@ -5361,8 +5361,8 @@ html[data-theme="dark"] .plan-expiry {
   align-items: center;
   gap: 0.55rem;
   width: 100%;
-  margin-top: -0.1rem;
-  margin-bottom: 0.15rem;
+  margin-top: -0.35rem;
+  margin-bottom: 0;
 }
 
 .nw-card .nw-accs {
@@ -5402,8 +5402,8 @@ html[data-theme="dark"] .plan-expiry {
   grid-template-columns: repeat(4, 1fr);
   gap: 0.4rem;
   width: 100%;
-  margin-top: 0;
-  padding-top: 0.3rem;
+  margin-top: 0.2rem;
+  padding-top: 0.55rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -5687,7 +5687,7 @@ html[data-theme="education"] .tx-date-group-card {
 
 /* Style overrides for transaction item layout inside card */
 .tx-date-group-card .txcl-item {
-  padding: 0.85rem 0.2rem;
+  padding: 0.65rem 0.2rem;
   border-radius: 0;
   background: transparent !important;
 }
@@ -5698,8 +5698,8 @@ html[data-theme="education"] .tx-date-group-card {
 
 /* Redesign transaction icons to be beautiful solid circles with SVGs */
 .txcl-ico {
-  width: 42px !important;
-  height: 42px !important;
+  width: 38px !important;
+  height: 38px !important;
   border-radius: 50% !important;
   display: flex !important;
   align-items: center !important;
@@ -5732,8 +5732,8 @@ html[data-theme="education"] .tx-date-group-card {
 }
 
 .txcl-ico .cat-svg-icon {
-  width: 42px !important;
-  height: 42px !important;
+  width: 38px !important;
+  height: 38px !important;
   border-radius: 50%;
   display: block !important;
 }
@@ -5747,16 +5747,33 @@ html[data-theme="education"] .tx-date-group-card {
 
 /* Beautiful typography and layouts */
 .txcl-name {
-  font-size: 0.92rem !important;
+  font-size: 0.88rem !important;
   font-weight: 700 !important;
   color: var(--ink) !important;
   letter-spacing: -0.01em;
 }
 
 .txcl-meta {
-  font-size: 0.74rem !important;
-  margin-top: 0.25rem !important;
+  font-size: 0.7rem !important;
+  margin-top: 0.12rem !important;
   color: var(--ink3) !important;
+}
+
+.txcl-dot {
+  color: var(--ink3);
+  opacity: 0.4;
+}
+
+.txcl-acc-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--ink3);
+  background: var(--gs-2, rgba(0,0,0,0.04));
+  padding: 0.1rem 0.45rem;
+  border-radius: 6px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
 }
 
 .txcl-cat {
@@ -5788,7 +5805,7 @@ html[data-theme="education"] .tx-date-group-card {
 }
 
 .txcl-amt {
-  font-size: 1rem !important;
+  font-size: 0.88rem !important;
   font-weight: 800 !important;
   font-family: 'JetBrains Mono', monospace !important;
   letter-spacing: -0.02em !important;
