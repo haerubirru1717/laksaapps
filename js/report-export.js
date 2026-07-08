@@ -208,8 +208,8 @@ function openReportExport() {
 
   const modal = document.createElement('div');
   modal.id = 'reportExportModal';
-  modal.className = 'modal-overlay';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);';
+  modal.className = 'modal-overlay show';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);opacity:1;padding:0;';
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
 
   const sheet = document.createElement('div');
