@@ -136,8 +136,20 @@ const AI_STYLE = `<style>
     }
 
     html[data-theme="dark"] .ai-panel {
-      background: rgba(6,10,20,.97);
+      background: rgba(6,10,20,.98);
       border-color: rgba(255,255,255,.08);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    html[data-theme="dark"] .ai-msg.bot .ai-bubble {
+      background: rgba(255,255,255,.12);
+      border-color: rgba(255,255,255,.15);
+    }
+
+    html[data-theme="dark"] .ai-tx-confirm {
+      background: rgba(15,20,40,.95) !important;
+      border-color: rgba(37, 99, 235, .3) !important;
     }
 
     .ai-panel.open {
@@ -812,10 +824,7 @@ const AI_STYLE = `<style>
       color: var(--accent);
     }
 
-    html[data-theme="dark"] .ai-tx-confirm {
-      background: linear-gradient(135deg, rgba(37, 99, 235, .12), rgba(16, 185, 129, .08));
-      border-color: rgba(37, 99, 235, .28)
-    }
+
 
     .ai-input-row {
       display: flex;
