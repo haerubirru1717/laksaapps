@@ -1491,14 +1491,14 @@
 
     /* Minimalist Urgency styles for Bills */
     html[data-theme="dark"] .bill-card.overdue {
-      background: rgba(239, 68, 68, 0.03) !important;
-      border-color: rgba(239, 68, 68, 0.15) !important;
-      box-shadow: 0 8px 32px rgba(239, 68, 68, 0.08) !important;
+      background: linear-gradient(0deg, rgba(239, 68, 68, 0.10), rgba(239, 68, 68, 0.10)), rgba(10, 11, 20, 0.96) !important;
+      border-color: rgba(239, 68, 68, 0.28) !important;
+      box-shadow: 0 8px 32px rgba(239, 68, 68, 0.10) !important;
     }
     html[data-theme="dark"] .bill-card.due-soon {
-      background: rgba(245, 158, 11, 0.03) !important;
-      border-color: rgba(245, 158, 11, 0.12) !important;
-      box-shadow: 0 8px 32px rgba(245, 158, 11, 0.08) !important;
+      background: linear-gradient(0deg, rgba(245, 158, 11, 0.10), rgba(245, 158, 11, 0.10)), rgba(10, 11, 20, 0.96) !important;
+      border-color: rgba(245, 158, 11, 0.24) !important;
+      box-shadow: 0 8px 32px rgba(245, 158, 11, 0.10) !important;
     }
 
     body::before {

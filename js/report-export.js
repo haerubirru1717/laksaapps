@@ -12,7 +12,7 @@ const _fmtRp = (n) => 'Rp ' + Math.round(n || 0).toLocaleString('id-ID');
 function _categoryBreakdown(txs, type) {
   const map = {};
   txs.filter(t => t.type === type).forEach(t => {
-    const key = t.category_name || 'Tanpa Kategori';
+    const key = t.category_name || (typeof catBy === 'function' ? catBy(t.category_id)?.name : null) || 'Tanpa Kategori';
     if (!map[key]) map[key] = { name: key, total: 0, count: 0 };
     map[key].total += t.amount;
     map[key].count += 1;
@@ -62,12 +62,14 @@ function _buildMonthly(period) {
   const weekly = _weeklyCashflow(txs);
 
   const budgetRows = (getBud() || []).filter(b => b.month === period).map(b => {
-    const realisasi = expenseCat.find(c => c.name === b.category_name)?.total || 0;
+    const catName = (typeof catBy === 'function' ? catBy(b.category_id)?.name : null) || b.category_name || 'Tanpa Kategori';
+    const limit = b.limit_amount || 0;
+    const realisasi = txs.filter(t => t.type === 'expense' && t.category_id === b.category_id).reduce((s, t) => s + t.amount, 0);
     return {
-      category: b.category_name || b.category_id,
-      limit: b.limit_amount,
+      category: catName,
+      limit,
       realisasi,
-      pct: b.limit_amount ? (realisasi / b.limit_amount * 100) : 0,
+      pct: limit ? (realisasi / limit * 100) : 0,
     };
   });
 
@@ -162,8 +164,8 @@ function _buildYearly(yearStr) {
   let budgetScore = 30;
   if (budgetRowsYear.length) {
     const compliant = budgetRowsYear.filter(b => {
-      const realisasi = expenseCat.find(c => c.name === b.category_name)?.total || 0;
-      return realisasi <= b.limit_amount;
+      const realisasi = txs.filter(t => t.type === 'expense' && t.category_id === b.category_id && t.date.slice(0, 7) === b.month).reduce((s, t) => s + t.amount, 0);
+      return realisasi <= (b.limit_amount || 0);
     }).length;
     budgetScore = (compliant / budgetRowsYear.length) * 30;
   }
