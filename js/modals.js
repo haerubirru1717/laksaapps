@@ -305,68 +305,127 @@ function filteredCatsForType(type) {
   if (type === 'expense') return all.filter(c => c.type === 'expense' || c.type === 'both');
   return all;
 }
+// ── CATAT TRANSAKSI (redesigned form) ──
+const TXF_CAL_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+const TXF_TYPES = {
+  income: { label: 'Pemasukan', cls: 'inc', color: 'var(--income)', ico: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>` },
+  expense: { label: 'Pengeluaran', cls: 'exp', color: 'var(--expense)', ico: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>` },
+  transfer: { label: 'Transfer', cls: 'trf', color: 'var(--accent)', ico: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>` }
+};
+function _txfDateLabel(dateStr) { return dateStr === today() ? 'Hari ini' : (typeof fDate === 'function' ? fDate(dateStr) : dateStr); }
+function _txfAccPills(id, accs, selId) {
+  const sel = accs.find(a => a.id === selId) ? selId : (accs[0]?.id || '');
+  const pills = accs.map(a => {
+    const bk = detBank(a.name);
+    const logo = getLogoHtml(a.name, bk, 'txf-accpill-logo', 'txf-accpill-fb', 'width:100%;height:100%;object-fit:cover;border-radius:50%;', true);
+    return `<button type="button" class="txf-accpill${a.id === sel ? ' selected' : ''}" data-val="${a.id}" onclick="txfSelAcc('${id}',this)" style="--pill-accent:${bk.color || 'var(--accent)'}">
+  <span class="txf-accpill-ava">${logo}</span>
+  <span class="txf-accpill-name">${esc(a.name)}</span>
+</button>`;
+  }).join('');
+  const addBtn = `<button type="button" class="txf-accpill txf-accpill-add" onclick="closeModal();openModal('addAccount')" title="Tambah rekening">+</button>`;
+  return `<div class="txf-accpills">${pills}${addBtn}</div><input type="hidden" id="${id}" value="${sel}"/>`;
+}
+function _txfSuggestions(type) {
+  if (type === 'transfer') return '';
+  const txs = (typeof getTx === 'function' ? getTx() : []).filter(t => t.type === type);
+  const freq = {};
+  txs.forEach(t => { const s = (t.store || t.note || '').trim(); if (s) freq[s] = (freq[s] || 0) + 1; });
+  const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0]);
+  if (!top.length) return '';
+  const chips = top.map(s => `<button type="button" class="txf-sugchip" onclick="txfApplySug(this)">${esc(s)}</button>`).join('');
+  return `<div class="txf-suggest">
+  <div class="txf-suggest-lbl"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7c.6.5 1 1.2 1 2h6c0-.8.4-1.5 1-2A7 7 0 0012 2z"/></svg> Saran berdasarkan riwayat</div>
+  <div class="txf-suggest-chips">${chips}</div>
+</div>`;
+}
 function buildTxForm(data) {
   const accs = getAccs(), isEdit = !!data, d = data || { type: 'expense', date: today() };
   const txType = d.type || 'expense';
   const cats = filteredCatsForType(txType);
   const catDD = buildCatDropdown('txC', cats, d.category_id || cats[0]?.id);
-  const accDD = buildAccDropdown('txA', accs, d.account_id || accs[0]?.id);
-  const accTA = buildAccDropdown('txTA', accs, d.to_acc_id || accs[0]?.id);
+  const tm = TXF_TYPES[txType];
+  const typeOpts = ['income', 'expense', 'transfer'].map(t => `<div class="txf-typeopt" onclick="setTT('${t}')"><span class="txf-typeopt-ico ${TXF_TYPES[t].cls}" style="color:${TXF_TYPES[t].color}">${TXF_TYPES[t].ico}</span>${TXF_TYPES[t].label}</div>`).join('');
   const html = `<form id="txf">
-<div class="type-sel">
-  <button type="button" class="tbtn ${txType === 'income' ? 'inc' : ''}" onclick="setTT('income',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Pemasukan</button>
-  <button type="button" class="tbtn ${txType === 'expense' ? 'exp' : ''}" onclick="setTT('expense',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>Pengeluaran</button>
-  <button type="button" class="tbtn ${txType === 'transfer' ? 'trf' : ''}" onclick="setTT('transfer',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>Transfer</button>
-</div>
 <input type="hidden" id="txT" value="${txType}"/>
 <input type="hidden" id="txEid" value="${isEdit ? d.id : ''}"/>
-<div class="frow">
-  <div class="fg"><label class="flbl">Jumlah *</label><input type="number" class="finp" id="txAmt" min="0" step="any" placeholder="0" value="${d.amount || ''}" required/></div>
-  <div class="fg"><label class="flbl">Tanggal *</label><input type="date" class="finp" id="txDt" value="${d.date || today()}" required/></div>
+<div class="txf-toprow">
+  <div class="txf-typedd" id="txfTypeDd">
+    <button type="button" class="txf-pill txf-typepill ${tm.cls}" onclick="txfToggleType(event)">
+      <span class="txf-pill-ico" id="txfTypeIco" style="color:${tm.color}">${tm.ico}</span>
+      <span class="txf-pill-lbl" id="txfTypeLbl">${tm.label}</span>
+      ${CHEVRON_SVG}
+    </button>
+    <div class="txf-typemenu" id="txfTypeMenu">${typeOpts}</div>
+  </div>
+  <label class="txf-pill txf-datepill">
+    <span class="txf-pill-ico">${TXF_CAL_SVG}</span>
+    <span class="txf-pill-lbl" id="txfDateLbl">${_txfDateLabel(d.date || today())}</span>
+    <input type="date" id="txDt" value="${d.date || today()}" onchange="txfDateChanged()"/>
+  </label>
 </div>
-<div class="frow" id="catRow" style="display:${txType === 'transfer' ? 'none' : ''}">
-  <div class="fg"><label class="flbl">Kategori</label>${catDD}</div>
-  <div class="fg"><label class="flbl">Rekening</label>${accDD}</div>
+<button type="button" class="txf-aibanner" onclick="closeModal();toggleAiChat()">
+  <span class="txf-aibanner-txt">Coba catat pakai AI, lebih praktis <span class="txf-aibanner-spark">⚡</span></span>
+  <span class="txf-aibanner-btn">Coba</span>
+</button>
+<div class="txf-amtwrap">
+  <span class="txf-amtcur">Rp</span>
+  <input type="number" id="txAmt" class="txf-amtinp" inputmode="numeric" placeholder="0" value="${d.amount || ''}" required/>
 </div>
-<div class="fg" id="accRowSolo" style="display:${txType === 'transfer' ? 'block' : 'none'}"><label class="flbl">Rekening Asal</label>${txType === 'transfer' ? buildAccDropdown('txASolo', accs, d.account_id || accs[0]?.id) : ''}</div>
-<div class="fg" id="toAG" style="display:${txType === 'transfer' ? 'block' : 'none'}"><label class="flbl">Rekening Tujuan</label>${accTA}</div>
-<div class="frow">
-  <div class="fg"><label class="flbl">Keterangan</label><input type="text" class="finp" id="txN" placeholder="Opsional…" value="${esc(d.note || '')}"/></div>
-  <div class="fg"><label class="flbl">Toko / Merchant</label><input type="text" class="finp" id="txS" placeholder="Opsional…" value="${esc(d.store || '')}"/></div>
+<div id="txfSuggestWrap">${_txfSuggestions(txType)}</div>
+<div class="txf-block">
+  <div class="txf-block-lbl" id="txfAccLbl">${txType === 'transfer' ? 'Rekening Asal' : 'Rekening'}</div>
+  ${_txfAccPills('txA', accs, d.account_id || accs[0]?.id)}
 </div>
-<div class="mfoot"><button type="button" class="btn2" onclick="closeModal()">Batal</button><button type="submit" class="btn">${isEdit ? 'Simpan' : 'Tambah'}</button></div>
+<div class="txf-block" id="txfToWrap" style="display:${txType === 'transfer' ? 'block' : 'none'}">
+  <div class="txf-block-lbl">Rekening Tujuan</div>
+  ${_txfAccPills('txTA', accs, d.to_acc_id || accs.find(a => a.id !== (d.account_id || accs[0]?.id))?.id || accs[0]?.id)}
+</div>
+<div class="txf-block" id="txfCatWrap" style="display:${txType === 'transfer' ? 'none' : 'block'}">
+  <div class="txf-block-lbl">Kategori</div>
+  ${catDD}
+</div>
+<div class="txf-fields">
+  <input type="text" class="finp txf-optinp" id="txS" placeholder="Toko / Merchant (opsional)" value="${esc(d.store || '')}"/>
+  <input type="text" class="finp txf-optinp" id="txN" placeholder="Catatan (opsional)" value="${esc(d.note || '')}"/>
+</div>
+<div class="mfoot"><button type="button" class="btn2" onclick="closeModal()">Batal</button><button type="submit" class="btn">${isEdit ? 'Simpan' : 'Catat'}</button></div>
   </form>`;
   return {
-    t: isEdit ? 'Edit Transaksi' : 'Tambah Transaksi', html, onSubmit: () => {
+    t: isEdit ? 'Edit Transaksi' : 'Catat Transaksi', html, onSubmit: () => {
       const txType = el('txT').value;
-      const accId = txType === 'transfer' ? (el('txASolo')?.value || el('txA')?.value) : el('txA').value;
+      const accId = el('txA').value;
       const payload = { type: txType, amount: getRawAmt('txAmt'), date: el('txDt').value, category_id: txType === 'transfer' ? null : el('txC').value, account_id: accId, to_acc_id: el('txTA')?.value || '', note: el('txN').value.trim(), store: el('txS').value.trim() || null };
       if (!payload.amount || payload.amount <= 0) { toast('Jumlah harus >0', 'err'); throw new Error('Jumlah harus >0'); }
+      if (txType === 'transfer' && payload.account_id === payload.to_acc_id) { toast('Rekening asal & tujuan harus berbeda', 'err'); throw new Error('Rekening sama'); }
       const id = el('txEid').value; if (id) return updateTx(id, payload); else return addTx(payload);
     }
   };
 }
-function setTT(type, btn) {
+function txfToggleType(e) { if (e) e.stopPropagation(); const m = el('txfTypeMenu'); if (m) m.classList.toggle('open'); }
+function closeTxfType() { const m = el('txfTypeMenu'); if (m) m.classList.remove('open'); }
+document.addEventListener('click', e => { if (!e.target.closest('#txfTypeDd')) closeTxfType(); });
+function txfDateChanged() { const inp = el('txDt'), lbl = el('txfDateLbl'); if (inp && lbl) lbl.textContent = _txfDateLabel(inp.value); }
+function txfSelAcc(id, btn) { const inp = el(id); if (inp) inp.value = btn.dataset.val; const wrap = btn.closest('.txf-accpills'); wrap?.querySelectorAll('.txf-accpill').forEach(p => p.classList.remove('selected')); btn.classList.add('selected'); }
+function txfApplySug(btn) { const inp = el('txS'); if (inp) inp.value = btn.textContent; document.querySelectorAll('.txf-sugchip').forEach(c => c.classList.remove('active')); btn.classList.add('active'); }
+function setTT(type) {
   el('txT').value = type;
-  document.querySelectorAll('.tbtn').forEach(b => b.className = 'tbtn');
-  btn.classList.add(type === 'income' ? 'inc' : type === 'expense' ? 'exp' : 'trf');
-  const g = el('toAG'); if (g) g.style.display = type === 'transfer' ? 'block' : 'none';
-  const catRow = el('catRow'); if (catRow) catRow.style.display = type === 'transfer' ? 'none' : '';
-  const accSolo = el('accRowSolo');
-  if (accSolo) {
-    accSolo.style.display = type === 'transfer' ? 'block' : 'none';
-    if (type === 'transfer' && !accSolo.querySelector('.cdd')) {
-      const accs = getAccs();
-      accSolo.innerHTML = `<label class="flbl">Rekening Asal</label>${buildAccDropdown('txASolo', accs, accs[0]?.id)}`;
-    }
-  }
+  const tm = TXF_TYPES[type];
+  const pill = el('txfTypeDd')?.querySelector('.txf-typepill');
+  if (pill) pill.className = `txf-pill txf-typepill ${tm.cls}`;
+  const ico = el('txfTypeIco'), lbl = el('txfTypeLbl');
+  if (ico) { ico.innerHTML = tm.ico; ico.style.color = tm.color; }
+  if (lbl) lbl.textContent = tm.label;
+  const toWrap = el('txfToWrap'); if (toWrap) toWrap.style.display = type === 'transfer' ? 'block' : 'none';
+  const catWrap = el('txfCatWrap'); if (catWrap) catWrap.style.display = type === 'transfer' ? 'none' : 'block';
+  const accLbl = el('txfAccLbl'); if (accLbl) accLbl.textContent = type === 'transfer' ? 'Rekening Asal' : 'Rekening';
   if (type !== 'transfer') {
     const cats = filteredCatsForType(type);
-    const container = document.querySelector('#cdd-txC')?.parentElement;
-    if (container) {
-      container.innerHTML = buildCatDropdown('txC', cats, cats[0]?.id);
-    }
+    const cddEl = el('cdd-txC');
+    if (cddEl) { const holder = document.createElement('div'); holder.innerHTML = buildCatDropdown('txC', cats, cats[0]?.id); const nw = holder.firstElementChild; if (nw) cddEl.replaceWith(nw); }
   }
+  const sw = el('txfSuggestWrap'); if (sw) sw.innerHTML = _txfSuggestions(type);
+  closeTxfType();
 }
 function buildBudForm() {
   const cats = getCats().filter(c => c.type === 'expense' || c.type === 'both');
