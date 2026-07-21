@@ -1,84 +1,216 @@
 /* ══════════════════════════════════════════
-   bottom-nav.css — Mobile Bottom Navigation & Floating Bar
+   bottom-nav.css — Mobile Bottom Navigation & Liquid Glass Capsule & AI FAB
    ══════════════════════════════════════════ */
 
-.bnav-capsule {
+.fab-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── BOTTOM NAV — Liquid Glass Capsule ── */
+.bnav {
   display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 300;
+  padding: 0 12px calc(10px + env(safe-area-inset-bottom));
+  transform: translateZ(0);
+  pointer-events: none;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+.bnav > * {
+  pointer-events: auto;
+}
+
+.bnav-capsule {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: rgba(240, 246, 255, 0.78);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  flex: 1;
+  min-width: 0;
+}
+
+.bnav-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 12px 14px;
+  border: none;
+  background: none;
+  color: rgba(100, 116, 139, 0.6);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 999px;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.bnav-item.active {
+  color: var(--accent);
+  background: rgba(37, 99, 235, 0.1);
+  padding: 12px 20px;
+  flex-shrink: 0;
+}
+
+.bnav-item svg {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bnav-item.active svg {
+  transform: scale(1.08);
+}
+
+.bnav-item span {
+  display: block;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  margin-left: 0;
+  font-weight: 700;
+  transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease,
+              margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bnav-item.active span {
+  max-width: 5em;
+  opacity: 1;
+  margin-left: 6px;
+}
+
+.fab-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+
+.bnav-add {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+  flex-shrink: 0;
+}
+
+.bnav-add svg {
+  width: 26px;
+  height: 26px;
+}
+
+.bnav-add:active {
+  transform: scale(0.9);
+}
+
+.bnav-add.open {
+  transform: rotate(45deg) scale(0.95);
+  box-shadow: 0 6px 24px rgba(37, 99, 235, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* AI FAB button above (+) */
+.ai-fab-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #0F6E56, #534AB7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(15, 110, 86, 0.45);
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: absolute;
+  bottom: 68px;
+  left: 50%;
+  transform: translateX(-50%);
+  overflow: hidden;
+  z-index: 2;
+}
+
+.ai-fab-btn img {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  transform: scale(1.35);
+}
+
+.ai-fab-btn:hover {
+  transform: translateX(-50%) scale(1.08);
+  box-shadow: 0 5px 22px rgba(15, 110, 86, 0.55);
+}
+
+.ai-fab-btn:active {
+  transform: translateX(-50%) scale(0.92);
+}
+
+/* Shimmer effect */
+.ai-fab-shimmer {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(
+    120deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: fabShimmer 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes fabShimmer {
+  0%, 70%, 100% { background-position: 200% 0; }
+  85% { background-position: -200% 0; }
 }
 
 @media(max-width:768px) {
-  .bnav-capsule {
-    display: flex;
-    position: fixed;
-    bottom: .8rem;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 8000;
-    width: calc(100% - 1.6rem);
-    max-width: 390px;
-    height: 58px;
-    background: var(--gs-6);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid var(--gs-border-hi);
-    border-radius: 999px;
-    box-shadow: 0 12px 36px rgba(15,23,42,.18), 0 2px 8px rgba(0,0,0,.08);
-    align-items: center;
-    justify-content: space-around;
-    padding: 0 .4rem;
-    box-sizing: border-box;
-  }
-
-  .bnav-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    flex: 1;
-    height: 100%;
-    color: var(--ink3);
-    text-decoration: none;
-    font-size: .6rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: color .15s;
-    background: none;
-    border: none;
-    padding: 0;
-  }
-
-  .bnav-item.active {
-    color: var(--accent);
-    font-weight: 700;
-  }
-
-  .bnav-item svg {
-    width: 20px;
-    height: 20px;
-  }
-
-  .bnav-item.active svg {
-    filter: drop-shadow(0 2px 6px rgba(37,99,235,.4));
-  }
-
-  .bnav-add {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: #fff;
+  .bnav {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: none;
-    box-shadow: 0 4px 16px rgba(37,99,235,.4);
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: transform .15s, box-shadow .15s;
+    gap: 0;
   }
+}
 
-  .bnav-add:active {
-    transform: scale(.92);
-  }
+/* 404 & Auth page overrides */
+body.is-404-page .bnav,
+body.is-auth-page .bnav {
+  display: none !important;
 }
