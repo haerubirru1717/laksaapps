@@ -5,9 +5,9 @@
 .settings-card {
   background: var(--card);
   border: 1.5px solid var(--gs-border);
-  border-radius: 20px;
-  padding: 1.4rem;
-  margin-bottom: 1.2rem;
+  border-radius: 16px;
+  padding: 0;
+  margin-bottom: 0;
 }
 
 .theme-opt {
