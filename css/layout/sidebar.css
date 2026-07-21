@@ -1,0 +1,201 @@
+/* ══════════════════════════════════════════
+   sidebar.css — Desktop Sidebar Navigation
+   ══════════════════════════════════════════ */
+
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 220px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(150deg, rgba(238,242,255,.82) 0%, rgba(255,255,255,.68) 25%, rgba(255,255,255,.68) 100%);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border-right: 1px solid rgba(255,255,255,.85);
+  box-shadow: 4px 0 24px rgba(99,102,241,.07), 1px 0 0 rgba(255,255,255,.6), inset -1px 0 0 rgba(255,255,255,.4);
+  padding: 1.5rem .9rem;
+  transition: background .3s, width .25s, box-shadow .3s;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(99,102,241,.15);
+  border-radius: 99px;
+}
+
+.sidebar-nav-sect {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .56rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  opacity: .6;
+  padding: .9rem .72rem .3rem;
+  user-select: none;
+}
+
+@media(min-width:769px) {
+  .sidebar {
+    width: 240px;
+  }
+
+  .sidebar-profile {
+    display: flex !important;
+    align-items: center;
+    gap: .55rem;
+    padding: .65rem .6rem;
+    border-radius: 12px;
+    background: rgba(255,255,255,.55);
+    border: 1px solid rgba(255,255,255,.8);
+    box-shadow: 0 2px 12px rgba(99,102,241,.08), inset 0 1px 0 rgba(255,255,255,.9);
+    margin-bottom: .65rem;
+    cursor: pointer;
+    transition: all .18s;
+  }
+
+  .sidebar-profile:hover {
+    background: rgba(255,255,255,.78);
+    box-shadow: 0 4px 18px rgba(99,102,241,.14), inset 0 1px 0 rgba(255,255,255,.95);
+    transform: translateY(-1px);
+  }
+
+  .sidebar-profile-ava {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #0ea5e9);
+    box-shadow: 0 2px 8px rgba(99,102,241,.25), inset 0 1px 0 rgba(255,255,255,.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 800;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .sidebar-profile-name {
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sidebar-profile-sub {
+    font-size: .62rem;
+    color: var(--ink3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@media(min-width:1280px) {
+  .sidebar {
+    width: 260px;
+  }
+}
+
+@media(max-width:768px) {
+  .sidebar {
+    display: none;
+  }
+}
+
+/* Desktop FAB — Gmail-style compose button in sidebar */
+.desk-compose {
+  display: none;
+}
+
+@media(min-width:769px) {
+  .desk-compose {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    width: 100%;
+    padding: .75rem 1rem;
+    margin-bottom: 1.1rem;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.5);
+    background: linear-gradient(135deg, #2563eb, #0ea5e9);
+    color: #fff;
+    font-family: 'Plus Jakarta Sans', 'Inter', inherit;
+    font-size: .84rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: -.01em;
+    box-shadow: 0 6px 20px rgba(37,99,235,.38), inset 0 1px 0 rgba(255,255,255,.25);
+    transition: transform .18s, box-shadow .18s;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .desk-compose::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0);
+    transition: background .18s;
+  }
+
+  .desk-compose:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(37, 99, 235, .5);
+  }
+
+  .desk-compose:hover::before {
+    background: rgba(255, 255, 255, .08);
+  }
+
+  .desk-compose:active {
+    transform: scale(.97);
+  }
+
+  .desk-compose-ico {
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, .22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .85rem;
+    flex-shrink: 0;
+  }
+
+  .desk-compose-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: var(--card2, var(--bg));
+    border: 1.5px solid var(--gs-border);
+    border-radius: 14px;
+    padding: .3rem;
+    box-shadow: 0 16px 40px rgba(0,0,0,.22);
+    opacity: 0;
+    transform: translateY(-6px);
+    pointer-events: none;
+    transition: opacity .16s, transform .16s;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .desk-compose-menu.open {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+}

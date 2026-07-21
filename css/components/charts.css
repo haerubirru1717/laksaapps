@@ -1,0 +1,21 @@
+/* ══════════════════════════════════════════
+   charts.css — Progress Bars & Charts
+   ══════════════════════════════════════════ */
+
+.ptrack {
+  width: 100%;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--gs-3);
+  overflow: hidden;
+}
+
+.pfill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width .3s ease;
+}
+
+.pfill.ok   { background: var(--income); }
+.pfill.warn { background: var(--gold); }
+.pfill.bad  { background: var(--expense); }

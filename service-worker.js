@@ -1,4 +1,4 @@
-const CACHE_NAME = 'laksa-v14';
+const CACHE_NAME = 'laksa-v15';
 
 const ASSETS = [
   '/',
@@ -7,6 +7,7 @@ const ASSETS = [
   '/css/layout.css',
   '/css/components.css',
   '/css/pages.css',
+  '/css/main.css',
   '/js/app.js',
   '/js/config.js',
   '/js/dashboard.js',

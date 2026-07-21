@@ -1,0 +1,43 @@
+/* ══════════════════════════════════════════
+   grid.css — Main App Layout & Containers
+   ══════════════════════════════════════════ */
+
+.main {
+  margin-left: 220px;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+  padding: 2rem 2.25rem 3rem 1.2rem;
+  box-sizing: border-box;
+  width: calc(100% - 220px);
+  overflow-x: hidden;
+}
+
+@media(min-width:769px) {
+  .main {
+    margin-left: 240px;
+    width: calc(100% - 240px);
+    padding: 2rem 2.5rem 3rem 1.2rem;
+  }
+
+  .main-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+}
+
+@media(min-width:1280px) {
+  .main {
+    margin-left: 260px;
+    width: calc(100% - 260px);
+    padding: 2.25rem 3rem 3rem 1.2rem;
+  }
+}
+
+@media(max-width:768px) {
+  .main {
+    margin-left: 0;
+    width: 100%;
+    padding: 1rem 1rem 5.5rem;
+  }
+}

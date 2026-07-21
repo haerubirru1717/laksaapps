@@ -1,0 +1,88 @@
+/* ══════════════════════════════════════════
+   forms.css — Form Fields, Inputs & Select Dropdowns
+   ══════════════════════════════════════════ */
+
+.flbl {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .66rem;
+  font-weight: 500;
+  color: var(--ink3);
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  margin-bottom: .35rem;
+}
+
+.finp {
+  width: 100%;
+  padding: .58rem .82rem;
+  background: var(--gs-4);
+  border: 1.5px solid var(--gs-border);
+  border-radius: 10px;
+  color: var(--ink);
+  font-family: 'Inter', inherit;
+  font-size: .82rem;
+  outline: none;
+  transition: border-color .14s, background .14s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.finp:focus {
+  border-color: var(--accent);
+}
+
+.frow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .65rem;
+}
+
+@media(max-width:480px) {
+  .frow {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Custom Dropdown (.cdd-menu, .cdd-item) */
+.cdd-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 55;
+  background: var(--card2, var(--bg));
+  border: 1.5px solid var(--gs-border);
+  border-radius: 14px;
+  padding: .3rem;
+  box-shadow: 0 16px 40px rgba(0,0,0,.22);
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity .16s, transform .16s;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.cdd-menu.open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.cdd-item {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .55rem .6rem;
+  border-radius: 10px;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background .14s;
+}
+
+.cdd-item:hover {
+  background: var(--gs-2);
+}

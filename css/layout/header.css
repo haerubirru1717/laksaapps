@@ -1,0 +1,64 @@
+/* ══════════════════════════════════════════
+   header.css — App Top Bar & Brand Logo
+   ══════════════════════════════════════════ */
+
+.brand-name {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #0ea5e9 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+
+.brand-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(37,99,235,.28);
+  flex-shrink: 0;
+}
+
+/* ── Dashboard Split Background Banner Topbar Adjustments ── */
+.dash-bg-banner {
+  position: absolute;
+  top: -2rem;
+  left: -1.35rem;
+  right: -2.6rem;
+  height: 240px;
+  background: linear-gradient(135deg, #c1440e 0%, #d4691a 50%, #e8913a 100%);
+  border-radius: 0 0 24px 24px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+html[data-theme="dark"] .dash-bg-banner {
+  background: linear-gradient(135deg, #7a2e0a 0%, #8c3f12 50%, #a35520 100%);
+}
+
+@media(min-width:1280px) {
+  .dash-bg-banner {
+    left: -1.35rem;
+    right: -3.1rem;
+  }
+}
+
+@media(max-width:768px) {
+  .dash-bg-banner {
+    left: -1rem;
+    right: -1rem;
+    top: -1rem;
+    height: 220px;
+  }
+}

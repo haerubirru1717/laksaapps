@@ -1,0 +1,84 @@
+/* ══════════════════════════════════════════
+   bottom-nav.css — Mobile Bottom Navigation & Floating Bar
+   ══════════════════════════════════════════ */
+
+.bnav-capsule {
+  display: none;
+}
+
+@media(max-width:768px) {
+  .bnav-capsule {
+    display: flex;
+    position: fixed;
+    bottom: .8rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 8000;
+    width: calc(100% - 1.6rem);
+    max-width: 390px;
+    height: 58px;
+    background: var(--gs-6);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--gs-border-hi);
+    border-radius: 999px;
+    box-shadow: 0 12px 36px rgba(15,23,42,.18), 0 2px 8px rgba(0,0,0,.08);
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 .4rem;
+    box-sizing: border-box;
+  }
+
+  .bnav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    flex: 1;
+    height: 100%;
+    color: var(--ink3);
+    text-decoration: none;
+    font-size: .6rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color .15s;
+    background: none;
+    border: none;
+    padding: 0;
+  }
+
+  .bnav-item.active {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .bnav-item svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .bnav-item.active svg {
+    filter: drop-shadow(0 2px 6px rgba(37,99,235,.4));
+  }
+
+  .bnav-add {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    box-shadow: 0 4px 16px rgba(37,99,235,.4);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform .15s, box-shadow .15s;
+  }
+
+  .bnav-add:active {
+    transform: scale(.92);
+  }
+}

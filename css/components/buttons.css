@@ -1,0 +1,82 @@
+/* ══════════════════════════════════════════
+   buttons.css — Base Buttons, Pills & Badges
+   ══════════════════════════════════════════ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .6rem 1.2rem;
+  border-radius: var(--r);
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-family: inherit;
+  font-size: .84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .14s, box-shadow .14s, background .14s;
+  box-shadow: 0 4px 14px rgba(37,99,235,.25);
+  text-decoration: none;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(37,99,235,.35);
+}
+
+.btn:active {
+  transform: scale(.98);
+}
+
+.btn2 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  padding: .55rem 1.1rem;
+  border-radius: var(--r);
+  border: 1.5px solid var(--gs-border);
+  background: var(--gs-2);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .14s, background .14s;
+  text-decoration: none;
+}
+
+.btn2:hover {
+  border-color: var(--accent);
+  background: var(--gs-4);
+}
+
+/* Toggle Group & Pills */
+.tgl-grp {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--gs-3);
+  border-radius: 12px;
+  border: 1px solid var(--gs-border);
+}
+
+.tgl {
+  padding: .35rem .8rem;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  color: var(--ink3);
+  font-family: inherit;
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .14s;
+}
+
+.tgl.active {
+  background: var(--gs-4);
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}

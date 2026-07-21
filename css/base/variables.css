@@ -1,0 +1,137 @@
+/* ══════════════════════════════════════════
+   variables.css — Global Themes & Color Tokens
+   ══════════════════════════════════════════ */
+
+:root {
+  /* Glass theme palette */
+  --bg: #dbeafe;
+  --bg2: rgba(255, 255, 255, 0.4);
+  --bg3: rgba(255, 255, 255, 0.25);
+  --ink: #0f172a;
+  --ink2: #334155;
+  --ink3: #64748b;
+  --border: rgba(255, 255, 255, 0.7);
+  --border-hi: rgba(255, 255, 255, 0.9);
+  --card: rgba(255, 255, 255, 0.72);
+  --accent: #2563eb;
+  --accent2: #0ea5e9;
+  --income: #10b981;
+  --income-dim: rgba(16, 185, 129, .1);
+  --expense: #ef4444;
+  --expense-dim: rgba(239, 68, 68, .08);
+  --gold: #f59e0b;
+  --gold-dim: rgba(245, 158, 11, .1);
+  --purple: #8b5cf6;
+  --r: 14px;
+  --shd: 0 4px 24px rgba(37, 99, 235, .1), 0 1px 4px rgba(0, 0, 0, .05);
+  --shd-lg: 0 12px 40px rgba(37, 99, 235, .16), 0 2px 8px rgba(0, 0, 0, .07);
+  --t1: #0f172a;
+  --t2: #334155;
+  --t3: #64748b;
+  --bdr: rgba(255, 255, 255, 0.7);
+  --bdr-hi: rgba(255, 255, 255, 0.9);
+  --modal-bg: rgba(255, 255, 255, 0.96);
+  --sidebar: rgba(255, 255, 255, 0.75);
+  --hero-grad: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
+  /* Glass surface variables — frosted glass */
+  --gs-1: rgba(255, 255, 255, .45);
+  --gs-2: rgba(255, 255, 255, .35);
+  --gs-3: rgba(255, 255, 255, .30);
+  --gs-4: rgba(255, 255, 255, .50);
+  --gs-5: rgba(255, 255, 255, .28);
+  --gs-6: rgba(235, 242, 255, .55);
+  --gs-7: rgba(240, 246, 255, .70);
+  --gs-8: rgba(235, 242, 255, .55);
+  --gs-9: rgba(225, 236, 255, .50);
+  --gs-border: rgba(255, 255, 255, .55);
+  --gs-border-hi: rgba(255, 255, 255, .75);
+  --mesh-a: radial-gradient(ellipse 80% 60% at 15% 5%, rgba(99, 179, 237, .4) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 85% 15%, rgba(167, 139, 250, .22) 0%, transparent 55%), radial-gradient(ellipse 70% 60% at 50% 90%, rgba(52, 211, 153, .18) 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 5% 75%, rgba(251, 191, 36, .12) 0%, transparent 50%), linear-gradient(135deg, #dbeafe 0%, #ede9fe 45%, #d1fae5 100%);
+  --mesh-b: radial-gradient(circle 350px at 10% -5%, rgba(37, 99, 235, .18) 0%, transparent 70%), radial-gradient(circle 300px at 90% 25%, rgba(139, 92, 246, .14) 0%, transparent 70%), radial-gradient(circle 280px at 30% 95%, rgba(16, 185, 129, .12) 0%, transparent 70%);
+}
+
+/* ── DARK GLASS THEME ── */
+html[data-theme="dark"] {
+  --bg: #020203;
+  --bg2: rgba(255, 255, 255, .10);
+  --bg3: rgba(255, 255, 255, .03);
+  --ink: #ededef;
+  --ink2: #94a3b8;
+  --ink3: #64748b;
+  --border: rgba(255, 255, 255, .10);
+  --border-hi: rgba(255, 255, 255, .18);
+  --card: rgba(255, 255, 255, .13);
+  --accent: #5e6ad2;
+  --accent2: #f7931a;
+  --t1: #ededef;
+  --t2: #94a3b8;
+  --t3: #64748b;
+  --bdr: rgba(255, 255, 255, .10);
+  --bdr-hi: rgba(255, 255, 255, .18);
+  --modal-bg: rgba(5, 5, 6, .96);
+  --sidebar: rgba(5, 5, 6, .75);
+  --shd: 0 8px 32px rgba(94, 106, 210, .15), 0 1px 4px rgba(0, 0, 0, .5);
+  --shd-lg: 0 24px 64px rgba(94, 106, 210, .22), 0 2px 12px rgba(0, 0, 0, .6);
+  --income-dim: rgba(16, 185, 129, .15);
+  --expense-dim: rgba(239, 68, 68, .12);
+  --gold-dim: rgba(245, 158, 11, .12);
+  /* Glass surface overrides — dark */
+  --gs-1: rgba(255, 255, 255, .07);
+  --gs-2: rgba(255, 255, 255, .09);
+  --gs-3: rgba(255, 255, 255, .07);
+  --gs-4: rgba(255, 255, 255, .10);
+  --gs-5: rgba(255, 255, 255, .06);
+  --gs-6: rgba(5, 5, 6, .93);
+  --gs-7: rgba(5, 5, 6, .96);
+  --gs-8: rgba(5, 5, 6, .90);
+  --gs-9: rgba(255, 255, 255, .12);
+  --gs-border: rgba(255, 255, 255, .16);
+  --gs-border-hi: rgba(255, 255, 255, .28);
+  --mesh-a: radial-gradient(circle 600px at 15% 10%, rgba(94, 106, 210, .15) 0%, transparent 60%), radial-gradient(circle 500px at 85% 85%, rgba(247, 147, 26, .1) 0%, transparent 65%), #020203;
+  --mesh-b: radial-gradient(circle 450px at 50% 50%, rgba(94, 106, 210, .08) 0%, transparent 70%);
+}
+
+/* ── EDUCATIONAL PLATFORM THEME (CLAYMORPHISM + BLOCK-BASED) ── */
+html[data-theme="education"] {
+  --bg: #faf8f5;
+  --bg2: rgba(15, 23, 42, 0.04);
+  --bg3: rgba(15, 23, 42, 0.02);
+  --ink: #0f172a;
+  --ink2: #334155;
+  --ink3: #64748b;
+  --border: #0f172a;
+  --border-hi: #0f172a;
+  --card: #ffffff;
+  --accent: #10b981;
+  --accent2: #bae6fd;
+  --income: #10b981;
+  --income-dim: rgba(16, 185, 129, 0.15);
+  --expense: #f87171;
+  --expense-dim: rgba(248, 113, 113, 0.1);
+  --gold: #f59e0b;
+  --gold-dim: rgba(245, 158, 11, 0.1);
+  --purple: #a78bfa;
+  --r: 20px;
+  --shd: 5px 5px 0px #0f172a;
+  --shd-lg: 7px 7px 0px #0f172a;
+  --t1: #0f172a;
+  --t2: #334155;
+  --t3: #64748b;
+  --bdr: #0f172a;
+  --bdr-hi: #0f172a;
+  --modal-bg: #faf8f5;
+  --sidebar: #ffffff;
+  --hero-grad: linear-gradient(135deg, #fedbd4 0%, #bae6fd 100%);
+  --gs-1: #ffffff;
+  --gs-2: #ffffff;
+  --gs-3: #f1f5f9;
+  --gs-4: #ffffff;
+  --gs-5: #ffffff;
+  --gs-6: #ffffff;
+  --gs-7: #ffffff;
+  --gs-8: #ffffff;
+  --gs-9: #ffffff;
+  --gs-border: #0f172a;
+  --gs-border-hi: #0f172a;
+  --mesh-a: linear-gradient(135deg, #faf8f5 0%, #faf8f5 100%);
+  --mesh-b: linear-gradient(135deg, #faf8f5 0%, #faf8f5 100%);
+}

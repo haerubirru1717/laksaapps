@@ -1,0 +1,82 @@
+/* ══════════════════════════════════════════
+   modal-base.css — Base Modal Overlay & Container
+   ══════════════════════════════════════════ */
+
+.moverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, .35);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.moverlay.open {
+  display: flex;
+  animation: fadeIn .17s ease;
+}
+
+.modal {
+  background: var(--modal-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1.5px solid var(--gs-border-hi);
+  border-radius: 20px;
+  box-shadow: 0 24px 80px rgba(37, 99, 235, .18), 0 4px 16px rgba(0, 0, 0, .06);
+  width: 100%;
+  max-width: 445px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp .2s ease;
+}
+
+.mhdr {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: .6rem;
+  padding: 1.25rem 1.4rem 0;
+  margin-bottom: .65rem;
+}
+
+.mtitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+.mclose {
+  background: var(--gs-3);
+  border: 1px solid var(--gs-border);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink2);
+  cursor: pointer;
+  transition: all .14s;
+}
+
+.mclose:hover {
+  background: var(--gs-4);
+  color: var(--ink);
+}
+
+.mbody {
+  padding: 0 1.4rem 1.4rem;
+}
+
+.mfoot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .6rem;
+  padding: 1rem 1.4rem 1.4rem;
+  border-top: 1px solid var(--gs-border);
+}

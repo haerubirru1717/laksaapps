@@ -8,4 +8,5 @@ dist/
 deploy.ps1
 admin/
 .wrangler/
+codebase-memory-mcp/
 
