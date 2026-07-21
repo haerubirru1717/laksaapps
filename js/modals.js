@@ -404,7 +404,7 @@ function _txfSuggestions(type) {
 </div>`;
 }
 function buildTxForm(data) {
-  const accs = getAccs(), isEdit = !!data, d = data || { type: 'expense', date: today() };
+  const accs = getAccs(), isEdit = !!(data?.id), d = data || { type: 'expense', date: today() };
   const txType = d.type || 'expense';
   const cats = filteredCatsForType(txType);
   const catDD = buildCatDropdown('txC', cats, d.category_id || cats[0]?.id);
@@ -475,7 +475,13 @@ function buildTxForm(data) {
       const payload = { type: txType, amount: getRawAmt('txAmt'), date: el('txDt').value, category_id: txType === 'transfer' ? null : el('txC').value, account_id: accId, to_acc_id: el('txTA')?.value || '', note: el('txN').value.trim(), store: el('txS').value.trim() || null };
       if (!payload.amount || payload.amount <= 0) { toast('Jumlah harus >0', 'err'); throw new Error('Jumlah harus >0'); }
       if (txType === 'transfer' && payload.account_id === payload.to_acc_id) { toast('Rekening asal & tujuan harus berbeda', 'err'); throw new Error('Rekening sama'); }
-      const id = el('txEid').value; if (id) return updateTx(id, payload); else return addTx(payload);
+      // Guard: only call updateTx if BOTH the isEdit flag AND a valid-looking ID are present.
+      // This prevents "transaction not found" errors caused by stale DOM state or a truthy
+      // but invalid txEid value accidentally triggering PATCH instead of POST.
+      const rawId = el('txEid')?.value?.trim() || '';
+      const isValidId = rawId.length > 8; // UUIDs are 36 chars; reject anything suspiciously short
+      if (isEdit && isValidId) return updateTx(rawId, payload);
+      return addTx(payload);
     }
   };
 }
