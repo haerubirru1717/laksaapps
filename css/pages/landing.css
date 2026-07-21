@@ -145,6 +145,7 @@
 .landing-hero-title span.highlight {
   background: linear-gradient(135deg, var(--income) 0%, var(--accent) 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -1482,10 +1483,6 @@ body.is-landing-page {
   width: 100%;
 }
 
-  .pricing-card {
-    padding: 2.5rem 2rem;
-  }
-}
 
 /* ── INTERACTIVE PHONE MOCKUP STYLING ── */
 
