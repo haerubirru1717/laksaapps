@@ -3126,6 +3126,72 @@
       overflow-y: auto;
     }
 
+    /* ── Hint juta/ribu (default hidden, shown on mobile) ── */
+    .txf-amt-hint {
+      display: none;
+      text-align: center;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.6);
+      letter-spacing: 0.01em;
+      min-height: 1.2em;
+      margin-top: -0.4rem;
+      margin-bottom: 0.6rem;
+    }
+
+    /* ── MOBILE: tx-modal full-screen native ── */
+    @media (max-width: 480px) {
+      /* Overlay: tidak ada padding, tidak centered */
+      .moverlay:has(.modal.tx-modal) {
+        padding: 0;
+        align-items: flex-end;
+      }
+
+      /* Modal: cover full dynamic viewport */
+      .modal.tx-modal {
+        max-width: 100%;
+        width: 100%;
+        height: 100dvh;
+        max-height: 100dvh;
+        border-radius: 0;
+        border: none;
+        display: flex;
+        flex-direction: column;
+        animation: txModalSlideUp .28s cubic-bezier(.32,.72,0,1);
+      }
+
+      /* Body scrollable, fill remaining space */
+      .modal.tx-modal .mbody {
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+      }
+
+      /* Nominal lebih besar di mobile */
+      .txf-amtinp { font-size: 3.2rem; }
+      .txf-amtwrap { padding: 1.4rem 0 0.4rem; }
+
+      /* Hint juta aktif di mobile */
+      .txf-amt-hint { display: block; }
+
+      /* Safe area untuk home bar iOS */
+      .txf-white-bottom {
+        padding-bottom: calc(1.4rem + env(safe-area-inset-bottom, 0px));
+      }
+
+      /* Header tetap fixed di atas */
+      .modal.tx-modal .mhdr {
+        flex-shrink: 0;
+      }
+    }
+
+    /* Slide up animation khusus mobile tx-modal */
+    @keyframes txModalSlideUp {
+      from { transform: translateY(100%); opacity: 0.8; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
     .txf-blue-top {
       background: #1e56cf;
       padding: 0.5rem 1.4rem 3.4rem;

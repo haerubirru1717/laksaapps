@@ -121,6 +121,12 @@ function openModal(type, data = null) {
   setTimeout(() => {
     const f = body.querySelector('input:not([type=hidden]),select'); if (f) f.focus();
     ['txAmt', 'bLim', 'gTgt', 'aBal', 'agAmt', 'billAmt', 'ptgAmt', 'ptgReturned', 'ptgReturnAmt'].forEach(id => setupAmtInput(id));
+    // Attach real-time amount hint update for txAmt (mobile "≈ juta" display)
+    const txAmtInp = el('txAmt');
+    if (txAmtInp) {
+      txAmtInp.addEventListener('input', _updateAmtHint);
+      _updateAmtHint(); // initial render if editing existing tx
+    }
     // Init bill type chips
     document.querySelectorAll('.bill-type-opt').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -403,6 +409,21 @@ function _txfSuggestions(type) {
   <div class="txf-suggest-chips">${chips}</div>
 </div>`;
 }
+
+// ── Amount hint helpers (shows "≈ 2,5 juta" below nominal input on mobile) ──
+function _fmtAmtHint(val) {
+  const n = Number(val);
+  if (!n || n <= 0) return '';
+  if (n >= 1_000_000_000) return `≈ ${+(n / 1e9).toFixed(1)} miliar`;
+  if (n >= 1_000_000)     return `≈ ${+(n / 1e6).toFixed(2).replace(/\.?0+$/, '')} juta`;
+  if (n >= 1_000)         return `≈ ${Math.round(n / 1e3)} ribu`;
+  return '';
+}
+function _updateAmtHint() {
+  const inp = el('txAmt'), hint = el('txAmtHint');
+  if (hint) hint.textContent = _fmtAmtHint(inp?.value);
+}
+
 function buildTxForm(data) {
   const accs = getAccs(), isEdit = !!(data?.id), d = data || { type: 'expense', date: today() };
   const txType = d.type || 'expense';
@@ -438,6 +459,7 @@ function buildTxForm(data) {
     <span class="txf-amtcur">Rp</span>
     <input type="number" id="txAmt" class="txf-amtinp" inputmode="numeric" placeholder="0" value="${d.amount || ''}" required/>
   </div>
+  <div class="txf-amt-hint" id="txAmtHint">${d.amount ? _fmtAmtHint(d.amount) : ''}</div>
 </div>
 
 <div class="txf-white-bottom">
