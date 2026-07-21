@@ -3,8 +3,10 @@
    ══════════════════════════════════════ */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. Smart Redirect: If user is logged in, skip landing page and go straight to app
+  // 1. Smart Redirect: Only redirect if user has a REAL auth token (not demo data)
   const token = localStorage.getItem('laksa_token');
+  // Always clear any leftover demo session so clicking "Masuk" goes to login, not demo
+  sessionStorage.removeItem('laksa_demo');
   if (token) {
     window.location.href = '/app.html#/dashboard';
     return;

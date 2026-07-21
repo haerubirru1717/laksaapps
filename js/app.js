@@ -1692,9 +1692,21 @@ function checkAndEnableGoogleLogin() {
 // ── Init ──
 document.addEventListener('DOMContentLoaded', async () => {
   const demoParams = new URLSearchParams(window.location.search);
+  const currentHash = (window.location.hash || '').replace(/^#/, '');
+  // If user is accessing login/register directly, always clear demo session so
+  // they land on the real auth page, not the demo dashboard.
+  if (currentHash === '/login' || currentHash === '/register' || currentHash === '') {
+    sessionStorage.removeItem('laksa_demo');
+  }
   if (demoParams.get('demo') === 'true' || sessionStorage.getItem('laksa_demo') === 'true') {
     isDemoMode = true;
-    sessionStorage.setItem('laksa_demo', 'true');
+    // Only persist demo session if NOT inside an iframe.
+    // The landing page demo preview runs in an iframe — if we store laksa_demo there,
+    // it pollutes the parent tab's sessionStorage and causes "Masuk" to open the demo
+    // instead of the login page.
+    if (window === window.top) {
+      sessionStorage.setItem('laksa_demo', 'true');
+    }
     const demoProfile = { id: "usr_demo", name: "Haeru", email: "demo@laksaapp.my.id", tgId: "123456789", theme: "glass" };
     localStorage.setItem(PROFILE_KEY, JSON.stringify(demoProfile));
   }
