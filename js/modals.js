@@ -421,7 +421,21 @@ function _fmtAmtHint(val) {
 }
 function _updateAmtHint() {
   const inp = el('txAmt'), hint = el('txAmtHint');
-  if (hint) hint.textContent = _fmtAmtHint(inp?.value);
+  if (!inp) return;
+
+  // Update hint text (≈ juta / ribu / miliar)
+  if (hint) hint.textContent = _fmtAmtHint(inp.value);
+
+  // Auto-scale font-size based on digit count (mobile native feel):
+  //   ≤8 digits  → 3.2rem  (safe: up to 99.999.999 / ~100 juta, single line)
+  //   9–10 digits → 2.5rem  (step 1 down: hundreds of millions)
+  //   ≥11 digits  → 1.9rem  (step 2 down: billions, capped here — no further shrink)
+  const digits = (inp.value || '').replace(/\D/g, '').length;
+  let fs;
+  if (digits >= 11)     fs = '1.9rem';
+  else if (digits >= 9) fs = '2.5rem';
+  else                  fs = '3.2rem';
+  inp.style.fontSize = fs;
 }
 
 function buildTxForm(data) {

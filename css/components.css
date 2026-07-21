@@ -3422,10 +3422,11 @@
       color: var(--ink);
       text-align: center;
       width: auto;
-      max-width: 70%;
+      max-width: 85%;
       min-width: 40px;
       letter-spacing: -.02em;
       padding: 0;
+      transition: font-size .18s ease;
     }
     .txf-amtinp::placeholder { color: var(--ink3); opacity: .45; }
     .txf-suggest { margin-bottom: 1rem; }
