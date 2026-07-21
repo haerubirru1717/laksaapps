@@ -39,7 +39,7 @@
 
 .auth-split-right {
   flex: 1;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  background: linear-gradient(145deg, #0b132b 0%, #1c2a4e 50%, #0d1733 100%);
   color: #fff;
   padding: 2.5rem;
   display: flex;
