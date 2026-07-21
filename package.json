@@ -5,7 +5,8 @@
   "main": "cloudflare-worker.js",
   "scripts": {
     "dev:worker": "wrangler dev cloudflare-worker.js --port 8787",
-    "dev:frontend": "npx http-server -p 5500"
+    "dev:frontend": "npx http-server -p 5500",
+    "dev:pages": "wrangler pages dev . --port 5500"
   },
   "devDependencies": {
     "http-server": "^14.1.1",

@@ -2898,9 +2898,10 @@
     }
 
     .mhdr {
-      display: flex;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
       align-items: center;
-      justify-content: space-between;
+      gap: .6rem;
       padding: 1.25rem 1.4rem 0;
       margin-bottom: .65rem
     }
@@ -2910,8 +2911,32 @@
       font-size: .97rem;
       font-weight: 700;
       color: var(--ink);
-      letter-spacing: -.02em
+      letter-spacing: -.02em;
+      text-align: center;
     }
+
+    .mhdr-action {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .txf-upload-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .32rem .7rem;
+      border-radius: 999px;
+      border: 1.5px solid var(--accent);
+      background: color-mix(in srgb, var(--accent) 10%, transparent);
+      color: var(--accent);
+      font-size: .72rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .14s;
+      white-space: nowrap;
+    }
+    .txf-upload-btn:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
 
     .mclose {
       width: 28px;
@@ -3052,10 +3077,140 @@
     }
 
     /* ── CATAT TRANSAKSI (redesigned form) ── */
+    /* Spasial untuk blue top modal */
+    .modal.tx-modal {
+      background: var(--bg-modal, #ffffff);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal.tx-modal .mhdr {
+      background: #1e56cf;
+      color: #fff;
+      margin-bottom: 0;
+      padding: 1.25rem 1.4rem 0.8rem;
+      border-bottom: none;
+    }
+    .modal.tx-modal .mtitle {
+      color: #fff;
+    }
+    .modal.tx-modal .mclose {
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.9);
+      width: auto;
+      height: auto;
+      padding: 0;
+    }
+    .modal.tx-modal .mclose:hover {
+      background: transparent;
+      color: #fff;
+    }
+    .modal.tx-modal .mhdr-action .txf-save-btn {
+      border: 1.5px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      padding: .32rem .8rem;
+      border-radius: 999px;
+      font-size: .75rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background .14s;
+    }
+    .modal.tx-modal .mhdr-action .txf-save-btn:hover {
+      background: rgba(255, 255, 255, 0.22);
+    }
+    .modal.tx-modal .mbody {
+      padding: 0;
+      overflow-y: auto;
+    }
+
+    .txf-blue-top {
+      background: #1e56cf;
+      padding: 0.5rem 1.4rem 3.4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+    .txf-blue-top .txf-pill {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+    .txf-blue-top .txf-pill:hover {
+      background: rgba(255, 255, 255, 0.22);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+    .txf-blue-top .txf-pill-ico {
+      background: rgba(255, 255, 255, 0.18);
+      color: #fff !important;
+    }
+    .txf-blue-top .txf-typepill.inc .txf-pill-ico,
+    .txf-blue-top .txf-typepill.exp .txf-pill-ico,
+    .txf-blue-top .txf-typepill.trf .txf-pill-ico {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    .txf-blue-top .cdd-chevron {
+      color: #fff;
+      opacity: 0.9;
+    }
+    .txf-blue-top .txf-aibanner {
+      background: rgba(15, 23, 42, 0.4);
+      border: 1.5px solid rgba(255, 255, 255, 0.08);
+      box-shadow: none;
+      margin-bottom: 0.2rem;
+    }
+    .txf-blue-top .txf-aibanner:hover {
+      background: rgba(15, 23, 42, 0.5);
+    }
+    .txf-blue-top .txf-amtcur {
+      color: rgba(255, 255, 255, 0.7);
+    }
+    .txf-blue-top .txf-amtinp {
+      background: transparent !important;
+      color: #ffffff !important;
+      border: none !important;
+      box-shadow: none !important;
+      outline: none !important;
+      caret-color: #ffffff;
+    }
+    .txf-blue-top .txf-amtinp::placeholder {
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    .txf-white-bottom {
+      padding: 0 1.4rem 1.4rem;
+      background: var(--modal-bg);
+      display: flex;
+      flex-direction: column;
+      gap: 1.1rem;
+    }
+    
+    .txf-suggest {
+      background: #f8fafc;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 16px;
+      padding: 0.8rem 1rem;
+      margin-top: -2.4rem;
+      position: relative;
+      z-index: 5;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+    .txf-suggest-lbl {
+      color: var(--ink3);
+      font-weight: 700;
+    }
+    .txf-sugchip {
+      background: #ffffff;
+      border: 1.5px solid var(--gs-border);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+    }
+
     .txf-toprow {
       display: flex;
       gap: .5rem;
-      margin-bottom: .7rem;
+      margin-bottom: 0;
     }
     .txf-pill {
       flex: 1;
@@ -3145,6 +3300,7 @@
       width: 100%;
       height: 100%;
       border: none;
+      z-index: 10;
     }
     .txf-aibanner {
       display: flex;
@@ -3217,7 +3373,8 @@
       margin-bottom: .5rem;
     }
     .txf-suggest-lbl svg { color: var(--accent2); }
-    .txf-suggest-chips { display: flex; flex-wrap: wrap; gap: .45rem; }
+    .txf-suggest-chips { display: flex; flex-wrap: nowrap; gap: .45rem; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: .2rem; }
+    .txf-suggest-chips::-webkit-scrollbar { display: none; }
     .txf-sugchip {
       padding: .4rem .8rem;
       border-radius: 999px;
@@ -3307,8 +3464,37 @@
       font-weight: 400;
       color: var(--ink3);
     }
-    .txf-fields { display: flex; flex-direction: column; gap: .6rem; }
+    .txf-sugchip-ico { font-style: normal; margin-right: .25rem; font-size: .9rem; }
+    .txf-fields { display: flex; flex-direction: column; gap: 0; }
     .txf-optinp { width: 100%; }
+    .txf-lineinp-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: .2rem;
+      padding: .7rem 0;
+      border-bottom: 1.5px solid var(--gs-border);
+    }
+    .txf-lineinp-wrap:last-child { border-bottom: none; }
+    .txf-lineinp-lbl {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+      font-size: .7rem;
+      font-weight: 750;
+      color: var(--ink3);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .txf-lineinp {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+      border: none;
+      background: transparent;
+      outline: none;
+      font-size: .9rem;
+      font-weight: 600;
+      color: var(--ink);
+      padding: 0;
+      width: 100%;
+    }
+    .txf-lineinp::placeholder { color: var(--ink3); opacity: .6; }
 
     .mfoot {
       display: flex;

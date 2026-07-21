@@ -115,10 +115,11 @@ let _cache = { tx: null, accs: null, cats: null, buds: null, goals: null, bills:
 
 // ── AUTH TOKEN MANAGEMENT ──
 const TOKEN_KEY = 'laksa_token';
+let isDemoMode = false;
 function getToken() { return localStorage.getItem(TOKEN_KEY); }
 function setToken(token) { localStorage.setItem(TOKEN_KEY, token); }
 function clearToken() { localStorage.removeItem(TOKEN_KEY); }
-function isLoggedIn() { return !!getToken(); }
+function isLoggedIn() { return isDemoMode || !!getToken(); }
 
 function getProfile() { try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || null; } catch { return null; } }
 function getUserId() {
@@ -127,7 +128,247 @@ function getUserId() {
   return getProfile()?.id || getProfile()?.tgId || null;
 }
 
+// Helper to generate mock transactions dynamically based on month/year param
+function getMockTransactions(monthParam) {
+  let targetYear = 2026;
+  let targetMonth = 7;
+  let isYearOnly = false;
+  
+  const today = new Date();
+  targetYear = today.getFullYear();
+  targetMonth = today.getMonth() + 1;
+
+  if (monthParam) {
+    const parts = monthParam.split('-');
+    if (parts.length === 2) {
+      targetYear = parseInt(parts[0]);
+      targetMonth = parseInt(parts[1]);
+    } else if (parts.length === 1 && parts[0].length === 4) {
+      targetYear = parseInt(parts[0]);
+      isYearOnly = true;
+    }
+  }
+
+  const pad = (n) => String(n).padStart(2, '0');
+
+  if (isYearOnly) {
+    const list = [];
+    for (let m = 1; m <= 12; m++) {
+      list.push({
+        id: `tx_gaji_${targetYear}_${m}`,
+        date: `${targetYear}-${pad(m)}-01`,
+        type: "income",
+        amount: 15000000,
+        note: "Gaji Bulanan",
+        account_id: "id_vnxvbfvkem",
+        account_name: "Mandiri",
+        category_id: "c8",
+        category_name: "Gaji",
+        category_emoji: "💼"
+      });
+      list.push({
+        id: `tx_food1_${targetYear}_${m}`,
+        date: `${targetYear}-${pad(m)}-05`,
+        type: "expense",
+        amount: 1200000 + (m * 50000),
+        note: "Makan bulanan",
+        account_id: "id_0u46oo61br6",
+        account_name: "Dana",
+        category_id: "c1",
+        category_name: "Makanan & Minuman",
+        category_emoji: "🍜"
+      });
+      list.push({
+        id: `tx_bill_${targetYear}_${m}`,
+        date: `${targetYear}-${pad(m)}-10`,
+        type: "expense",
+        amount: 500000 + (m * 10000),
+        note: "Listrik & Internet",
+        account_id: "id_vnxvbfvkem",
+        account_name: "Mandiri",
+        category_id: "c6",
+        category_name: "Tagihan",
+        category_emoji: "💡"
+      });
+      list.push({
+        id: `tx_shop_${targetYear}_${m}`,
+        date: `${targetYear}-${pad(m)}-15`,
+        type: "expense",
+        amount: 800000 + (m * 20000),
+        note: "Belanja bulanan",
+        account_id: "id_fb80ye2m8uc",
+        account_name: "Bca",
+        category_id: "c3",
+        category_name: "Belanja",
+        category_emoji: "🛍️"
+      });
+    }
+    return list;
+  } else {
+    return [
+      {
+        id: "tx_1",
+        date: `${targetYear}-${pad(targetMonth)}-01`,
+        type: "income",
+        amount: 15000000,
+        note: "Gaji Bulanan",
+        account_id: "id_vnxvbfvkem",
+        account_name: "Mandiri",
+        category_id: "c8",
+        category_name: "Gaji",
+        category_emoji: "💼"
+      },
+      {
+        id: "tx_2",
+        date: `${targetYear}-${pad(targetMonth)}-02`,
+        type: "expense",
+        amount: 500000,
+        note: "Biaya Kuliah (UKT)",
+        account_id: "id_vnxvbfvkem",
+        account_name: "Mandiri",
+        category_id: "c7",
+        category_name: "Pendidikan",
+        category_emoji: "📚"
+      },
+      {
+        id: "tx_3",
+        date: `${targetYear}-${pad(targetMonth)}-03`,
+        type: "expense",
+        amount: 496512,
+        note: "Tagihan Air PDAM",
+        account_id: "id_aimdbhrjt7m",
+        account_name: "Jago",
+        category_id: "c6",
+        category_name: "Tagihan",
+        category_emoji: "💡"
+      },
+      {
+        id: "tx_4",
+        date: `${targetYear}-${pad(targetMonth)}-04`,
+        type: "income",
+        amount: 5088447,
+        note: "Freelance Desain Logo",
+        account_id: "id_ox3woi16iw",
+        account_name: "mnc bank",
+        category_id: "id_ghvsj3p69s5",
+        category_name: "Freelance",
+        category_emoji: "🏷️"
+      },
+      {
+        id: "tx_5",
+        date: `${targetYear}-${pad(targetMonth)}-05`,
+        type: "expense",
+        amount: 109135,
+        note: "Jajan Bubble Tea",
+        account_id: "id_ckm90i7olb",
+        account_name: "Shopeepay",
+        category_id: "c1",
+        category_name: "Makanan & Minuman",
+        category_emoji: "🍜"
+      },
+      {
+        id: "tx_6",
+        date: `${targetYear}-${pad(targetMonth)}-06`,
+        type: "expense",
+        amount: 50000,
+        note: "Pembelian Obat Apotek",
+        account_id: "id_ox3woi16iw",
+        account_name: "mnc bank",
+        category_id: "c4",
+        category_name: "Kesehatan",
+        category_emoji: "🏥"
+      },
+      {
+        id: "tx_7",
+        date: `${targetYear}-${pad(targetMonth)}-06`,
+        type: "income",
+        amount: 50000,
+        note: "Pelunasan Piutang Andi",
+        account_id: "id_0u46oo61br6",
+        account_name: "Dana",
+        category_id: "c8",
+        category_name: "Gaji",
+        category_emoji: "💼"
+      },
+      {
+        id: "tx_8",
+        date: `${targetYear}-${pad(targetMonth)}-07`,
+        type: "income",
+        amount: 10035019,
+        note: "Hasil Jual Barang Bekas",
+        account_id: "id_0u46oo61br6",
+        account_name: "Dana",
+        category_id: "c8",
+        category_name: "Gaji",
+        category_emoji: "💼"
+      }
+    ];
+  }
+}
+
 async function api(method, path, body) {
+  if (isDemoMode) {
+    if (path.startsWith('/transactions')) {
+      const urlParams = new URLSearchParams(path.split('?')[1] || '');
+      const monthParam = urlParams.get('month');
+      return getMockTransactions(monthParam);
+    }
+    if (path === '/accounts') {
+      return [
+        { id: "id_ox3woi16iw", name: "mnc bank", balance: 33734513, color: "#003087", created_at: "2026-06-24 00:18:53" },
+        { id: "id_vnxvbfvkem", name: "Mandiri", balance: 51154734, color: "#003d77", created_at: "2026-06-24 00:19:01" },
+        { id: "id_fb80ye2m8uc", name: "Bca", balance: 36036724, color: "#0060af", created_at: "2026-06-24 00:44:59" },
+        { id: "id_0u46oo61br6", name: "Dana", balance: 55835210, color: "#118EEA", created_at: "2026-06-24 00:56:00" },
+        { id: "id_ckm90i7olb", name: "Shopeepay", balance: 45256365, color: "#EE4D2D", created_at: "2026-06-24 00:57:21" },
+        { id: "id_j0qxok60y7r", name: "Ovo", balance: 48532209, color: "#6231A0", created_at: "2026-06-24 01:01:54" },
+        { id: "id_aimdbhrjt7m", name: "Jago", balance: 37853427, color: "#F05A28", created_at: "2026-06-24 01:07:45" },
+        { id: "id_ss36cq7jdu8", name: "Tunai", balance: 43791637, color: "#7c5a43", created_at: "2026-06-24 01:26:41" }
+      ];
+    }
+    if (path === '/categories') {
+      return [
+        { id: "c1", name: "Makanan & Minuman", emoji: "🍜", type: "expense" },
+        { id: "c2", name: "Transportasi", emoji: "🚗", type: "expense" },
+        { id: "c3", name: "Belanja", emoji: "🛍️", type: "expense" },
+        { id: "c4", name: "Kesehatan", emoji: "🏥", type: "expense" },
+        { id: "c5", name: "Hiburan", emoji: "🎮", type: "expense" },
+        { id: "c6", name: "Tagihan", emoji: "💡", type: "expense" },
+        { id: "c7", name: "Pendidikan", emoji: "📚", type: "expense" },
+        { id: "c8", name: "Gaji", emoji: "💼", type: "income" },
+        { id: "c9", name: "Investasi", emoji: "📈", type: "income" },
+        { id: "id_ghvsj3p69s5", name: "Freelance", emoji: "🏷️", type: "income" }
+      ];
+    }
+    if (path === '/budgets') {
+      return [
+        { id: "id_ffaonmousgg", category_id: "c1", limit_amount: 5000000, category_name: "Makanan & Minuman", category_emoji: "🍜" },
+        { id: "id_90ute8u7wof", category_id: "c2", limit_amount: 1000000, category_name: "Transportasi", category_emoji: "🚗" }
+      ];
+    }
+    if (path === '/goals') {
+      return [
+        { id: "id_nt17n2uzod", name: "DP RUMAH", target: 100000000, current: 45000000, deadline: "2026-12-31", icon: "target" }
+      ];
+    }
+    if (path === '/bills') {
+      return [
+        { id: "id_f2q3nlf74ju", name: "MNC Bank", amount: 481167, due_date: "2026-07-04", status: "unpaid" },
+        { id: "id_tj82cv3yhpk", name: "Jenius", amount: 712336, due_date: "2026-07-08", status: "unpaid" },
+        { id: "id_aumwty7b86s", name: "BNI", amount: 1234496, due_date: "2026-07-11", status: "unpaid" }
+      ];
+    }
+    if (path === '/piutang') {
+      return [
+        { id: "p1", name: "Andi", amount: 250000, returned: 50000, status: "active", due_date: "2026-07-10" },
+        { id: "p2", name: "Budi", amount: 100000, returned: 100000, status: "paid", due_date: "2026-06-25" }
+      ];
+    }
+    if (path === '/usage/status') {
+      return { plan: "premium", features: {} };
+    }
+    return { success: true, message: "Aksi disimulasikan dalam Mode Demo" };
+  }
+
   const token = getToken();
   const url = `${CLOUD_URL}${path}`;
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
@@ -574,122 +815,212 @@ function applyTheme(theme, btn, save = true) {
   if (curPage === 'transactions') filterTx();
 }
 
+// ── DEMO MODE RESTRICTIONS ──
+function applyDemoModeRestrictions() {
+  if (!isDemoMode) return;
 
-// ── NAVIGATION ──
+  // 1. Override global actions to prevent execution and show friendly toast
+  window.logoutAkun = (e) => {
+    if (e) e.stopPropagation();
+    toast('Aksi dibatasi: Silakan daftar akun baru gratis untuk mulai menggunakan fitur secara penuh!', 'info');
+  };
+  window.resetAll = () => {
+    toast('Aksi dibatasi: Silakan daftar akun baru gratis untuk mulai menggunakan fitur secara penuh!', 'info');
+  };
+  window.showDeleteAccountConfirm = () => {
+    toast('Aksi dibatasi: Silakan daftar akun baru gratis untuk mulai menggunakan fitur secara penuh!', 'info');
+  };
+  window.expCSV = () => {
+    toast('Fitur dinonaktifkan: Silakan daftar akun baru gratis untuk mulai menggunakan fitur secara penuh!', 'info');
+  };
+  window.doBackup = () => {
+    toast('Fitur dinonaktifkan: Silakan daftar akun baru gratis untuk mulai menggunakan fitur secara penuh!', 'info');
+  };
+  window.doRestore = () => {
+    toast('Fitur dinonaktifkan: Silakan daftar akun baru gratis untuk mulai menggunakan fitur secara penuh!', 'info');
+  };
+
+  // 2. Add visual styling to look disabled
+  const selectorsToDisable = [
+    '.sett-btn-logout',
+    'button[onclick*="resetAll"]',
+    'button[onclick*="showDeleteAccountConfirm"]',
+    'div[onclick*="expCSV"]',
+    'div[onclick*="doBackup"]',
+    'div[onclick*="restoreF"]',
+    '.sidebar-profile'
+  ];
+
+  selectorsToDisable.forEach(selector => {
+    document.querySelectorAll(selector).forEach(el => {
+      el.style.opacity = '0.5';
+      el.style.cursor = 'not-allowed';
+      el.style.pointerEvents = 'none';
+      if (el.tagName === 'BUTTON' || el.tagName === 'INPUT') {
+        el.disabled = true;
+      }
+    });
+  });
+}
+
+
+// ── NAVIGATION (Hash-Based Routing) ──
 function updateUrlAndTitle(page, tab = null, push = true) {
-  let path = '/dashboard';
+  let hash = '#/dashboard';
   let title = 'Dashboard — Laksa';
 
   if (page === '404') {
-    path = window.location.pathname;
+    hash = window.location.hash || '#/404';
     title = 'Halaman Tidak Ditemukan — Laksa';
+  } else if (page === 'login') {
+    hash = '#/login';
+    title = 'Masuk — Laksa';
+  } else if (page === 'register') {
+    hash = '#/register';
+    title = 'Daftar Akun Baru — Laksa';
   } else if (page === 'keuangan') {
     const activeTab = tab || keuActiveTab || 'budget';
     if (activeTab === 'budget') {
-      path = '/keuangan/budget';
+      hash = '#/keuangan/budget';
       title = 'Anggaran — Laksa';
     } else if (activeTab === 'goals') {
-      path = '/keuangan/goals';
+      hash = '#/keuangan/goals';
       title = 'Target — Laksa';
     } else if (activeTab === 'bills') {
-      path = '/keuangan/bills';
+      hash = '#/keuangan/bills';
       title = 'Tagihan — Laksa';
     } else if (activeTab === 'piutang') {
-      path = '/keuangan/piutang';
+      hash = '#/keuangan/piutang';
       title = 'Piutang — Laksa';
     }
   } else {
     if (page === 'dashboard') {
-      path = '/dashboard';
+      hash = '#/dashboard';
       title = 'Dashboard — Laksa';
     } else if (page === 'transactions') {
-      path = '/transactions';
+      hash = '#/transactions';
       title = 'Transaksi — Laksa';
     } else if (page === 'receipt') {
-      path = '/receipt';
+      hash = '#/receipt';
       title = 'Scan Struk — Laksa';
     } else if (page === 'reports') {
-      path = '/reports';
+      hash = '#/reports';
       title = 'Laporan — Laksa';
     } else if (page === 'settings') {
-      path = '/settings';
+      hash = '#/settings';
       title = 'Pengaturan — Laksa';
     }
   }
 
   document.title = title;
 
-  if (push) {
-    history.pushState({ page, tab }, title, path);
+  if (push && window.location.hash !== hash) {
+    window.location.hash = hash;
   }
 }
 
-function parseUrlAndRoute(push = true) {
-  if (!isLoggedIn()) {
-    const profile = getProfile();
-    if (profile && profile.tgId && !profile.id) {
-      showSetupPage();
+function parseUrlAndRoute() {
+  // Read the current hash, stripping the leading '#'
+  const hash = (window.location.hash || '').replace(/^#/, '') || '/';
+
+  // 1. Handle public routes first
+  if (hash === '/' || hash === '') {
+    if (isLoggedIn()) {
+      go('dashboard');
     } else {
-      showAuthPage();
+      go('login');
     }
-    return;
-  }
-  const path = window.location.pathname;
-  if (path === '/' || path === '') {
-    go('dashboard', push);
-  } else if (path === '/dashboard') {
-    go('dashboard', push);
-  } else if (path === '/transactions') {
-    go('transactions', push);
-  } else if (path === '/receipt') {
-    go('receipt', push);
-  } else if (path === '/reports') {
-    go('reports', push);
-  } else if (path === '/settings') {
-    go('settings', push);
-  } else if (path === '/keuangan' || path === '/keuangan/') {
-    go('keuangan', push);
-  } else if (path === '/keuangan/budget') {
-    go('keuangan', false);
-    setKeuTab('budget', null, push);
-  } else if (path === '/keuangan/goals') {
-    go('keuangan', false);
-    setKeuTab('goals', null, push);
-  } else if (path === '/keuangan/bills') {
-    go('keuangan', false);
-    setKeuTab('bills', null, push);
-  } else if (path === '/keuangan/piutang') {
-    go('keuangan', false);
-    setKeuTab('piutang', null, push);
+  } else if (hash === '/login') {
+    go('login');
+  } else if (hash === '/register') {
+    go('register');
   } else {
-    go('404', push);
+    // 2. Handle private routes (login required)
+    if (!isLoggedIn()) {
+      const profile = getProfile();
+      if (profile && profile.tgId && !profile.id) {
+        showSetupPage();
+      } else {
+        go('login');
+      }
+      return;
+    }
+
+    if (hash === '/dashboard') {
+      go('dashboard');
+    } else if (hash === '/transactions') {
+      go('transactions');
+    } else if (hash === '/receipt') {
+      go('receipt');
+    } else if (hash === '/reports') {
+      go('reports');
+    } else if (hash === '/settings') {
+      go('settings');
+    } else if (hash === '/keuangan' || hash === '/keuangan/') {
+      go('keuangan');
+    } else if (hash === '/keuangan/budget') {
+      go('keuangan');
+      setKeuTab('budget', null, false);
+    } else if (hash === '/keuangan/goals') {
+      go('keuangan');
+      setKeuTab('goals', null, false);
+    } else if (hash === '/keuangan/bills') {
+      go('keuangan');
+      setKeuTab('bills', null, false);
+    } else if (hash === '/keuangan/piutang') {
+      go('keuangan');
+      setKeuTab('piutang', null, false);
+    } else {
+      go('404');
+    }
   }
 }
 
-window.addEventListener('popstate', event => {
-  const state = event.state;
-  if (state && state.page) {
-    if (state.page === 'keuangan') {
-      go('keuangan', false);
-      setKeuTab(state.tab || 'budget', null, false);
-    } else {
-      go(state.page, false);
-    }
-  } else {
-    parseUrlAndRoute(false);
-  }
+// Listen for hash changes (browser Back/Forward buttons or direct hash edits)
+window.addEventListener('hashchange', () => {
+  parseUrlAndRoute();
 });
 
 function go(page, push = true) {
+  // 1. Handle landing redirect — go back to the landing page (index.html)
+  if (page === 'landing') {
+    window.location.href = '/';
+    return;
+  }
+
+  // 2. Handle auth routing specifically
+  if (page === 'login' || page === 'register') {
+    if (isLoggedIn()) {
+      go('dashboard', push);
+      return;
+    }
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.body.classList.add('is-landing-page');
+    curPage = page;
+    
+    showAuthPage();
+    switchAuthTab(page);
+    updateUrlAndTitle(page, null, push);
+    return;
+  }
+
+  // 3. Auth guard for all private pages
   if (!isLoggedIn() && page !== '404') {
     const profile = getProfile();
     if (profile && profile.tgId && !profile.id) {
       showSetupPage();
     } else {
-      showAuthPage();
+      go('login', push);
     }
     return;
   }
+
+  // 4. Reset landing page body classes and modal states for normal routing
+  if (page !== 'login' && page !== 'register') {
+    hideAuthPage();
+  }
+
+  document.body.classList.remove('is-landing-page');
 
   // Bug #3 fix: handle alias pages SEBELUM DOM manipulation agar tidak ada flash blank screen
   if (page === 'budget')  { if (curPage !== 'keuangan') go('keuangan', false); setKeuTab('budget', null, push);  return; }
@@ -723,6 +1054,10 @@ function go(page, push = true) {
     else if (page === 'keuangan') renderKeuangan();
     else if (page === 'reports') renderReports();
     else if (page === 'settings') renderSettings();
+
+    if (isDemoMode) {
+      setTimeout(applyDemoModeRestrictions, 50);
+    }
   });
 }
 let keuActiveTab = 'budget';
@@ -772,6 +1107,11 @@ async function refreshData(month) { await loadAll(month); refresh(); }
 
 // ── Toast ──
 function toast(msg, type = 'info', dur = 3000) {
+  // Translate authentication errors to registration invitation
+  if (msg && (msg.includes('Autentikasi diperlukan') || msg.includes('Sesi expired') || msg.includes('login kembali'))) {
+    msg = 'Silakan daftar akun baru gratis untuk mulai mencatat keuangan secara personal & sinkronisasi Cloud!';
+    type = 'info';
+  }
   const c = el('toasts');
   const icons = {
     ok: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
@@ -889,11 +1229,19 @@ function switchAuthTab(tab) {
     if (registerForm) registerForm.style.display = 'none';
     if (loginTab) loginTab.classList.add('active');
     if (registerTab) registerTab.classList.remove('active');
+    if (curPage !== 'login') {
+      curPage = 'login';
+      updateUrlAndTitle('login', null, true);
+    }
   } else {
     if (loginForm) loginForm.style.display = 'none';
     if (registerForm) registerForm.style.display = '';
     if (loginTab) loginTab.classList.remove('active');
     if (registerTab) registerTab.classList.add('active');
+    if (curPage !== 'register') {
+      curPage = 'register';
+      updateUrlAndTitle('register', null, true);
+    }
   }
 }
 
@@ -1343,6 +1691,13 @@ function checkAndEnableGoogleLogin() {
 
 // ── Init ──
 document.addEventListener('DOMContentLoaded', async () => {
+  const demoParams = new URLSearchParams(window.location.search);
+  if (demoParams.get('demo') === 'true' || sessionStorage.getItem('laksa_demo') === 'true') {
+    isDemoMode = true;
+    sessionStorage.setItem('laksa_demo', 'true');
+    const demoProfile = { id: "usr_demo", name: "Haeru", email: "demo@laksaapp.my.id", tgId: "123456789", theme: "glass" };
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(demoProfile));
+  }
   checkAndEnableGoogleLogin();
   // Tema dari localStorage
   const s = getSet();
@@ -1375,18 +1730,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Cek auth: token exists = logged in, otherwise show auth page
-  const initialPath = window.location.pathname;
   const profile = getProfile();
   if (!isLoggedIn()) {
-    // No token — show auth page (new users) or legacy setup (existing users without auth)
-    if (profile && profile.tgId && !profile.id) {
-      // Legacy user: has Telegram ID but no auth — show setup page for backward compat
-      showSetupPage();
-    } else {
-      showAuthPage();
-    }
-    parseUrlAndRoute(false);
-    history.replaceState({ page: curPage, tab: curPage === 'keuangan' ? keuActiveTab : null }, document.title, initialPath);
+    parseUrlAndRoute();
     return;
   }
 
@@ -1396,8 +1742,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateSidebarProfile();
 
   // Load data dari D1 — tampilkan skeleton dulu
-  parseUrlAndRoute(false);
-  history.replaceState({ page: curPage, tab: curPage === 'keuangan' ? keuActiveTab : null }, document.title, initialPath);
+  parseUrlAndRoute();
   showLoadingOverlay(true);
   try {
     await loadAll(thisMon());
@@ -1407,6 +1752,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     showLoadingOverlay(false);
   }
   refresh();
+  if (isDemoMode) {
+    setTimeout(applyDemoModeRestrictions, 300);
+  }
   // Update arrows after accounts render
   setTimeout(updateAccArrows, 300);
 });

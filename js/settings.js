@@ -15,6 +15,10 @@ function renderSettings() {
   applyTheme(theme, null, false);
   updateProfilePreview();
   renderAccList(); renderCatList();
+
+  if (typeof applyDemoModeRestrictions === 'function') {
+    applyDemoModeRestrictions();
+  }
 }
 
 function updateProfilePreview() {
@@ -416,11 +420,11 @@ function renderAccSheet() {
   const isEwalletAcc = b && b.isWallet || /ovo|gopay|dana|linkaja|shopeepay|spay|wallet/i.test(acc.name);
   const nm2 = acc.name.toLowerCase();
   let ewDarkImg2 = null;
-  if (nm2.includes('gopay'))                               ewDarkImg2 = 'ewallet/gopay-dark.jpg';
-  else if (nm2.includes('ovo'))                            ewDarkImg2 = 'ewallet/ovo-dark.jpg';
-  else if (nm2.includes('dana'))                           ewDarkImg2 = 'ewallet/dana-dark.jpg';
-  else if (nm2.includes('linkaja'))                        ewDarkImg2 = 'ewallet/linkaja-dark.jpg';
-  else if (nm2.includes('shopee') || nm2.includes('spay')) ewDarkImg2 = 'ewallet/shopeepay-dark.jpg';
+  if (nm2.includes('gopay'))                               ewDarkImg2 = '/ewallet/gopay.svg';
+  else if (nm2.includes('ovo'))                            ewDarkImg2 = '/ewallet/ovo.svg';
+  else if (nm2.includes('dana'))                           ewDarkImg2 = '/ewallet/dana.svg';
+  else if (nm2.includes('linkaja'))                        ewDarkImg2 = '/ewallet/linkaja.png';
+  else if (nm2.includes('shopee') || nm2.includes('spay')) ewDarkImg2 = '/ewallet/shopeepay.svg';
   
   const ewSheetImg  = ewDarkImg2;
   // Bug #8 fix: kedua cabang ternary identik — sederhanakan jadi satu nilai
@@ -428,7 +432,7 @@ function renderAccSheet() {
   
   const sheetInit = (acc.name.replace(/[^a-zA-Z0-9]/g,'').slice(0,2)||'?').toUpperCase();
   const logoHtml = (isEwalletAcc && ewSheetImg)
-    ? `<img src="${ewSheetImg}" style="width:80%;height:80%;object-fit:contain;border-radius:10px;" onerror="this.style.display='none'">
+    ? `<img src="${ewSheetImg}" style="width:80%;height:80%;object-fit:contain;" onerror="this.style.display='none'">
        <div class="acc-sheet-ava-fb" style="display:none">${sheetInit}</div>`
     : getLogoHtml(acc.name, b, '', 'acc-sheet-ava-fb', 'width:100%;height:100%;object-fit:cover;border-radius:14px;', true);
   

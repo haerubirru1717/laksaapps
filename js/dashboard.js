@@ -309,9 +309,10 @@ function logoutAkun(e) {
   clearToken();
   localStorage.removeItem('laksa_profile');
   localStorage.removeItem('laksa_avatar');
+  sessionStorage.removeItem('laksa_demo');
   const K_KEYS = ['ft_tx', 'ft_bud', 'ft_goals', 'ft_acc', 'ft_cats', 'ft_set', 'ft_rec'];
   K_KEYS.forEach(k => localStorage.removeItem(k));
-  location.reload();
+  window.location.href = '/';
 }
 // Tutup dropdown saat klik di luar
 document.addEventListener('click', function (e) {
@@ -383,24 +384,22 @@ function renderDCs(accs, total, txs, now) {
       const nm = acc.name.toLowerCase();
       let cCls = '', ewDarkImg = null;
       
-      if (nm.includes('gopay'))                              { cCls='ec-gopay';  ewDarkImg='ewallet/gopay-dark.jpg'; }
-      else if (nm.includes('ovo'))                           { cCls='ec-ovo';    ewDarkImg='ewallet/ovo-dark.jpg'; }
-      else if (nm.includes('dana'))                          { cCls='ec-dana';   ewDarkImg='ewallet/dana-dark.jpg'; }
-      else if (nm.includes('linkaja'))                       { cCls='ec-linkaja';ewDarkImg='ewallet/linkaja-dark.jpg'; }
-      else if (nm.includes('shopee') || nm.includes('spay')) { cCls='ec-spay';   ewDarkImg='ewallet/shopeepay-dark.jpg'; }
+      if (nm.includes('gopay'))                              { cCls='ec-gopay';  ewDarkImg='/ewallet/gopay.svg'; }
+      else if (nm.includes('ovo'))                           { cCls='ec-ovo';    ewDarkImg='/ewallet/ovo.svg'; }
+      else if (nm.includes('dana'))                          { cCls='ec-dana';   ewDarkImg='/ewallet/dana.svg'; }
+      else if (nm.includes('linkaja'))                       { cCls='ec-linkaja';ewDarkImg='/ewallet/linkaja.png'; }
+      else if (nm.includes('shopee') || nm.includes('spay')) { cCls='ec-spay';   ewDarkImg='/ewallet/shopeepay.svg'; }
       
-      // Selalu pakai *-dark.jpg sebagai badge icon — brand-color bg langsung,
-      // tanpa mix-blend-mode (menghindari kotak putih/logo invisible di kedua tema)
+      // Pakai SVG logo asli — bungkus dalam kotak putih agar kontras di atas background brand
       const ewImg = ewDarkImg;
       
       const init = (acc.name.replace(/[^a-zA-Z0-9]/g,'').slice(0,3)||'?').toUpperCase();
-      // Badge icon: border-radius 8px, tanpa blend mode
+      // Badge icon: dibungkus kotak putih rounded (seperti tampilan produksi)
       const logoEl = ewImg
-        ? `<img src="${ewImg}" alt="${esc(acc.name)}"
-             style="max-height:42px;max-width:88px;object-fit:contain;display:block;border-radius:8px;"
-             onerror="this.style.display='none';this.nextElementSibling.style.display='inline'">
-           <span style="display:none;font-size:0.8rem;font-weight:800;color:rgba(255,255,255,0.9);letter-spacing:.06em">${init}</span>`
-        : `<span style="font-size:0.8rem;font-weight:800;color:rgba(255,255,255,0.9);letter-spacing:.06em">${init}</span>`;
+        ? `<div style="background:#fff;border-radius:10px;padding:6px 10px;display:inline-flex;align-items:center;justify-content:center;min-width:72px;min-height:38px;box-shadow:0 1px 4px rgba(0,0,0,0.15);">
+             <img src="${ewImg}" alt="${esc(acc.name)}" style="max-height:26px;max-width:80px;width:auto;height:auto;object-fit:contain;display:block;">
+           </div>`
+        : `<div style="background:rgba(255,255,255,0.25);border-radius:10px;padding:5px 12px;"><span style="font-size:0.8rem;font-weight:800;color:#fff;letter-spacing:.06em">${init}</span></div>`;
       
       eHtml += `<div class="ecard ${cCls}" onclick="openAccDetail('${acc.id}')">
         <div class="blob b1"></div><div class="blob b2"></div>

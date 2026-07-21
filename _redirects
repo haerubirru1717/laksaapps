@@ -1,1 +1,8 @@
-/* /index.html 200
+/login       /app 200
+/register    /app 200
+/dashboard   /app 200
+/transactions /app 200
+/receipt     /app 200
+/reports     /app 200
+/settings    /app 200
+/keuangan*   /app 200

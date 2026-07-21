@@ -6,6 +6,9 @@ function closeModal() {
   const overlay = el('moverlay');
   if (!overlay) return;
   overlay.classList.remove('open');
+  // Bersihkan class tx-modal jika ada
+  const modalEl = overlay.querySelector('.modal');
+  if (modalEl) modalEl.classList.remove('tx-modal');
   // Kembalikan AI FAB
   const fab = el('aiFab');
   if (fab) { fab.style.opacity = ''; fab.style.pointerEvents = ''; fab.style.zIndex = ''; }
@@ -16,9 +19,36 @@ function closeModal() {
 }
 function handleOC(e) { if (e.target === el('moverlay')) closeModal(); }
 
+// ── UPLOAD STRUK DARI MODAL ──
+function handleUploadReceipt(input) {
+  const file = input.files[0];
+  if (!file) return;
+  closeModal();
+  // Simpan file ke variabel global agar halaman scan bisa ambil
+  window._pendingReceiptFile = file;
+  // Navigasi ke halaman scan struk
+  if (typeof go === 'function') go('scan');
+  // Setelah navigasi, proses file
+  setTimeout(() => {
+    if (typeof procRFile === 'function' && window._pendingReceiptFile) {
+      procRFile(window._pendingReceiptFile);
+      window._pendingReceiptFile = null;
+    }
+  }, 350);
+}
+
+
 // ── MODAL ──
 function openModal(type, data = null) {
   const overlay = el('moverlay'), title = el('mtitle'), body = el('mbody');
+  const modalEl = overlay.querySelector('.modal');
+  if (modalEl) {
+    if (type === 'addTransaction') {
+      modalEl.classList.add('tx-modal');
+    } else {
+      modalEl.classList.remove('tx-modal');
+    }
+  }
   const builders = {
     addTransaction: () => buildTxForm(data), addBudget: () => buildBudForm(),
     addGoal: () => buildGoalForm(), addToGoal: () => buildAddToGoalForm(data),
@@ -37,6 +67,14 @@ function openModal(type, data = null) {
       let isSubmitting = false;
       form.addEventListener('submit', async e => {
         e.preventDefault();
+
+        // ── DEMO MODE BLOCK ──
+        if (typeof isDemoMode !== 'undefined' && isDemoMode) {
+          toast('Silakan daftar akun baru gratis untuk menyimpan data dan menikmati fitur Laksa secara penuh!', 'info');
+          closeModal();
+          return;
+        }
+
         if (isSubmitting) return;
         const btn = form.querySelector('button[type="submit"]');
         if (btn) {
@@ -67,6 +105,16 @@ function openModal(type, data = null) {
     }
   }
   overlay.classList.add('open');
+  // Inject tombol Catat/Simpan khusus untuk modal addTransaction di kanan atas
+  const mhdrAction = el('mhdrAction');
+  if (mhdrAction) {
+    if (type === 'addTransaction') {
+      const btnText = data ? 'Simpan' : 'Catat';
+      mhdrAction.innerHTML = `<button type="submit" form="txf" class="txf-save-btn">${btnText}</button>`;
+    } else {
+      mhdrAction.innerHTML = '';
+    }
+  }
   // Sembunyikan AI FAB saat modal terbuka
   const fab = el('aiFab');
   if (fab) { fab.style.opacity = '0'; fab.style.pointerEvents = 'none'; fab.style.zIndex = '999'; }
@@ -329,13 +377,29 @@ function _txfAccPills(id, accs, selId) {
 function _txfSuggestions(type) {
   if (type === 'transfer') return '';
   const txs = (typeof getTx === 'function' ? getTx() : []).filter(t => t.type === type);
+  // Hitung frekuensi per nama toko/catatan
   const freq = {};
   txs.forEach(t => { const s = (t.store || t.note || '').trim(); if (s) freq[s] = (freq[s] || 0) + 1; });
-  const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0]);
+  const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0]);
   if (!top.length) return '';
-  const chips = top.map(s => `<button type="button" class="txf-sugchip" onclick="txfApplySug(this)">${esc(s)}</button>`).join('');
+  // Icon mapping sederhana per kata kunci
+  function _sugIcon(name) {
+    const n = name.toLowerCase();
+    if (/grab|gojek|ojek|taxi|uber|lyft|maxim|indriver/.test(n)) return '🚗';
+    if (/food|makan|resto|cafe|kafe|warung|mcd|kfc|pizza|burger|steak|ayam|soto|nasi|mie|bakso|sushi|ramen/.test(n)) return '🍔';
+    if (/laundry|cuci|dry clean/.test(n)) return '👕';
+    if (/belanja|market|minimarket|indomaret|alfamart|supermarket|mall|shop/.test(n)) return '🛒';
+    if (/listrik|pln|air|pdam|internet|wifi|telkom|gas/.test(n)) return '💡';
+    if (/sekolah|kuliah|kampus|ukt|spp|kursus/.test(n)) return '📚';
+    if (/obat|apotek|dokter|rs|klinik|bpjs/.test(n)) return '💊';
+    if (/pulsa|paket|data|reload/.test(n)) return '📱';
+    if (/transfer|kirim|bayar/.test(n)) return '💸';
+    if (/gopay|dana|ovo|linkaja|shopee/.test(n)) return '💳';
+    return '🛍️';
+  }
+  const chips = top.map(s => `<button type="button" class="txf-sugchip" onclick="txfApplySug(this)"><span class="txf-sugchip-ico">${_sugIcon(s)}</span>${esc(s)}</button>`).join('');
   return `<div class="txf-suggest">
-  <div class="txf-suggest-lbl"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7c.6.5 1 1.2 1 2h6c0-.8.4-1.5 1-2A7 7 0 0012 2z"/></svg> Saran berdasarkan riwayat</div>
+  <div class="txf-suggest-lbl">🔥 Saran berdasarkan riwayat</div>
   <div class="txf-suggest-chips">${chips}</div>
 </div>`;
 }
@@ -349,47 +413,60 @@ function buildTxForm(data) {
   const html = `<form id="txf">
 <input type="hidden" id="txT" value="${txType}"/>
 <input type="hidden" id="txEid" value="${isEdit ? d.id : ''}"/>
-<div class="txf-toprow">
-  <div class="txf-typedd" id="txfTypeDd">
-    <button type="button" class="txf-pill txf-typepill ${tm.cls}" onclick="txfToggleType(event)">
-      <span class="txf-pill-ico" id="txfTypeIco" style="color:${tm.color}">${tm.ico}</span>
-      <span class="txf-pill-lbl" id="txfTypeLbl">${tm.label}</span>
-      ${CHEVRON_SVG}
-    </button>
-    <div class="txf-typemenu" id="txfTypeMenu">${typeOpts}</div>
+
+<div class="txf-blue-top">
+  <div class="txf-toprow">
+    <div class="txf-typedd" id="txfTypeDd">
+      <button type="button" class="txf-pill txf-typepill ${tm.cls}" onclick="txfToggleType(event)">
+        <span class="txf-pill-ico" id="txfTypeIco" style="color:${tm.color}">${tm.ico}</span>
+        <span class="txf-pill-lbl" id="txfTypeLbl">${tm.label}</span>
+        ${CHEVRON_SVG}
+      </button>
+      <div class="txf-typemenu" id="txfTypeMenu">${typeOpts}</div>
+    </div>
+    <label class="txf-pill txf-datepill">
+      <span class="txf-pill-ico">${TXF_CAL_SVG}</span>
+      <span class="txf-pill-lbl" id="txfDateLbl">${_txfDateLabel(d.date || today())}</span>
+      <input type="date" id="txDt" value="${d.date || today()}" onchange="txfDateChanged()"/>
+    </label>
   </div>
-  <label class="txf-pill txf-datepill">
-    <span class="txf-pill-ico">${TXF_CAL_SVG}</span>
-    <span class="txf-pill-lbl" id="txfDateLbl">${_txfDateLabel(d.date || today())}</span>
-    <input type="date" id="txDt" value="${d.date || today()}" onchange="txfDateChanged()"/>
-  </label>
+  <button type="button" class="txf-aibanner" onclick="closeModal();toggleAiChat()">
+    <span class="txf-aibanner-txt">Coba catat pakai AI, lebih praktis <span class="txf-aibanner-spark">⚡</span></span>
+    <span class="txf-aibanner-btn">Coba</span>
+  </button>
+  <div class="txf-amtwrap">
+    <span class="txf-amtcur">Rp</span>
+    <input type="number" id="txAmt" class="txf-amtinp" inputmode="numeric" placeholder="0" value="${d.amount || ''}" required/>
+  </div>
 </div>
-<button type="button" class="txf-aibanner" onclick="closeModal();toggleAiChat()">
-  <span class="txf-aibanner-txt">Coba catat pakai AI, lebih praktis <span class="txf-aibanner-spark">⚡</span></span>
-  <span class="txf-aibanner-btn">Coba</span>
-</button>
-<div class="txf-amtwrap">
-  <span class="txf-amtcur">Rp</span>
-  <input type="number" id="txAmt" class="txf-amtinp" inputmode="numeric" placeholder="0" value="${d.amount || ''}" required/>
+
+<div class="txf-white-bottom">
+  <div id="txfSuggestWrap">${_txfSuggestions(txType)}</div>
+  <div class="txf-block">
+    <div class="txf-block-lbl" id="txfAccLbl">${txType === 'transfer' ? 'Rekening Asal' : 'Rekening'}</div>
+    ${_txfAccPills('txA', accs, d.account_id || accs[0]?.id)}
+  </div>
+  <div class="txf-block" id="txfToWrap" style="display:${txType === 'transfer' ? 'block' : 'none'}">
+    <div class="txf-block-lbl">Rekening Tujuan</div>
+    ${_txfAccPills('txTA', accs, d.to_acc_id || accs.find(a => a.id !== (d.account_id || accs[0]?.id))?.id || accs[0]?.id)}
+  </div>
+  <div class="txf-block" id="txfCatWrap" style="display:${txType === 'transfer' ? 'none' : 'block'}">
+    <div class="txf-block-lbl">Kategori</div>
+    ${catDD}
+  </div>
+  <div class="txf-fields">
+    <div class="txf-lineinp-wrap">
+      <label class="txf-lineinp-lbl">Nama Toko / Merchant</label>
+      <input type="text" class="txf-lineinp" id="txS" placeholder="Opsional" value="${esc(d.store || '')}"/>
+    </div>
+    <div class="txf-lineinp-wrap">
+      <label class="txf-lineinp-lbl">Catatan</label>
+      <input type="text" class="txf-lineinp" id="txN" placeholder="Opsional" value="${esc(d.note || '')}"/>
+    </div>
+  </div>
+  <!-- Hidden submit button for Enter key form submission -->
+  <button type="submit" style="display:none"></button>
 </div>
-<div id="txfSuggestWrap">${_txfSuggestions(txType)}</div>
-<div class="txf-block">
-  <div class="txf-block-lbl" id="txfAccLbl">${txType === 'transfer' ? 'Rekening Asal' : 'Rekening'}</div>
-  ${_txfAccPills('txA', accs, d.account_id || accs[0]?.id)}
-</div>
-<div class="txf-block" id="txfToWrap" style="display:${txType === 'transfer' ? 'block' : 'none'}">
-  <div class="txf-block-lbl">Rekening Tujuan</div>
-  ${_txfAccPills('txTA', accs, d.to_acc_id || accs.find(a => a.id !== (d.account_id || accs[0]?.id))?.id || accs[0]?.id)}
-</div>
-<div class="txf-block" id="txfCatWrap" style="display:${txType === 'transfer' ? 'none' : 'block'}">
-  <div class="txf-block-lbl">Kategori</div>
-  ${catDD}
-</div>
-<div class="txf-fields">
-  <input type="text" class="finp txf-optinp" id="txS" placeholder="Toko / Merchant (opsional)" value="${esc(d.store || '')}"/>
-  <input type="text" class="finp txf-optinp" id="txN" placeholder="Catatan (opsional)" value="${esc(d.note || '')}"/>
-</div>
-<div class="mfoot"><button type="button" class="btn2" onclick="closeModal()">Batal</button><button type="submit" class="btn">${isEdit ? 'Simpan' : 'Catat'}</button></div>
   </form>`;
   return {
     t: isEdit ? 'Edit Transaksi' : 'Catat Transaksi', html, onSubmit: () => {
@@ -407,7 +484,7 @@ function closeTxfType() { const m = el('txfTypeMenu'); if (m) m.classList.remove
 document.addEventListener('click', e => { if (!e.target.closest('#txfTypeDd')) closeTxfType(); });
 function txfDateChanged() { const inp = el('txDt'), lbl = el('txfDateLbl'); if (inp && lbl) lbl.textContent = _txfDateLabel(inp.value); }
 function txfSelAcc(id, btn) { const inp = el(id); if (inp) inp.value = btn.dataset.val; const wrap = btn.closest('.txf-accpills'); wrap?.querySelectorAll('.txf-accpill').forEach(p => p.classList.remove('selected')); btn.classList.add('selected'); }
-function txfApplySug(btn) { const inp = el('txS'); if (inp) inp.value = btn.textContent; document.querySelectorAll('.txf-sugchip').forEach(c => c.classList.remove('active')); btn.classList.add('active'); }
+function txfApplySug(btn) { const inp = el('txS'); if (inp) { const txts = Array.from(btn.childNodes).filter(n => n.nodeType === 3); inp.value = txts.map(n => n.textContent).join('').trim(); } document.querySelectorAll('.txf-sugchip').forEach(c => c.classList.remove('active')); btn.classList.add('active'); }
 function setTT(type) {
   el('txT').value = type;
   const tm = TXF_TYPES[type];
