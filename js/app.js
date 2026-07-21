@@ -1660,12 +1660,14 @@ function checkAndEnableGoogleLogin() {
   if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
     if (btnLogin) {
       btnLogin.removeAttribute('disabled');
+      btnLogin.style.display = '';
       const span = btnLogin.querySelector('span');
       if (span) span.textContent = 'Lanjutkan dengan Google';
       btnLogin.title = '';
     }
     if (btnRegister) {
       btnRegister.removeAttribute('disabled');
+      btnRegister.style.display = '';
       const span = btnRegister.querySelector('span');
       if (span) span.textContent = 'Daftar dengan Google';
       btnRegister.title = '';
@@ -1673,18 +1675,15 @@ function checkAndEnableGoogleLogin() {
   } else {
     _googleLoadAttempts++;
     if (_googleLoadAttempts < 15) {
-      setTimeout(checkAndEnableGoogleLogin, 500);
+      // Retry with backoff — first 5 attempts every 500ms, then every 1s
+      const delay = _googleLoadAttempts < 5 ? 500 : 1000;
+      setTimeout(checkAndEnableGoogleLogin, delay);
     } else {
-      if (btnLogin) {
-        const span = btnLogin.querySelector('span');
-        if (span) span.textContent = 'Google API tidak tersedia';
-        btnLogin.title = 'Google API gagal dimuat. Pastikan Anda tidak memblokir script Google.';
-      }
-      if (btnRegister) {
-        const span = btnRegister.querySelector('span');
-        if (span) span.textContent = 'Google API tidak tersedia';
-        btnRegister.title = 'Google API gagal dimuat. Pastikan Anda tidak memblokir script Google.';
-      }
+      // Google API truly unavailable — hide the entire section (button + divider)
+      const sectionLogin = document.getElementById('authGoogleLoginSection');
+      const sectionRegister = document.getElementById('authGoogleRegisterSection');
+      if (sectionLogin) sectionLogin.style.display = 'none';
+      if (sectionRegister) sectionRegister.style.display = 'none';
     }
   }
 }
