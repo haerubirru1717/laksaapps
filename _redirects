@@ -1,3 +1,10 @@
+# Block sensitive files from public access
+/.gitignore         /404 404
+/package.json       /404 404
+/package-lock.json  /404 404
+/README.md          /404 404
+
+# SPA Page Routing Rules
 /login       /app 200
 /register    /app 200
 /dashboard   /app 200
