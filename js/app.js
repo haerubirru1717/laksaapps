@@ -205,10 +205,20 @@ function getMockTransactions(monthParam) {
     }
     return list;
   } else {
+    const curD = Math.min(22, new Date().getDate());
+    const d1 = pad(Math.max(1, curD - 18));
+    const d2 = pad(Math.max(2, curD - 14));
+    const d3 = pad(Math.max(3, curD - 10));
+    const d4 = pad(Math.max(4, curD - 6));
+    const d5 = pad(Math.max(5, curD - 4));
+    const d6 = pad(Math.max(6, curD - 2));
+    const d7 = pad(Math.max(7, curD - 1));
+    const d8 = pad(curD);
+
     return [
       {
         id: "tx_1",
-        date: `${targetYear}-${pad(targetMonth)}-01`,
+        date: `${targetYear}-${pad(targetMonth)}-${d1}`,
         type: "income",
         amount: 15000000,
         note: "Gaji Bulanan",
@@ -220,7 +230,7 @@ function getMockTransactions(monthParam) {
       },
       {
         id: "tx_2",
-        date: `${targetYear}-${pad(targetMonth)}-02`,
+        date: `${targetYear}-${pad(targetMonth)}-${d2}`,
         type: "expense",
         amount: 500000,
         note: "Biaya Kuliah (UKT)",
@@ -232,7 +242,7 @@ function getMockTransactions(monthParam) {
       },
       {
         id: "tx_3",
-        date: `${targetYear}-${pad(targetMonth)}-03`,
+        date: `${targetYear}-${pad(targetMonth)}-${d3}`,
         type: "expense",
         amount: 496512,
         note: "Tagihan Air PDAM",
@@ -244,7 +254,7 @@ function getMockTransactions(monthParam) {
       },
       {
         id: "tx_4",
-        date: `${targetYear}-${pad(targetMonth)}-04`,
+        date: `${targetYear}-${pad(targetMonth)}-${d4}`,
         type: "income",
         amount: 5088447,
         note: "Freelance Desain Logo",
@@ -256,7 +266,7 @@ function getMockTransactions(monthParam) {
       },
       {
         id: "tx_5",
-        date: `${targetYear}-${pad(targetMonth)}-05`,
+        date: `${targetYear}-${pad(targetMonth)}-${d5}`,
         type: "expense",
         amount: 109135,
         note: "Jajan Bubble Tea",
@@ -268,7 +278,7 @@ function getMockTransactions(monthParam) {
       },
       {
         id: "tx_6",
-        date: `${targetYear}-${pad(targetMonth)}-06`,
+        date: `${targetYear}-${pad(targetMonth)}-${d6}`,
         type: "expense",
         amount: 50000,
         note: "Pembelian Obat Apotek",
@@ -280,9 +290,9 @@ function getMockTransactions(monthParam) {
       },
       {
         id: "tx_7",
-        date: `${targetYear}-${pad(targetMonth)}-06`,
+        date: `${targetYear}-${pad(targetMonth)}-${d7}`,
         type: "income",
-        amount: 50000,
+        amount: 750000,
         note: "Pelunasan Piutang Andi",
         account_id: "id_0u46oo61br6",
         account_name: "Dana",
@@ -292,9 +302,9 @@ function getMockTransactions(monthParam) {
       },
       {
         id: "tx_8",
-        date: `${targetYear}-${pad(targetMonth)}-07`,
+        date: `${targetYear}-${pad(targetMonth)}-${d8}`,
         type: "income",
-        amount: 10035019,
+        amount: 2500000,
         note: "Hasil Jual Barang Bekas",
         account_id: "id_0u46oo61br6",
         account_name: "Dana",

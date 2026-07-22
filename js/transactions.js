@@ -278,7 +278,14 @@ function drawTxChart(txs) {
   const canvas = el('txChartCanvas');
   const netEl = el('txChartNet');
   const subEl = el('txChartSub');
-  if (!canvas || !netEl || !subEl || typeof Chart === 'undefined') return;
+  if (!canvas || !netEl || !subEl) return;
+
+  if (typeof Chart === 'undefined') {
+    subEl.textContent = 'Memuat modul grafik...';
+    // Retry drawing chart in 300ms if Chart library is still loading
+    setTimeout(() => { if (typeof Chart !== 'undefined') drawTxChart(txs); }, 300);
+    return;
+  }
 
   if (CH.txChart) {
     try { CH.txChart.destroy(); } catch (e) {}
@@ -323,9 +330,21 @@ function drawTxChart(txs) {
   const mm = parseInt(monthStr);
   const daysInMonth = new Date(yyyy, mm, 0).getDate();
 
-  if (currentChartMonth !== selectedMonth) {
+  if (currentChartMonth !== selectedMonth || chartStartDay === null) {
     currentChartMonth = selectedMonth;
-    if (selectedMonth === thisMon()) {
+    // Find days that actually contain transactions in this month
+    const daysWithTxs = txs
+      .map(t => {
+        if (!t.date) return 0;
+        const [y, m, d] = t.date.split('-').map(Number);
+        return (y === yyyy && m === mm) ? d : 0;
+      })
+      .filter(d => d > 0);
+
+    if (daysWithTxs.length > 0) {
+      const maxTxDay = Math.max(...daysWithTxs);
+      chartStartDay = Math.max(1, Math.min(daysInMonth - 6, maxTxDay - 6));
+    } else if (selectedMonth === thisMon()) {
       const todayD = new Date().getDate();
       chartStartDay = Math.max(1, Math.min(daysInMonth - 6, todayD - 6));
     } else {
