@@ -260,16 +260,16 @@
 }
 
 .phone-notch {
-  width: 105px;
-  height: 18px;
-  background: var(--ink);
-  border-bottom-left-radius: 12px;
-  border-bottom-right-radius: 12px;
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 30;
+  width: 105px !important;
+  height: 32px !important;
+  background: var(--ink) !important;
+  border-bottom-left-radius: 14px !important;
+  border-bottom-right-radius: 14px !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 30 !important;
 }
 
 .phone-screen {
@@ -277,7 +277,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  background: var(--mesh-a);
+  background: #1c2a4e;
   font-size: 0.85rem;
   position: relative;
   overflow: hidden;
@@ -1541,11 +1541,11 @@ body.is-landing-page {
 
 .phone-screen-iframe {
   position: absolute;
-  top: -1px;
-  left: -1px;
-  width: 360px;
-  height: 672px; /* 560px visual height / 0.833333 scale = 672px logical height */
-  transform: scale(0.84); /* Increased scale from 0.8333 to bleed under border */
+  top: 0;
+  left: 0;
+  width: 375px;
+  height: 672px;
+  transform: scale(0.84);
   transform-origin: top left;
   border: none;
   background: transparent;
@@ -1553,16 +1553,16 @@ body.is-landing-page {
 
 @media (max-width: 992px) {
   .phone-screen-iframe {
-    width: 360px;
-    height: 680px; /* 510px visual height / 0.75 scale = 680px logical height */
-    transform: scale(0.76); /* Increased scale from 0.75 */
+    width: 375px;
+    height: 680px;
+    transform: scale(0.76);
   }
 }
 
 @media (max-width: 480px) {
   .phone-screen-iframe {
-    width: 360px;
-    height: 690px; /* 460px visual height / 0.666667 scale = 690px logical height */
-    transform: scale(0.68); /* Increased scale from 0.6667 */
+    width: 375px;
+    height: 690px;
+    transform: scale(0.68);
   }
 }
