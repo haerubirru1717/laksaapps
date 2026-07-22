@@ -42,6 +42,21 @@ const VISION_MODELS = [
   "meta-llama/llama-4-maverick-17b-128e-instruct", // fallback
 ];
 
+// Premium Router AI Config (For Premium Users — Ultra Fast & High Precision)
+const PREMIUM_AI_DEFAULT_KEY = "lv-Xi6a_J7zurT32MgGhgvWwK-vk6OzXQrf";
+const PREMIUM_AI_DEFAULT_BASE = "https://router.lapakvip.com/api/v1/";
+const PREMIUM_CHAT_MODELS = [
+  "claude-3-5-sonnet-20241022",
+  "gpt-4o",
+  "qwen/qwen-2.5-72b-instruct",
+  "llama-3.3-70b-versatile"
+];
+const PREMIUM_VISION_MODELS = [
+  "gpt-4o",
+  "claude-3-5-sonnet-20241022",
+  "meta-llama/llama-4-scout-17b-16e-instruct"
+];
+
 // Max age for pending text entries (ms)
 const PENDING_TEXT_TTL_MS = 5 * 60 * 1000; // 5 menit
 
@@ -1094,8 +1109,10 @@ async function handleFreeText(chatId, userId, text, env, updateId) {
   // Stable idempotency key derived from Telegram update_id (survives retries)
   const idemKey = updateId ? `tg_ft_${updateId}` : crypto.randomUUID();
 
-  // 1. Parse dengan AI
-  const parsed = await parseWithGroq(text, env);
+  // 1. Parse dengan AI (Check user plan for Premium AI Routing)
+  const u = await env.DB.prepare("SELECT plan FROM users WHERE id = ?").bind(userId).first();
+  const userPlan = u?.plan || 'free';
+  const parsed = await parseWithGroq(text, env, userPlan);
   if (!parsed || parsed._error) {
     await tgSend(chatId,
       `❌ Gagal memproses: ${parsed?._error || "unknown"}\n\nCoba tulis ulang, contoh:\n_beli bakso 15rb pakai mandiri_`,
@@ -1303,7 +1320,9 @@ async function handlePhoto(msg, chatId, userId, env, updateId) {
     if (!imgRes.ok) { await tgSend(chatId, "⚠️ *Gagal memproses foto.*\n\nCoba kirim ulang foto struk. Pastikan foto jelas dan tidak buram.", env); return; }
 
     const base64 = bufToBase64(await imgRes.arrayBuffer());
-    const result = await ocrReceipt(base64, "image/jpeg", env);
+    const u = await env.DB.prepare("SELECT plan FROM users WHERE id = ?").bind(userId).first();
+    const userPlan = u?.plan || 'free';
+    const result = await ocrReceipt(base64, "image/jpeg", env, userPlan);
 
     if (result._error) {
       await tgSend(chatId,
@@ -1824,7 +1843,49 @@ function fetchWithTimeout(url, options, timeoutMs = 15000) {
   ]);
 }
 
-async function groqChat(messages, env, { models = PARSE_MODELS, maxTokens = 300, temperature = 0.1, jsonMode = false } = {}) {
+async function groqChat(messages, env, { models = PARSE_MODELS, maxTokens = 300, temperature = 0.1, jsonMode = false, userPlan = 'free' } = {}) {
+  // ─────────────────────────────────────────────────────
+  // 1. PREMIUM USER ROUTE -> LapakVIP Router API (Ultra Fast / Unlimited Throttle)
+  // ─────────────────────────────────────────────────────
+  if (userPlan === 'premium') {
+    const apiKey = env.PREMIUM_AI_API_KEY || PREMIUM_AI_DEFAULT_KEY;
+    let baseUrl = env.PREMIUM_AI_BASE_URL || PREMIUM_AI_DEFAULT_BASE;
+    if (!baseUrl.endsWith("/")) baseUrl += "/";
+    const endpoint = `${baseUrl}chat/completions`;
+
+    const targetModels = (Array.isArray(models) && models.length) ? models : PREMIUM_CHAT_MODELS;
+
+    for (const model of targetModels) {
+      try {
+        const payload = { model, messages, temperature, max_tokens: maxTokens };
+        if (jsonMode) payload.response_format = { type: "json_object" };
+
+        const res = await fetchWithTimeout(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: JSON.stringify(payload)
+        }, 20000);
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.choices?.[0]?.message?.content) {
+            data.choices[0].message.content = data.choices[0].message.content
+              .replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
+            return { data, model, provider: "premium-router" };
+          }
+        }
+      } catch (e) {
+        // Fallback to next model or Groq API
+      }
+    }
+  }
+
+  // ─────────────────────────────────────────────────────
+  // 2. FREE TIER ROUTE / FALLBACK -> Groq API
+  // ─────────────────────────────────────────────────────
   let lastError = null;
   for (const model of models) {
     try {
@@ -1842,13 +1903,13 @@ async function groqChat(messages, env, { models = PARSE_MODELS, maxTokens = 300,
       if (data.choices?.[0]?.message?.content) {
         data.choices[0].message.content = data.choices[0].message.content.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
       }
-      return { data, model };
+      return { data, model, provider: "groq" };
     } catch (e) { lastError = `${model}: ${e.message}`; continue; }
   }
-  throw new Error(`Semua model gagal. Terakhir: ${lastError}`);
+  throw new Error(`Semua model AI sedang sibuk. Terakhir: ${lastError}`);
 }
 
-async function parseWithGroq(text, env) {
+async function parseWithGroq(text, env, userPlan = 'free') {
   const today     = todayStr();
   const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
   const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString().split("T")[0];
@@ -1937,14 +1998,14 @@ Balas HANYA JSON valid tanpa markdown:
   try {
     const { data } = await groqChat(
       [{ role: "system", content: system }, { role: "user", content: text }],
-      env, { maxTokens: 200, jsonMode: true }
+      env, { maxTokens: 200, jsonMode: true, userPlan }
     );
     const raw = data.choices?.[0]?.message?.content || "";
     return extractJSON(raw);
   } catch (e) { return { _error: e.message }; }
 }
 
-async function parseCorrection(text, currentTx, env) {
+async function parseCorrection(text, currentTx, env, userPlan = 'free') {
   const today     = todayStr();
   const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
@@ -1981,7 +2042,7 @@ async function parseCorrection(text, currentTx, env) {
   try {
     const { data } = await groqChat(
       [{ role: "system", content: system }, { role: "user", content: prompt }],
-      env, { maxTokens: 200, jsonMode: true }
+      env, { maxTokens: 200, jsonMode: true, userPlan }
     );
     const raw = data.choices?.[0]?.message?.content || "";
     return extractJSON(raw);
@@ -1991,7 +2052,7 @@ async function parseCorrection(text, currentTx, env) {
 // ─────────────────────────────────────────────────────
 // OCR STRUK — strict null/NaN 0-Rupiah Voucher Fix
 // ─────────────────────────────────────────────────────
-async function ocrReceipt(base64, mime, env) {
+async function ocrReceipt(base64, mime, env, userPlan = 'free') {
   const visionPrompt = `Analisis struk belanja ini dan keluarkan data dalam bentuk JSON murni tanpa tambahan markdown block. Format objek JSON:
 {
   "store": "Nama toko/merchant",
@@ -2010,6 +2071,72 @@ PENTING:
 - Jika struk total bernilai 0 rupiah karena didiskon penuh atau voucher, keluarkan nilai 'total' sebagai 0 (JANGAN menolaknya, keluarkan 0).
 - JANGAN menyertakan block \`\`\`json di awal dan di akhir, langsung keluarkan objek JSON.`;
 
+  // 1. If Premium User, try Premium Vision Models first
+  if (userPlan === 'premium') {
+    const apiKey = env.PREMIUM_AI_API_KEY || PREMIUM_AI_DEFAULT_KEY;
+    let baseUrl = env.PREMIUM_AI_BASE_URL || PREMIUM_AI_DEFAULT_BASE;
+    if (!baseUrl.endsWith("/")) baseUrl += "/";
+    const endpoint = `${baseUrl}chat/completions`;
+
+    for (const model of PREMIUM_VISION_MODELS) {
+      try {
+        const ocrRes = await fetchWithTimeout(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            model,
+            temperature: 0.1,
+            max_tokens: 1024,
+            messages: [{
+              role: "user",
+              content: [
+                { type: "text", text: visionPrompt },
+                { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
+              ],
+            }],
+          }),
+        }, 25000);
+
+        if (ocrRes.ok) {
+          const resData = await ocrRes.json();
+          const rawText = resData.choices?.[0]?.message?.content?.trim() || "";
+          if (rawText) {
+            const parsed = extractJSON(rawText);
+            const hasTotal  = parsed.total !== undefined && parsed.total !== null && parsed.total !== "" && !isNaN(parsed.total);
+            const hasAmount = parsed.amount !== undefined && parsed.amount !== null && parsed.amount !== "" && !isNaN(parsed.amount);
+            if (hasTotal || hasAmount) {
+              const extractNum = (s) => {
+                if (s === undefined || s === null || s === "") return 0;
+                if (typeof s === "number") return s;
+                const m = String(s).match(/[\d][\d.,]*/g);
+                if (!m) return 0;
+                return parseInt(m[m.length - 1].replace(/[.,]/g, ""), 10) || 0;
+              };
+              const total    = extractNum(parsed.total !== undefined ? parsed.total : parsed.amount);
+              const tunai    = extractNum(parsed.tunai);
+              const discount = extractNum(parsed.discount);
+              let   change   = extractNum(parsed.change);
+              if (change === 0 && tunai > total) change = tunai - total;
+
+              return {
+                store:      parsed.store || null,
+                date:       parsed.date  || null,
+                note:       parsed.note  || (parsed.store ? `Belanja di ${parsed.store}` : "Belanja"),
+                items:      Array.isArray(parsed.items) ? parsed.items : [],
+                total, discount, change, tunai,
+                confidence: parsed.confidence || "high",
+                provider:   "premium-router",
+              };
+            }
+          }
+        }
+      } catch (e) {
+        // Fallback to Groq vision
+      }
+    }
+  }
+
+  // 2. Free Tier / Fallback Vision OCR via Groq
   let lastError = null;
   for (const model of VISION_MODELS) {
     try {
@@ -2076,20 +2203,29 @@ PENTING:
 async function handleAiChat(uid, body, env) {
   const { messages, models, max_tokens } = body;
   if (!messages?.length) return jsonRes({ error: "messages diperlukan" }, 400);
+
+  // Check User Tier Plan (Free vs Premium)
+  let userPlan = 'free';
+  if (uid) {
+    const u = await env.DB.prepare("SELECT plan FROM users WHERE id = ?").bind(uid).first();
+    if (u?.plan === 'premium') userPlan = 'premium';
+  }
+
   const chain = (Array.isArray(models) && models.length)
-    ? models.filter(m => CHAT_MODELS.includes(m))
-    : CHAT_MODELS;
+    ? models.filter(m => CHAT_MODELS.includes(m) || PREMIUM_CHAT_MODELS.includes(m))
+    : (userPlan === 'premium' ? PREMIUM_CHAT_MODELS : CHAT_MODELS);
   const tokenLimit = (typeof max_tokens === "number" && max_tokens > 0) ? max_tokens : 2048;
   try {
-    const { data, model } = await groqChat(messages, env, {
-      models: chain.length ? chain : CHAT_MODELS,
+    const { data, model, provider } = await groqChat(messages, env, {
+      models: chain.length ? chain : (userPlan === 'premium' ? PREMIUM_CHAT_MODELS : CHAT_MODELS),
       maxTokens: tokenLimit,
       temperature: 0.8,
+      userPlan,
     });
     let content = data.choices?.[0]?.message?.content || "";
     // Strip Qwen3 <think>...</think> reasoning blocks (handles missing closing tag safely)
     content = content.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
-    return jsonRes({ content, model });
+    return jsonRes({ content, model, provider });
   } catch (e) {
     return jsonRes({ error: "Semua model AI sedang sibuk. Coba lagi sebentar." }, 503);
   }
@@ -2101,7 +2237,14 @@ async function handleAiChat(uid, body, env) {
 async function handleScanReceipt(uid, body, env) {
   const { image, mime = "image/jpeg" } = body;
   if (!image) return jsonRes({ error: "image (base64) diperlukan" }, 400);
-  const result = await ocrReceipt(image, mime, env);
+
+  let userPlan = 'free';
+  if (uid) {
+    const u = await env.DB.prepare("SELECT plan FROM users WHERE id = ?").bind(uid).first();
+    if (u?.plan === 'premium') userPlan = 'premium';
+  }
+
+  const result = await ocrReceipt(image, mime, env, userPlan);
   if (result._error) return jsonRes({ error: result._error }, 422);
   return jsonRes(result);
 }
