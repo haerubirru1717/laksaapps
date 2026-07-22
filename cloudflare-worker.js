@@ -46,15 +46,24 @@ const VISION_MODELS = [
 const PREMIUM_AI_DEFAULT_KEY = "lv-Xi6a_J7zurT32MgGhgvWwK-vk6OzXQrf";
 const PREMIUM_AI_DEFAULT_BASE = "https://router.lapakvip.com/api/v1/";
 const PREMIUM_CHAT_MODELS = [
-  "claude-3-5-sonnet-20241022",
-  "gpt-4o",
-  "qwen/qwen-2.5-72b-instruct",
-  "llama-3.3-70b-versatile"
+  "lv/gpt-5.5",
+  "lv/deepseek-v4-flash",
+  "lv/deepseek-v4-pro",
+  "lv/glm-5.0-turbo",
+  "lv/kimi-k2.6",
+  "lv/gpt-5.6-sol",
+  "lv/qwen3-coder-next"
+];
+const PREMIUM_PARSE_MODELS = [
+  "lv/deepseek-v4-flash",
+  "lv/gpt-5.5",
+  "lv/glm-5.0-turbo",
+  "lv/kimi-k2.5"
 ];
 const PREMIUM_VISION_MODELS = [
-  "gpt-4o",
-  "claude-3-5-sonnet-20241022",
-  "meta-llama/llama-4-scout-17b-16e-instruct"
+  "lv/glm-5v-turbo",
+  "lv/gpt-5.5",
+  "lv/deepseek-v4-flash"
 ];
 
 // Max age for pending text entries (ms)
@@ -1853,7 +1862,10 @@ async function groqChat(messages, env, { models = PARSE_MODELS, maxTokens = 300,
     if (!baseUrl.endsWith("/")) baseUrl += "/";
     const endpoint = `${baseUrl}chat/completions`;
 
-    const targetModels = (Array.isArray(models) && models.length) ? models : PREMIUM_CHAT_MODELS;
+    const defaultPremiumChain = jsonMode ? PREMIUM_PARSE_MODELS : PREMIUM_CHAT_MODELS;
+    const targetModels = (Array.isArray(models) && models.length && models !== PARSE_MODELS && models !== CHAT_MODELS)
+      ? models
+      : defaultPremiumChain;
 
     for (const model of targetModels) {
       try {
