@@ -120,7 +120,35 @@
             </div>
             <!-- Smartphone CSS Mockup -->
             <div class="phone-mockup">
-              <div class="phone-notch"></div>
+              <!-- Realistic Status Bar (Realtime Clock + Cellular Signal + WiFi + Battery) -->
+              <div class="phone-status-bar">
+                <div class="phone-status-left">
+                  <span class="phone-time" id="phoneTime">12:00</span>
+                </div>
+                <div class="phone-notch"></div>
+                <div class="phone-status-right">
+                  <!-- Signal Bars -->
+                  <svg width="14" height="10" viewBox="0 0 18 12" fill="currentColor">
+                    <rect x="0" y="8" width="3" height="4" rx="0.6"/>
+                    <rect x="5" y="6" width="3" height="6" rx="0.6"/>
+                    <rect x="10" y="3" width="3" height="9" rx="0.6"/>
+                    <rect x="15" y="0" width="3" height="12" rx="0.6"/>
+                  </svg>
+                  <!-- WiFi -->
+                  <svg width="14" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
+                    <path d="M5 12.55a11 11 0 0114.08 0"/>
+                    <path d="M1.42 9a16 16 0 0121.16 0"/>
+                    <path d="M8.53 16.11a6 6 0 016.95 0"/>
+                    <line x1="12" y1="20" x2="12.01" y2="20" stroke-width="3.5"/>
+                  </svg>
+                  <!-- Battery -->
+                  <svg width="19" height="10" viewBox="0 0 24 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                    <rect x="1" y="1" width="18" height="10" rx="2.5"/>
+                    <rect x="3" y="3" width="12" height="6" rx="1" fill="currentColor"/>
+                    <path d="M21 4v4" stroke-width="2.2"/>
+                  </svg>
+                </div>
+              </div>
               <div class="phone-screen">
                 <iframe src="/app.html?demo=true#/dashboard" sandbox="allow-scripts allow-same-origin allow-forms" class="phone-screen-iframe" title="Laksa App Demo"></iframe>
               </div>

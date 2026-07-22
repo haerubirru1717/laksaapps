@@ -62,5 +62,18 @@ document.addEventListener('DOMContentLoaded', () => {
   if (closeBtn) closeBtn.addEventListener('click', closeMobileMenu);
   if (overlay) overlay.addEventListener('click', closeMobileMenu);
 
+  // 4. Real-time Phone Mockup Clock
+  const phoneTimeEl = document.getElementById('phoneTime');
+  const updatePhoneTime = () => {
+    if (!phoneTimeEl) return;
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    phoneTimeEl.textContent = `${hours}:${minutes}`;
+  };
+  if (phoneTimeEl) {
+    updatePhoneTime();
+    setInterval(updatePhoneTime, 10000); // Update every 10 seconds
+  }
 });
 
