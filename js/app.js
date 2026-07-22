@@ -1699,8 +1699,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (currentHash === '/login' || currentHash === '/register' || currentHash === '') {
     sessionStorage.removeItem('laksa_demo');
   }
+  if (window.self !== window.top) {
+    document.body.classList.add('in-iframe');
+  }
   if (demoParams.get('demo') === 'true' || sessionStorage.getItem('laksa_demo') === 'true') {
     isDemoMode = true;
+    document.body.classList.add('is-demo-mode');
     // Only persist demo session if NOT inside an iframe.
     // The landing page demo preview runs in an iframe — if we store laksa_demo there,
     // it pollutes the parent tab's sessionStorage and causes "Masuk" to open the demo

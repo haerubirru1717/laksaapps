@@ -214,3 +214,14 @@ body.is-404-page .bnav,
 body.is-auth-page .bnav {
   display: none !important;
 }
+
+/* In-Iframe / Demo Phone Mockup Floating Liquid Nav Override */
+body.in-iframe .bnav,
+body.is-demo-mode .bnav {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  bottom: 24px !important;
+  padding-bottom: 0 !important;
+  transform: translateZ(0);
+}
