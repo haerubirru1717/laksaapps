@@ -470,9 +470,11 @@ function upsert(id, cfg) {
   const c = el(id); if (!c) return;
   if (id === 'catChart') { c.width = 140; c.height = 140; c.style.width = '140px'; c.style.height = '140px'; }
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  Chart.defaults.color = isDark ? 'rgba(210,220,240,0.7)' : 'rgba(15,23,42,0.55)';
-  Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.08)';
-  try { CH[id] = new Chart(c, cfg); } catch (e) { console.warn(e); }
+  if (typeof Chart !== 'undefined') {
+    Chart.defaults.color = isDark ? 'rgba(210,220,240,0.7)' : 'rgba(15,23,42,0.55)';
+    Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.08)';
+    try { CH[id] = new Chart(c, cfg); } catch (e) { console.warn(e); }
+  }
 }
 
 function renderCatDonut(mTx) {

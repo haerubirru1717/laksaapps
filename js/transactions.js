@@ -278,7 +278,7 @@ function drawTxChart(txs) {
   const canvas = el('txChartCanvas');
   const netEl = el('txChartNet');
   const subEl = el('txChartSub');
-  if (!canvas || !netEl || !subEl) return;
+  if (!canvas || !netEl || !subEl || typeof Chart === 'undefined') return;
 
   if (CH.txChart) {
     try { CH.txChart.destroy(); } catch (e) {}
@@ -385,8 +385,10 @@ function drawTxChart(txs) {
   // Theme detection
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const isEd = document.documentElement.getAttribute('data-theme') === 'education';
-  Chart.defaults.color = isDark ? 'rgba(210,220,240,0.7)' : (isEd ? '#0f172a' : 'rgba(15,23,42,0.55)');
-  Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : (isEd ? 'rgba(15,23,42,0.15)' : 'rgba(15,23,42,0.08)');
+  if (typeof Chart !== 'undefined') {
+    Chart.defaults.color = isDark ? 'rgba(210,220,240,0.7)' : (isEd ? '#0f172a' : 'rgba(15,23,42,0.55)');
+    Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : (isEd ? 'rgba(15,23,42,0.15)' : 'rgba(15,23,42,0.08)');
+  }
 
   // Gradients
   const ctx = canvas.getContext('2d');

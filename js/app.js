@@ -808,8 +808,10 @@ function applyTheme(theme, btn, save = true) {
     const p = getProfile(); if (p) { p.theme = theme; saveProfile(p); }
   }
   const isDark = theme === 'dark';
-  Chart.defaults.color = isDark ? 'rgba(210,220,240,0.7)' : (theme === 'education' ? '#0f172a' : 'rgba(15,23,42,0.55)');
-  Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : (theme === 'education' ? 'rgba(15,23,42,0.15)' : 'rgba(15,23,42,0.08)');
+  if (typeof Chart !== 'undefined') {
+    Chart.defaults.color = isDark ? 'rgba(210,220,240,0.7)' : (theme === 'education' ? '#0f172a' : 'rgba(15,23,42,0.55)');
+    Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : (theme === 'education' ? 'rgba(15,23,42,0.15)' : 'rgba(15,23,42,0.08)');
+  }
   if (curPage === 'dashboard') renderDash();
   if (curPage === 'reports') renderReports();
   if (curPage === 'transactions') filterTx();
@@ -1718,8 +1720,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   document.documentElement.setAttribute('data-theme', theme);
   const isDark = theme === 'dark';
-  Chart.defaults.color = isDark ? 'rgba(210,220,240,0.7)' : (theme === 'education' ? '#0f172a' : 'rgba(15,23,42,0.55)');
-  Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : (theme === 'education' ? 'rgba(15,23,42,0.15)' : 'rgba(15,23,42,0.08)');
+  if (typeof Chart !== 'undefined') {
+    Chart.defaults.color = isDark ? 'rgba(210,220,240,0.7)' : (theme === 'education' ? '#0f172a' : 'rgba(15,23,42,0.55)');
+    Chart.defaults.borderColor = isDark ? 'rgba(255,255,255,0.08)' : (theme === 'education' ? 'rgba(15,23,42,0.15)' : 'rgba(15,23,42,0.08)');
+  }
 
   // Account scroll arrows listener
   const accsEl = document.getElementById('accsScroll');
