@@ -17,7 +17,7 @@
   left: 0;
   right: 0;
   z-index: 300;
-  padding: 0 12px calc(10px + env(safe-area-inset-bottom));
+  padding: 0 12px calc(16px + env(safe-area-inset-bottom, 0px));
   transform: translateZ(0);
   pointer-events: none;
   background: none;
@@ -221,7 +221,7 @@ body.is-demo-mode .bnav {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  bottom: 24px !important;
+  bottom: 28px !important;
   padding-bottom: 0 !important;
   transform: translateZ(0);
 }
