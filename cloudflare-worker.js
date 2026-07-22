@@ -42,8 +42,8 @@ const VISION_MODELS = [
   "meta-llama/llama-4-maverick-17b-128e-instruct", // fallback
 ];
 
-// Premium Router AI Config (For Premium Users — Ultra Fast & High Precision)
-const PREMIUM_AI_DEFAULT_KEY = "lv-Xi6a_J7zurT32MgGhgvWwK-vk6OzXQrf";
+// Premium Router AI Config (Requires Cloudflare Worker Secret: PREMIUM_AI_API_KEY)
+const PREMIUM_AI_DEFAULT_KEY = "";
 const PREMIUM_AI_DEFAULT_BASE = "https://router.lapakvip.com/api/v1/";
 const PREMIUM_CHAT_MODELS = [
   "lv/gpt-5.5",
