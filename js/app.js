@@ -108,7 +108,7 @@ const getSet = () => {
 };
 
 // ── API LAYER — D1 sebagai master ──
-// CLOUD_URL & GOOGLE_CLIENT_ID didefinisikan secara global di js/config.js
+// CLOUD_URL didefinisikan secara global di js/config.js
 
 // In-memory cache — di-refresh setiap load halaman
 let _cache = { tx: null, accs: null, cats: null, buds: null, goals: null, bills: null, piutang: null, loading: false };
@@ -797,7 +797,7 @@ const mKey = (d) => (d || '').slice(0, 7);
 const today = () => new Date().toISOString().slice(0, 10);
 const thisMon = () => today().slice(0, 7);
 // catBy & accBy sudah didefinisikan di API layer di atas
-const esc = (s) => s == null ? '' : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const esc = (s) => s == null ? '' : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const el = (id) => document.getElementById(id);
 const uid = () => 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
 
@@ -1288,54 +1288,6 @@ async function handleAuthLogin() {
   }
 }
 
-let googleTokenClient = null;
-
-function handleGoogleLogin() {
-  if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
-    alert('Google API belum selesai dimuat. Silakan coba beberapa saat lagi.');
-    return;
-  }
-  
-  if (!googleTokenClient) {
-    googleTokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope: 'email profile',
-      callback: async (tokenResponse) => {
-        if (tokenResponse && tokenResponse.access_token) {
-          try {
-            showLoadingOverlay(true);
-            const data = await apiAuth('POST', '/auth/google', { access_token: tokenResponse.access_token });
-            
-            // Simpan token dan profil
-            setToken(data.token);
-            const p = { id: data.user.id, name: data.user.name, email: data.user.email, tgId: data.user.telegram_id || '', theme: 'glass' };
-            saveProfile(p);
-            
-            const s = getSet(); 
-            s.name = p.name; 
-            sv(K.set, s);
-            
-            hideAuthPage();
-            updateProfileUI();
-            updateSidebarProfile();
-            
-            showLoadingOverlay(true);
-            try { await loadAll(thisMon()); } finally { showLoadingOverlay(false); }
-            go('dashboard');
-            refresh();
-          } catch (e) {
-            console.error('Google login error:', e);
-            alert('Login Google gagal: ' + (e.message || 'Error tidak diketahui'));
-          } finally {
-            showLoadingOverlay(false);
-          }
-        }
-      }
-    });
-  }
-  googleTokenClient.requestAccessToken({ prompt: 'consent' });
-}
-
 function toggleForgotForm(show) {
   const loginFieldsGroup = el('authLoginFieldsGroup');
   const forgotForm = el('forgotPasswordForm');
@@ -1664,42 +1616,6 @@ function updateSidebarProfile() {
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeFab(); closeDeskCompose(); if (aiOpen) toggleAiChat(); if (accSheetId) closeAccSheet(); closeTxSheet(); } });
 
-let _googleLoadAttempts = 0;
-function checkAndEnableGoogleLogin() {
-  const btnLogin = document.getElementById('authGoogleLoginBtn');
-  const btnRegister = document.getElementById('authGoogleRegisterBtn');
-  
-  if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
-    if (btnLogin) {
-      btnLogin.removeAttribute('disabled');
-      btnLogin.style.display = '';
-      const span = btnLogin.querySelector('span');
-      if (span) span.textContent = 'Lanjutkan dengan Google';
-      btnLogin.title = '';
-    }
-    if (btnRegister) {
-      btnRegister.removeAttribute('disabled');
-      btnRegister.style.display = '';
-      const span = btnRegister.querySelector('span');
-      if (span) span.textContent = 'Daftar dengan Google';
-      btnRegister.title = '';
-    }
-  } else {
-    _googleLoadAttempts++;
-    if (_googleLoadAttempts < 15) {
-      // Retry with backoff — first 5 attempts every 500ms, then every 1s
-      const delay = _googleLoadAttempts < 5 ? 500 : 1000;
-      setTimeout(checkAndEnableGoogleLogin, delay);
-    } else {
-      // Google API truly unavailable — hide the entire section (button + divider)
-      const sectionLogin = document.getElementById('authGoogleLoginSection');
-      const sectionRegister = document.getElementById('authGoogleRegisterSection');
-      if (sectionLogin) sectionLogin.style.display = 'none';
-      if (sectionRegister) sectionRegister.style.display = 'none';
-    }
-  }
-}
-
 // ── Init ──
 document.addEventListener('DOMContentLoaded', async () => {
   const demoParams = new URLSearchParams(window.location.search);
@@ -1725,7 +1641,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const demoProfile = { id: "usr_demo", name: "Haeru", email: "demo@laksaapp.my.id", tgId: "123456789", theme: "glass" };
     localStorage.setItem(PROFILE_KEY, JSON.stringify(demoProfile));
   }
-  checkAndEnableGoogleLogin();
   // Tema dari localStorage
   const s = getSet();
   let theme = s.theme || 'glass';

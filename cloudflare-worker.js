@@ -79,6 +79,9 @@ const LIMITED_FEATURES = ['ai_chat', 'scan_receipt', 'report_view', 'export_csv'
 // ─────────────────────────────────────────────────────
 // AUTH UTILITIES (PBKDF2 + JWT via Web Crypto API)
 // ─────────────────────────────────────────────────────
+// CATATAN: jangan ubah nilai iterations begitu saja — semua hash lama dibuat dengan
+// 100.000 iterasi dan akan gagal diverifikasi. Untuk naik ke 600.000 (rekomendasi OWASP),
+// tambahkan kolom `pbkdf2_iterations` di tabel users lalu migrasi bertahap saat user login.
 async function hashPassword(password, salt) {
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveBits"]);
@@ -92,6 +95,22 @@ async function hashPassword(password, salt) {
 async function verifyPassword(password, salt, hash) {
   const computed = await hashPassword(password, salt);
   return computed === hash;
+}
+
+/** HMAC-SHA256 berkunci -> hex. Dipakai untuk hash OTP agar tidak bisa di-brute-force offline. */
+async function hmacHex(message, secret) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(String(message)));
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Perbandingan string waktu-konstan (cegah timing attack pada verifikasi OTP). */
+function timingSafeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }
 
 function base64url(buf) {
@@ -283,60 +302,6 @@ async function handleLogin(body, env) {
   return jsonRes({ token, user: { id: user.id, email: user.email, name: user.name, telegram_id: user.telegram_id } });
 }
 
-async function handleGoogleLogin(body, env) {
-  const { access_token } = body || {};
-  if (!access_token) return jsonRes({ error: "Access token wajib diisi" }, 400);
-
-  try {
-    // Fetch user profile from Google
-    const resp = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-      headers: { "Authorization": `Bearer ${access_token}` }
-    });
-
-    if (!resp.ok) {
-      return jsonRes({ error: "Token Google tidak valid atau expired" }, 401);
-    }
-
-    const gUser = await resp.json();
-    const email = gUser.email?.toLowerCase().trim();
-    const name = gUser.name || gUser.given_name || "Google User";
-
-    if (!email) {
-      return jsonRes({ error: "Gagal mendapatkan email dari Google" }, 400);
-    }
-
-    // Check if user already exists in D1 database
-    let user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
-
-    if (!user) {
-      // Register new user automatically
-      const id = "usr_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
-      const salt = crypto.randomUUID();
-      // Generate a random password hash since they log in via Google
-      const randomPassword = crypto.randomUUID();
-      const passwordHash = await hashPassword(randomPassword, salt);
-
-      await env.DB.prepare(
-        "INSERT INTO users (id, email, name, password_hash, salt, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-      ).bind(id, email, name.trim(), passwordHash, salt, new Date().toISOString()).run();
-
-      // Seed default categories and account
-      await seedCategories(id, env);
-      const defAccId = "acc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
-      await env.DB.prepare("INSERT OR IGNORE INTO accounts (id, user_id, name, balance, color) VALUES (?, ?, 'Tunai', 0, '#7c3aed')").bind(defAccId, id).run().catch(() => {});
-
-      user = { id, email, name, telegram_id: null };
-    }
-
-    // Generate Laksa JWT token
-    const token = await signJWT({ sub: user.id, email: user.email, name: user.name }, env.JWT_SECRET);
-    return jsonRes({ token, user: { id: user.id, email: user.email, name: user.name, telegram_id: user.telegram_id || null } });
-
-  } catch (e) {
-    return jsonRes({ error: "Gagal melakukan autentikasi Google: " + e.message }, 500);
-  }
-}
-
 async function handleMe(req, env) {
   const token = extractToken(req);
   if (!token) return jsonRes({ error: "Token diperlukan" }, 401);
@@ -419,12 +384,20 @@ async function handleForgotPassword(req, body, env) {
   const emailLower = email.toLowerCase().trim();
   const user = await env.DB.prepare("SELECT id, name FROM users WHERE email = ?").bind(emailLower).first();
   
-  if (!user) return jsonRes({ error: "Email tidak terdaftar" }, 404);
+  // Jangan bocorkan apakah email terdaftar (user enumeration).
+  // Balas sukses generik tanpa token, persis seperti alur OTP admin.
+  if (!user) {
+    return jsonRes({ message: "Jika email terdaftar, kode OTP telah dikirim." });
+  }
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const nowSec = Math.floor(Date.now() / 1000);
+  // OTP TIDAK PERNAH masuk payload JWT — payload JWT hanya base64, bisa dibaca siapa pun.
+  // Yang disimpan adalah hash-nya (HMAC dengan JWT_SECRET, bukan SHA-256 polos yang
+  // bisa di-brute-force offline karena OTP hanya 6 digit).
+  const otpHash = await hmacHex(otp, env.JWT_SECRET);
   const resetToken = await signJWT(
-    { sub: user.id, email: emailLower, purpose: "otp_verification", otp: otp, reset_exp: nowSec + 600 },
+    { sub: user.id, email: emailLower, purpose: "otp_verification", otp_hash: otpHash, reset_exp: nowSec + 600 },
     env.JWT_SECRET
   );
 
@@ -502,7 +475,8 @@ async function handleResetPassword(req, body, env) {
 
   if (payload.purpose === "otp_verification") {
     if (!otp) return jsonRes({ error: "Kode OTP wajib diisi" }, 400);
-    if (payload.otp !== otp.trim()) {
+    const inputHash = await hmacHex(otp.trim(), env.JWT_SECRET);
+    if (!payload.otp_hash || !timingSafeEqual(inputHash, payload.otp_hash)) {
       return jsonRes({ error: "Kode OTP salah" }, 400);
     }
   } else if (payload.purpose !== "password_reset") {
@@ -588,12 +562,15 @@ export default {
     try {
       if (request.method === "POST" && (url.pathname === "/webhook" || url.pathname === "/telegram-webhook")) {
         // Webhook secret verification (security guard — harus sebelum parse body)
+        // FAIL-CLOSED: kalau secret belum diset, tolak — jangan lewati pemeriksaan.
         const secret = env.TELEGRAM_WEBHOOK_SECRET;
-        if (secret) {
-          const headerSecret = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
-          if (headerSecret !== secret) {
-            return new Response("Unauthorized", { status: 403 });
-          }
+        if (!secret) {
+          console.error("TELEGRAM_WEBHOOK_SECRET belum diatur — webhook ditolak.");
+          return new Response("Unauthorized", { status: 403 });
+        }
+        const headerSecret = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
+        if (headerSecret !== secret) {
+          return new Response("Unauthorized", { status: 403 });
         }
 
         const body = await request.json(); // parse body setelah auth check
@@ -623,12 +600,15 @@ export default {
       }
       // Admin bot webhook
       if (request.method === "POST" && url.pathname === "/admin-webhook") {
+        // FAIL-CLOSED: sama seperti webhook utama.
         const secret = env.ADMIN_TELEGRAM_WEBHOOK_SECRET || env.TELEGRAM_WEBHOOK_SECRET;
-        if (secret) {
-          const headerSecret = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
-          if (headerSecret !== secret) {
-            return new Response("Unauthorized", { status: 403 });
-          }
+        if (!secret) {
+          console.error("ADMIN_TELEGRAM_WEBHOOK_SECRET belum diatur — webhook admin ditolak.");
+          return new Response("Unauthorized", { status: 403 });
+        }
+        const headerSecret = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
+        if (headerSecret !== secret) {
+          return new Response("Unauthorized", { status: 403 });
         }
         const body = await request.json();
         ctx.waitUntil(handleAdminBot(body, env));
@@ -752,7 +732,7 @@ async function routeAPI(req, url, env) {
   }
 
   // Auth routes (public — no token needed)
-  if ((path === "/auth/login" || path === "/auth/register" || path === "/auth/google" || path === "/auth/forgot-password" || path === "/auth/reset-password") && m === "POST") {
+  if ((path === "/auth/login" || path === "/auth/register" || path === "/auth/forgot-password" || path === "/auth/reset-password") && m === "POST") {
     const ip = req.headers.get("CF-Connecting-IP") || req.headers.get("X-Forwarded-For") || "unknown";
     if (!checkRateLimit(ip)) {
       return jsonRes({ error: "Terlalu banyak percobaan. Coba lagi dalam 15 menit." }, 429);
@@ -760,7 +740,6 @@ async function routeAPI(req, url, env) {
   }
   if (path === "/auth/register" && m === "POST") return handleRegister(await req.json(), env);
   if (path === "/auth/login"    && m === "POST") return handleLogin(await req.json(), env);
-  if (path === "/auth/google"   && m === "POST") return handleGoogleLogin(await req.json(), env);
   if (path === "/auth/me"       && m === "GET")  return handleMe(req, env);
   if (path === "/auth/refresh"  && m === "POST") return handleRefreshToken(req, env);
   if (path === "/auth/link-telegram" && m === "POST") return handleLinkTelegram(req, await req.json(), env);
@@ -894,6 +873,15 @@ async function routeAPI(req, url, env) {
   }
 
   if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
+
+  // Blokir user yang di-ban di SEMUA endpoint data, bukan hanya fitur berkuota.
+  // Tanpa ini, user yang di-ban tetap bisa CRUD memakai token lama sampai 7 hari.
+  {
+    const banCheck = await getUserPlan(uid, env);
+    if (banCheck.banned) {
+      return jsonRes({ error: "Akun Anda telah diblokir. Hubungi admin." }, 403);
+    }
+  }
 
   // accounts
   if (path === "/accounts") {
@@ -2467,8 +2455,9 @@ async function handleAdminOtpRequest(body, env) {
   }
 
   // State token containing hashed OTP (stateless verification)
-  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(otp));
-  const otpHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  // HMAC (berkunci) — bukan SHA-256 polos. OTP 6 digit hanya 1 juta kombinasi,
+  // jadi digest tanpa kunci bisa dipecahkan offline dalam hitungan detik.
+  const otpHash = await hmacHex(otp, env.JWT_SECRET);
 
   const nowSec = Math.floor(Date.now() / 1000);
   const stateToken = await signJWT(
@@ -2496,10 +2485,9 @@ async function handleAdminOtpVerify(body, ip, env) {
   }
 
   // Compare hash
-  const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(otp.trim()));
-  const inputHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  const inputHash = await hmacHex(otp.trim(), env.JWT_SECRET);
 
-  if (inputHash !== payload.otp_hash) {
+  if (!timingSafeEqual(inputHash, payload.otp_hash)) {
     return jsonRes({ error: "Kode OTP salah" }, 400);
   }
 
@@ -3548,8 +3536,7 @@ function cors(response, request = null) {
     if (reqOrigin) {
       const isAllowed = ALLOWED_ORIGINS.includes(reqOrigin) || 
                         reqOrigin.startsWith("http://localhost:") || 
-                        reqOrigin.startsWith("http://127.0.0.1:") ||
-                        reqOrigin === "null";
+                        reqOrigin.startsWith("http://127.0.0.1:");
       if (isAllowed) {
         origin = reqOrigin;
         headers.set("Vary", "Origin");
@@ -3836,8 +3823,12 @@ async function handleAdminBot(body, env) {
     text = (cmd.toLowerCase() + rest).trim();
   }
 
-  // Whitelist: only admin can use this bot
-  if (ADMIN_ID && fromId !== ADMIN_ID) {
+  // Whitelist: hanya admin. FAIL-CLOSED — kalau ADMIN_ID belum diset, tolak semua.
+  if (!ADMIN_ID) {
+    console.error("ADMIN_TELEGRAM_ID belum diatur — semua perintah bot admin ditolak.");
+    return;
+  }
+  if (fromId !== ADMIN_ID) {
     await adminSend(chatId, "⛔ Unauthorized. Bot ini hanya untuk admin.", ADMIN_TOKEN);
     return;
   }

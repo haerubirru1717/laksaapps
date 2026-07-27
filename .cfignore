@@ -1,0 +1,14 @@
+# File yang TIDAK boleh ikut ter-deploy ke Cloudflare Pages.
+# Ini pertahanan utama; _redirects hanya jaring pengaman kedua.
+wrangler.toml
+cloudflare-worker.js
+package.json
+package-lock.json
+node_modules/
+.agents/
+skills/
+SKILL.md
+README.md
+README.id.md
+*.ps1
+*.json_backup
