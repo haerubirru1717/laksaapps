@@ -1,0 +1,87 @@
+/* ══════════════════════════════════════════
+   auth.css — Login & Register Overlay Split Container
+   ══════════════════════════════════════════ */
+
+.setup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 1.5rem 1rem;
+}
+
+.auth-split-container {
+  display: flex;
+  width: 100%;
+  max-width: 960px;
+  min-height: 540px;
+  background: var(--card);
+  border: 1.5px solid var(--gs-border-hi);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0,0,0,.15);
+  margin: auto;
+}
+
+.auth-split-left {
+  flex: 1;
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.auth-split-right {
+  flex: 1;
+  background: linear-gradient(145deg, #0b132b 0%, #1c2a4e 50%, #0d1733 100%);
+  color: #fff;
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+@media (max-width: 992px) {
+  .auth-split-container {
+    max-width: 800px;
+  }
+}
+
+@media (max-width: 768px) {
+  .setup-overlay {
+    align-items: center;
+    padding: 1rem 0.75rem;
+  }
+  .auth-split-right {
+    display: none;
+  }
+  .auth-split-container {
+    max-width: 450px;
+    min-height: auto;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    box-shadow: var(--shd-lg);
+  }
+  .auth-split-left {
+    padding: 1.75rem 1.35rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .setup-overlay {
+    padding: 0.75rem 0.5rem;
+  }
+  .auth-split-container {
+    max-width: 100%;
+    border-radius: 16px;
+  }
+  .auth-split-left {
+    padding: 1.25rem 1rem;
+  }
+}

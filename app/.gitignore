@@ -1,0 +1,18 @@
+ui-ux-pro-max-skill/
+.gemini/
+.env
+.env.local
+.env.*
+node_modules/
+dist/
+deploy.ps1
+admin/
+.wrangler/
+codebase-memory-mcp/
+token github.txt
+*.json_backup
+laksa_backup_*.json
+
+.dev.vars
+.dev.vars.local
+wrangler.toml.bak

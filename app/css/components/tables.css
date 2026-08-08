@@ -1,0 +1,44 @@
+/* ══════════════════════════════════════════
+   tables.css — Tables, List Items & Status Badges
+   ══════════════════════════════════════════ */
+
+.tbl {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.tbl th {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--ink3);
+  padding: .75rem 1rem;
+  text-align: left;
+  border-bottom: 1.5px solid var(--gs-border);
+}
+
+.tbl td {
+  padding: .85rem 1rem;
+  border-bottom: 1px solid var(--gs-border);
+  font-size: .84rem;
+}
+
+/* Transaction List Item (.tx-item, .txcl-item) */
+.tx-item, .txcl-item {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  padding: .8rem 1rem;
+  border-radius: 14px;
+  background: var(--gs-1);
+  border: 1px solid var(--gs-border);
+  transition: all .14s;
+  cursor: pointer;
+}
+
+.tx-item:hover, .txcl-item:hover {
+  border-color: var(--accent);
+  background: var(--gs-4);
+}

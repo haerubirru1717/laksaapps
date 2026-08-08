@@ -1,0 +1,119 @@
+/* ══════════════════════════════════════════
+   reset.css — Base Resets, Typography & Performance
+   ══════════════════════════════════════════ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  transition: background .3s, color .3s;
+}
+
+/* Background Mesh Gradients */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: var(--mesh-a);
+  pointer-events: none;
+  transition: background .4s;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--mesh-b);
+  opacity: .85;
+  transition: background .4s;
+}
+
+/* Dark mode grid overlay */
+html[data-theme="dark"] body::before {
+  background-image: linear-gradient(rgba(99, 102, 241, 0.03) 1.2px, transparent 1.2px),
+                    linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1.2px, transparent 1.2px),
+                    radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.16) 0%, transparent 60%),
+                    radial-gradient(circle at 85% 85%, rgba(16, 185, 129, 0.1) 0%, transparent 60%);
+  background-size: 45px 45px, 45px 45px, 100% 100%, 100% 100%;
+  background-color: #000000 !important;
+}
+
+/* ── DESKTOP SCROLLING FIX ── */
+@media(min-width:769px) {
+  html,
+  body {
+    height: auto;
+    overflow-y: auto;
+  }
+
+  .main {
+    overflow-y: visible;
+    min-height: 100vh;
+  }
+}
+
+/* ══════════════════════════════════════════
+   PERFORMANCE OPTIMIZATIONS
+   ══════════════════════════════════════════ */
+
+/* Pages not visible → skip rendering entirely */
+.page:not(.active) {
+  content-visibility: hidden;
+}
+
+/* Isolate repaints within cards/widgets */
+.widget, .card, .gc, .glass-card, .acc-item, .tx-item {
+  contain: layout style paint;
+}
+
+/* GPU-composite blurred elements (glass theme) */
+.sidebar, .bnav-capsule, .modal, .fab-sheet, .tx-sheet, .acc-sheet {
+  will-change: transform;
+}
+
+/* Reduce box-shadow on mobile for less paint */
+@media (max-width: 768px) {
+  .widget, .card, .gc, .glass-card {
+    box-shadow: 0 2px 8px rgba(0,0,0,.06) !important;
+  }
+  html[data-theme="dark"] .widget,
+  html[data-theme="dark"] .card,
+  html[data-theme="dark"] .gc,
+  html[data-theme="dark"] .glass-card {
+    box-shadow: 0 4px 16px rgba(0,0,0,.4) !important;
+  }
+}
+
+/* Dark theme: disable ALL backdrop-filter (opaque bg = no visual benefit) */
+html[data-theme="dark"] *:not(.sidebar):not(.bnav-capsule) {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

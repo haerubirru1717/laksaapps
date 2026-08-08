@@ -1,0 +1,9 @@
+# ── SPA Page Routing Rules ──
+/login        /app.html 200
+/register     /app.html 200
+/dashboard    /app.html 200
+/transactions /app.html 200
+/receipt      /app.html 200
+/reports      /app.html 200
+/settings     /app.html 200
+/keuangan*    /app.html 200

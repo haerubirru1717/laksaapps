@@ -1,0 +1,19 @@
+/* ══════════════════════════════════════════
+   dashboard.css — Dashboard Layout & Widgets
+   ══════════════════════════════════════════ */
+
+#page-dashboard {
+  position: relative;
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.25rem;
+}
+
+@media(max-width:1024px) {
+  .dash-grid {
+    grid-template-columns: 1fr;
+  }
+}

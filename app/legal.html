@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover" />
+  <title>Kebijakan Privasi & Ketentuan Penggunaan — Laksa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/core.css?v=2.0.0" />
+  <link rel="stylesheet" href="/css/main.css?v=2.0.0" />
+  
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      color: #0f172a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      padding: 0;
+    }
+
+    .legal-nav {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: 64px;
+      display: flex;
+      align-items: center;
+    }
+
+    .legal-container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .legal-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      text-decoration: none;
+      color: #0f172a;
+      font-weight: 800;
+      font-size: 1.25rem;
+      letter-spacing: -0.03em;
+    }
+
+    .legal-brand img {
+      width: 28px;
+      height: 28px;
+    }
+
+    .legal-back-btn {
+      text-decoration: none;
+      color: #2563eb;
+      font-weight: 600;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 1rem;
+      border-radius: 10px;
+      background: rgba(37, 99, 235, 0.06);
+      transition: all 0.2s ease;
+    }
+
+    .legal-back-btn:hover {
+      background: rgba(37, 99, 235, 0.1);
+      transform: translateX(-2px);
+    }
+
+    .legal-content-wrap {
+      flex: 1;
+      padding: 2.5rem 0 5rem 0;
+    }
+
+    .legal-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 2.5rem;
+    }
+
+    /* Sidebar Navigation */
+    .legal-sidebar {
+      position: sticky;
+      top: 90px;
+      height: fit-content;
+    }
+
+    .legal-card {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+      border-radius: 20px;
+      padding: 1.5rem;
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.04);
+    }
+
+    .legal-sidebar-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 1rem;
+      letter-spacing: -0.01em;
+    }
+
+    .legal-menu-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .legal-menu-link {
+      display: block;
+      padding: 0.65rem 0.85rem;
+      border-radius: 10px;
+      color: #475569;
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .legal-menu-link:hover {
+      background: rgba(0, 0, 0, 0.03);
+      color: #0f172a;
+    }
+
+    .legal-menu-link.active {
+      background: #2563eb;
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    }
+
+    /* Main Content */
+    .legal-main {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .legal-section-card {
+      background: #ffffff;
+      border: 1px solid rgba(226, 232, 240, 0.8);
+      border-radius: 24px;
+      padding: 2.5rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+      display: none;
+    }
+
+    .legal-section-card.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .legal-header {
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .legal-title {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.03em;
+      margin: 0 0 0.5rem 0;
+    }
+
+    .legal-meta {
+      font-size: 0.825rem;
+      color: #64748b;
+      margin: 0;
+    }
+
+    /* Markdown prose styles styling */
+    .prose h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 2rem 0 1rem 0;
+      letter-spacing: -0.02em;
+    }
+
+    .prose h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #334155;
+      margin: 1.5rem 0 0.75rem 0;
+    }
+
+    .prose p {
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: #334155;
+      margin-bottom: 1.25rem;
+      text-align: justify;
+    }
+
+    .prose ul, .prose ol {
+      padding-left: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .prose li {
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: #334155;
+      margin-bottom: 0.5rem;
+    }
+
+    .prose strong {
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .prose-section {
+      margin-bottom: 2.5rem;
+    }
+
+    .consent-footer-card {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.03) 0%, rgba(14, 165, 233, 0.03) 100%);
+      border: 1.5px dashed rgba(37, 99, 235, 0.25);
+      border-radius: 20px;
+      padding: 2rem;
+      text-align: center;
+      margin-top: 3rem;
+    }
+
+    .consent-footer-card h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 0 0 0.75rem 0;
+    }
+
+    .consent-footer-card p {
+      font-size: 0.875rem;
+      color: #475569;
+      line-height: 1.6;
+      margin: 0 0 1rem 0;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .consent-footer-copyright {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin: 0;
+    }
+
+    /* Footer */
+    .landing-footer {
+      background: #ffffff;
+      border-top: 1px solid #e2e8f0;
+      padding: 3rem 0;
+      margin-top: auto;
+    }
+
+    .landing-footer-copyright {
+      text-align: center;
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+
+    /* Responsive */
+    @media (max-width: 992px) {
+      .legal-layout {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+
+      .legal-sidebar {
+        position: relative;
+        top: 0;
+      }
+
+      .legal-menu-list {
+        flex-direction: row;
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+      }
+
+      .legal-menu-link {
+        white-space: nowrap;
+      }
+
+      .legal-section-card {
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Navbar -->
+  <nav class="legal-nav">
+    <div class="legal-container">
+      <a href="/" class="legal-brand">
+        <img src="/icons/laksa_logo.svg" alt="Laksa Logo" />
+        <span>laksa.</span>
+      </a>
+      <a href="/" class="legal-back-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Kembali ke Beranda
+      </a>
+    </div>
+  </nav>
+
+  <!-- Content Wrap -->
+  <div class="legal-content-wrap">
+    <div class="legal-container">
+      <div class="legal-layout">
+        <!-- Sidebar Menu -->
+        <aside class="legal-sidebar">
+          <div class="legal-card">
+            <div class="legal-sidebar-title">Daftar Isi</div>
+            <ul class="legal-menu-list">
+              <li>
+                <button class="legal-menu-link active" onclick="switchSection('terms', this)">Ketentuan Penggunaan</button>
+              </li>
+              <li>
+                <button class="legal-menu-link" onclick="switchSection('privacy', this)">Kebijakan Privasi</button>
+              </li>
+            </ul>
+          </div>
+        </aside>
+
+        <!-- Main Content Content Cards -->
+        <main class="legal-main">
+          <!-- SECTION 1: KETENTUAN PENGGUNAAN -->
+          <article id="terms" class="legal-section-card active">
+            <div class="legal-header">
+              <h1 class="legal-title">Ketentuan Penggunaan Laksa</h1>
+              <p class="legal-meta">Terakhir diperbarui: 5 Juli 2026</p>
+            </div>
+            <div class="prose">
+              <div class="prose-section">
+                <p>
+                  Selamat datang di Laksa! Ketentuan Penggunaan ini (<strong>"Ketentuan"</strong>) mengatur akses dan penggunaan Anda atas situs web, aplikasi web, integrasi chatbot Telegram, serta seluruh layanan terkait yang dikelola oleh Pengembang Laksa (<strong>"Kami"</strong>). 
+                  Dengan membuat akun, menghubungkan bot Telegram, atau menggunakan Layanan (<strong>"Layanan"</strong>), Anda selaku pengguna (<strong>"Pengguna"</strong>) setuju untuk terikat secara hukum oleh Ketentuan ini dan Kebijakan Privasi Kami.
+                </p>
+                <p>
+                  Kami mengharapkan Anda untuk membaca dokumen ini bersama dengan Kebijakan Privasi secara cermat sebelum mulai menggunakan layanan Kami untuk memahami sepenuhnya hak, kewajiban, dan pembatasan yang berlaku.
+                </p>
+              </div>
+
+              <div class="prose-section">
+                <h3>1. DEFINISI</h3>
+                <ul>
+                  <li><strong>"Aplikasi"</strong> berarti aplikasi manajemen keuangan Laksa, termasuk antarmuka berbasis web, service worker, serta chatbot Telegram resmi <code>@laksatel_bot</code>.</li>
+                  <li><strong>"Data Pribadi"</strong> berarti informasi yang mengidentifikasi Pengguna baik secara langsung maupun tidak langsung sebagaimana diatur di dalam perundang-undangan yang berlaku.</li>
+                  <li><strong>"Data Transaksi"</strong> berarti data keuangan termasuk nominal, kategori, catatan, rekening bank, dompet digital, anggaran belanja, target tabungan, tagihan, dan piutang yang dikelola di dalam Aplikasi.</li>
+                  <li><strong>"Data Struk"</strong> berarti foto/gambar kuitansi, nota, atau struk belanja yang diunggah oleh Pengguna untuk diproses menggunakan fitur ekstraksi AI OCR.</li>
+                  <li><strong>"Layanan"</strong> berarti seluruh fitur pencatatan otomatis, sinkronisasi cloud, chatbot Telegram, ekstraksi struk AI, visualisasi laporan keuangan, serta modifikasi pengaturan yang disediakan melalui Aplikasi.</li>
+                </ul>
+              </div>
+
+              <div class="prose-section">
+                <h3>2. PENERIMAAN KETENTUAN</h3>
+                <p>
+                  Dengan mengunjungi, mengakses, mendaftar, atau menggunakan bagian apa pun dari Layanan Laksa, Anda menyatakan telah membaca, memahami, dan menyetujui Ketentuan Penggunaan ini beserta segala perubahannya di masa mendatang. 
+                  Jika Anda tidak menyetujui Ketentuan ini, Anda wajib segera menghentikan penggunaan Layanan, menghapus Aplikasi dari perangkat, memutuskan tautan bot Telegram, serta menghapus data akun Anda.
+                </p>
+              </div>
+
+              <div class="prose-section">
+                <h3>3. DESKRIPSI LAYANAN</h3>
+                <p>
+                  Laksa menyediakan alat bantu pengelolaan keuangan pribadi berbasis web dan chatbot dengan fitur utama:
+                </p>
+                <ul>
+                  <li>Pencatatan data transaksi (pemasukan, pengeluaran, transfer) dan pengelolaan saldo akun rekening/dompet digital secara manual.</li>
+                  <li>Pencatatan transaksi instan melalui pesan teks/perintah ke Telegram bot resmi.</li>
+                  <li>Ekstraksi otomatis nominal dan detail transaksi dari foto kuitansi/struk menggunakan kecerdasan buatan (AI OCR).</li>
+                  <li>Manajemen keuangan pelengkap: penentuan batas anggaran (Budgets), pemantauan target tabungan (Goals), pencatatan jatuh tempo tagihan (Bills), dan pelacakan utang-piutang (Piutang).</li>
+                  <li>Sinkronisasi data multi-perangkat secara aman melalui database berbasis Cloud.</li>
+                </ul>
+                <p>
+                  <strong>Bukan Nasihat Finansial Profesional:</strong> Seluruh laporan, visualisasi bagan, dan ringkasan yang disediakan Laksa murni bersifat informatif dan edukatif untuk pencatatan mandiri. Laksa tidak menyediakan advis investasi, hukum, perpajakan, atau saran perencana keuangan profesional berlisensi. Keputusan finansial yang Anda ambil berdasarkan data Aplikasi sepenuhnya merupakan tanggung jawab Anda sendiri.
+                </p>
+              </div>
+
+              <div class="prose-section">
+                <h3>4. PENDAFTARAN AKUN DAN KEAMANAN</h3>
+                <p>
+                  Untuk menggunakan fungsionalitas sinkronisasi Cloud, Pengguna diharuskan mendaftarkan akun menggunakan email aktif yang sah atau mengaitkan Telegram ID mereka. Anda bertanggung jawab penuh atas kerahasiaan kata sandi dan kredensial akses Anda. 
+                  Segala aktivitas pencatatan, perubahan, atau penghapusan data yang dilakukan melalui akun atau bot Telegram yang terhubung dengan akun Anda dianggap sebagai tindakan sah yang diotorisasi oleh Anda.
+                </p>
+              </div>
+
+              <div class="prose-section">
+                <h3>5. BATASAN PENGGUNAAN & LARANGAN</h3>
+                <p>Dalam menggunakan Layanan Laksa, Pengguna dilarang keras untuk:</p>
+                <ul>
+                  <li>Menggunakan Layanan untuk menyimpan data hasil kejahatan atau melakukan aktivitas pencucian uang dan penipuan keuangan lainnya.</li>
+                  <li>Melakukan dekompilasi, rekayasa balik (reverse engineering), pembongkaran kode sumber, atau memodifikasi Aplikasi secara tidak sah untuk mendistribusikan salinan modifikasinya.</li>
+                  <li>Mengirimkan volume data transaksi secara tidak wajar (misalnya menggunakan bot spamming API) yang dapat menguras sumber daya server cloud database Kami dan mengganggu ketersediaan layanan bagi pengguna lain.</li>
+                  <li>Menyalahgunakan celah keamanan (exploitasi bug) untuk memperoleh akses tidak sah ke data pengguna lain.</li>
+                </ul>
+              </div>
+
+              <div class="prose-section">
+                <h3>6. AI OCR DAN AKURASI PROSES</h3>
+                <p>
+                  Pengguna mengakui bahwa fitur Scan Struk berbasis Pemrosesan Otomatis kecerdasan buatan (AI OCR) tidak dijamin menghasilkan ekstraksi data yang 100% akurat. 
+                  Faktor-faktor seperti kualitas gambar, tingkat pencahayaan, kerusakan kertas struk, serta keunikan tata letak struk dapat memengaruhi hasil pembacaan nominal. 
+                  Pengguna wajib memeriksa kembali dan memverifikasi kebenaran nominal, kategori, serta nama rekening sebelum menekan tombol simpan transaksi. Kami tidak bertanggung jawab atas kesalahan pencatatan laporan akibat ketidakakuratan AI OCR.
+                </p>
+              </div>
+
+              <div class="prose-section">
+                <h3>7. LAYANAN PREMIUM DAN UPGRADE</h3>
+                <p>
+                  Beberapa fitur lanjutan, seperti kuota scan struk bulanan yang lebih tinggi atau AI Chatbot interaktif, memerlukan langganan berbayar (Premium). Detail harga dan opsi pembayaran ditampilkan secara terbuka di dalam Aplikasi. 
+                  Proses upgrade lisensi Premium diproses dan divalidasi secara manual atau melalui WhatsApp admin resmi yang tertera. 
+                  Biaya berlangganan bersifat final dan tidak dapat di-refund setelah layanan Premium diaktifkan, kecuali ditentukan lain oleh kebijakan promosi yang berlaku.
+                </p>
+              </div>
+
+              <div class="prose-section">
+                <h3>8. BATASAN TANGGUNG JAWAB & GANTI RUGI</h3>
+                <p>
+                  Layanan Laksa disajikan kepada Anda <strong>"sebagaimana adanya" (as is)</strong> dan <strong>"sebagaimana tersedia" (as available)</strong> tanpa jaminan kinerja dalam bentuk apa pun. 
+                  Sejauh diizinkan oleh hukum Republik Indonesia, Kami tidak bertanggung jawab atas kehilangan data, kerusakan sistem lokal, kerugian bisnis, atau selisih nominal keuangan pribadi yang dialami pengguna akibat gangguan server, kegagalan sinkronisasi cloud, atau kesalahan masukan data manual.
+                </p>
+              </div>
+
+              <div class="prose-section">
+                <h3>9. HUKUM YANG BERLAKU DAN DISPUTE</h3>
+                <p>
+                  Ketentuan Penggunaan ini diatur dan ditafsirkan sepenuhnya berdasarkan hukum Republik Indonesia. 
+                  Setiap perselisihan yang timbul antara Pengguna dan Pengembang Laksa terkait penggunaan Aplikasi akan diselesaikan terlebih dahulu secara musyawarah untuk mufakat dalam waktu 30 hari. 
+                  Apabila musyawarah tidak mencapai mufakat, perselisihan akan diselesaikan melalui jalur hukum di Pengadilan Negeri Tangerang Selatan.
+                </p>
+              </div>
+
+              <div class="prose-section">
+                <h3>10. PENGGUNAAN LOGO DAN MEREK DAGANG PIHAK KETIGA</h3>
+                <p>
+                  Aplikasi Laksa menampilkan logo, nama merek, dan ikon milik lembaga keuangan pihak ketiga — termasuk namun tidak terbatas pada bank umum nasional, bank syariah, bank digital, serta penyedia dompet elektronik (e-wallet) yang beroperasi di Indonesia — <strong>semata-mata untuk tujuan identifikasi visual</strong> dalam antarmuka pengguna Aplikasi.
+                </p>
+                <p>
+                  Tujuan spesifik penggunaan logo tersebut adalah:
+                </p>
+                <ul>
+                  <li>Membantu Pengguna <strong>mengenali dan membedakan</strong> rekening bank atau dompet digital yang mereka miliki pada antarmuka pencatatan transaksi Aplikasi.</li>
+                  <li>Mempermudah Pengguna dalam <strong>mengelompokkan sumber dana</strong> (misalnya: BCA, GoPay, OVO) secara intuitif saat mencatat transaksi masuk maupun keluar.</li>
+                  <li>Meningkatkan kejelasan dan keterbacaan laporan keuangan Pengguna di dalam Aplikasi.</li>
+                </ul>
+                <p>
+                  Penggunaan logo dan merek dagang pihak ketiga dalam Aplikasi Laksa <strong>tidak</strong> bermaksud untuk:
+                </p>
+                <ul>
+                  <li>Mengklaim adanya kemitraan resmi, endorsement, afiliasi, sponsorship, atau hubungan bisnis apa pun antara Laksa dengan institusi keuangan yang logonya ditampilkan.</li>
+                  <li>Menyesatkan Pengguna seolah-olah Aplikasi Laksa memiliki akses, integrasi teknis, atau koneksi data langsung ke sistem perbankan atau layanan dompet digital tersebut.</li>
+                  <li>Melanggar hak kekayaan intelektual pemilik merek yang bersangkutan.</li>
+                </ul>
+                <p>
+                  Seluruh logo, merek dagang, nama dagang, dan aset visual lainnya yang ditampilkan tetap merupakan <strong>hak milik eksklusif masing-masing pemegang merek</strong>. Jika Anda adalah perwakilan dari lembaga keuangan yang logonya ditampilkan dan berkeberatan atas penggunaan ini, silakan hubungi Kami melalui <strong>contact@laksaapp.my.id</strong> untuk penyelesaian secara kekeluargaan.
+                </p>
+              </div>
+            </div>
+          </article>
+
+          <!-- SECTION 2: KEBIJAKAN PRIVASI -->
+          <article id="privacy" class="legal-section-card">
+            <div class="legal-header">
+              <h1 class="legal-title">Kebijakan Privasi Laksa</h1>
+              <p class="legal-meta">Terakhir diperbarui: 5 Juli 2026</p>
+            </div>
+            <div class="prose">
+              <div class="prose-section">
+                <p>
+                  Pengembang Laksa (<strong>"Kami"</strong>) berkomitmen penuh untuk melindungi kerahasiaan dan keamanan data pribadi serta informasi keuangan para pengguna (<strong>"Anda"</strong>). 
+                  Kebijakan Privasi ini menjelaskan bagaimana Kami mengumpulkan, menggunakan, memproses, menyimpan, dan menjaga informasi Anda saat menggunakan aplikasi Laksa, chatbot Telegram, serta sinkronisasi cloud database Kami sesuai dengan ketentuan <strong>Undang-Undang Nomor 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU PDP)</strong> Republik Indonesia.
+                </p>
+              </div>
+
+              <div class="prose-section">
+                <h3>1. JENIS DATA YANG KAMI KUMPULKAN</h3>
+                <p>
+                  Kami hanya mengumpulkan informasi minimum yang mutlak diperlukan untuk mengoperasikan Aplikasi dengan baik (minimalisasi data):
+                </p>
+                <ul>
+                  <li><strong>Informasi Autentikasi</strong>: Alamat email, nama panggilan (avatar), tema tampilan pilihan Anda, serta data enkripsi sesi lokal yang disimpan dalam local storage/session storage perangkat Anda.</li>
+                  <li><strong>Data Otorisasi Bot Telegram</strong>: Jika Anda memutuskan untuk mengaktifkan integrasi bot Telegram Laksa, Kami hanya menyimpan <strong>ID numerik Telegram unik Anda</strong> (berupa deretan angka acak) solely sebagai alamat penunjuk tujuan agar pesan transaksi masuk ke database akun Anda. Kami <strong>tidak pernah meminta, mengakses, atau menyimpan</strong> nomor telepon, nama lengkap, foto profil, maupun daftar kontak Telegram Anda.</li>
+                  <li><strong>Pesan Transaksi Telegram</strong>: Pesan teks berisi catatan keuangan yang Anda kirimkan ke bot diproses secara instan (real-time in-memory) untuk diekstrak menjadi data transaksi, dan <strong>tidak disimpan secara permanen</strong> di server Kami (pesan mentah langsung dibuang setelah transaksi terbentuk).</li>
+                  <li><strong>Data Transaksi Keuangan (Data Pribadi Spesifik)</strong>: Seluruh catatan transaksi belanja, pemasukan, nama dan saldo rekening bank/e-wallet, rincian anggaran belanja, target tabungan, catatan piutang, dan pengingat tagihan yang Anda input. Sesuai UU PDP, data ini termasuk kategori data spesifik yang dilindungi ketat.</li>
+                  <li><strong>Gambar Scan Struk</strong>: Foto struk/kuitansi yang Anda kirimkan ke Aplikasi untuk fitur OCR. <strong>Penting</strong>: Foto struk tersebut langsung diproses secara real-time via API pihak ketiga untuk diekstrak teksnya dan <strong>tidak disimpan secara permanen</strong> di server database Kami.</li>
+                </ul>
+              </div>
+
+              <div class="prose-section">
+                <h3>2. TUJUAN PEMROSESAN DATA</h3>
+                <p>Kami memproses informasi Anda secara terbatas untuk tujuan berikut:</p>
+                <ul>
+                  <li>Menyinkronkan data keuangan Anda secara aman di seluruh perangkat yang Anda gunakan (Cloud Sync).</li>
+                  <li>Menganalisis pengeluaran dan pemasukan Anda guna menyajikan dashboard laporan bulanan dan grafik persentase anggaran belanja.</li>
+                  <li>Memproses pesan teks dari bot Telegram Anda agar diterjemahkan secara otomatis menjadi data pengeluaran/pemasukan Aplikasi.</li>
+                  <li>Memproses foto struk kuitansi melalui layanan AI OCR demi kemudahan input transaksi otomatis.</li>
+                  <li>Menyediakan dukungan teknis apabila Anda melaporkan kendala pada sinkronisasi akun.</li>
+                </ul>
+              </div>
+
+              <div class="prose-section">
+                <h3>3. DASAR HUKUM PEMROSESAN</h3>
+                <p>
+                  Dasar hukum Kami dalam memproses data Anda meliputi persetujuan eksplisit Anda saat mendaftar, pemenuhan layanan kontraktual (menyediakan sinkronisasi cloud database yang Anda aktifkan), serta pemenuhan kepentingan yang sah dari pengembang untuk menjaga stabilitas infrastruktur cloud dan keamanan data.
+                </p>
+              </div>
+
+              <div class="prose-section">
+                <h3>4. KEAMANAN & PENYIMPANAN DATA</h3>
+                <p>
+                  Kami menerapkan pengamanan teknis berupa enkripsi data saat transmisi (HTTPS/TLS), pembatasan akses server database, serta token autentikasi yang ditandatangani secara kriptografis. Token tidak dimaksudkan sebagai enkripsi isi data. Data transaksi Anda disimpan di infrastruktur server cloud.
+                  Meskipun Kami berupaya menjaga keamanan secara maksimal, tidak ada metode transmisi internet yang 100% aman tanpa risiko. Dengan menggunakan Layanan, Anda mengakui dan menerima risiko inherent ini.
+                </p>
+              </div>
+
+              <div class="prose-section">
+                <h3>5. PENGHAPUSAN DAN RETENSI DATA (HAK HAPUS PERMANEN)</h3>
+                <p>
+                  Kami menyimpan data keuangan Anda selama akun Anda aktif dan Anda terus menggunakan Layanan. 
+                  Anda memegang kendali penuh atas data Anda. Laksa menyediakan tombol <strong>"Hapus Akun Permanen"</strong> dan <strong>"Hapus Semua Data Aplikasi"</strong> di halaman pengaturan:
+                </p>
+                <ul>
+                  <li>Menghapus semua data aplikasi akan mengosongkan seluruh rekening, transaksi, anggaran, dan target dari cloud database secara seketika.</li>
+                  <li>Menghapus akun secara permanen akan menghapus seluruh profil pengguna, email terasosiasi, Telegram ID yang terhubung, dan riwayat transaksi dari database Kami secara permanen tanpa menyisakan salinan cadangan.</li>
+                </ul>
+              </div>
+
+              <div class="prose-section">
+                <h3>6. PENGUNGKAPAN KEPADA PIHAK KETIGA</h3>
+                <p>
+                  Kami tidak menjual, menyewakan, atau memperdagangkan data transaksi keuangan pribadi Anda kepada perusahaan iklan atau pihak ketiga mana pun untuk tujuan pemasaran. 
+                  Kami hanya membagikan data Anda secara terbatas kepada penyedia infrastruktur penunjang demi jalannya fitur Aplikasi:
+                </p>
+                <ul>
+                  <li><strong>Penyedia Cloud Database & Server</strong>: Untuk menampung database transaksi terenkripsi Anda.</li>
+                  <li><strong>Penyedia API AI (Groq/OpenAI)</strong>: Secara khusus mengirimkan teks mentah atau gambar kuitansi saat Anda menggunakan fitur Scan Struk atau AI Chat untuk diekstrak fiturnya. Kemitraan ini terikat ketentuan perlindungan data di mana mereka dilarang menggunakan data Anda untuk melatih model mereka sendiri.</li>
+                </ul>
+              </div>
+
+              <div class="prose-section">
+                <h3>7. HAK-HAK ANDA SEBAGAI SUBJEK DATA</h3>
+                <p>
+                  Berdasarkan UU PDP, Anda memiliki hak penuh untuk mengakses riwayat data transaksi Anda (tersedia lewat fitur ekspor CSV), memperbaiki kesalahan input data, membatasi atau menolak pemrosesan otomatis, menarik kembali persetujuan pengaitan akun Telegram, serta meminta penghapusan permanen akun Anda dari server Kami.
+                </p>
+              </div>
+
+              <div class="prose-section">
+                <h3>8. PERUBAHAN KEBIJAKAN PRIVASI</h3>
+                <p>
+                  Kebijakan Privasi ini dapat Kami perbarui secara berkala menyesuaikan pengembangan fitur Aplikasi atau regulasi hukum PDP terbaru. 
+                  Perubahan penting akan diumumkan kepada pengguna melalui banner informasi di landing page atau notifikasi dalam Aplikasi. 
+                  Melanjutkan penggunaan Aplikasi setelah pembaruan kebijakan ini berarti Anda menyetujui ketentuan pemrosesan data yang baru.
+                </p>
+              </div>
+            </div>
+          </article>
+
+          <!-- Consent Card -->
+          <div class="consent-footer-card">
+            <h3>Pernyataan Persetujuan</h3>
+            <p>
+              Dengan mendaftar, menghubungkan akun Telegram, atau menggunakan Laksa secara berkelanjutan, Anda menyatakan telah membaca, memahami, dan menyetujui seluruh isi Ketentuan Penggunaan dan Kebijakan Privasi di atas, serta memberikan persetujuan eksplisit kepada Kami untuk memproses data keuangan Anda demi penyediaan Layanan.
+            </p>
+            <p class="consent-footer-copyright">
+              &copy; 2026 Laksa Apps. Hubungi kami melalui <strong>contact@laksaapp.my.id</strong> untuk pertanyaan dan bantuan hukum.
+            </p>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="landing-footer">
+    <div class="legal-container">
+      <div class="landing-footer-copyright" style="width: 100%">
+        <span>&copy; 2026 Laksa Apps. Dibuat oleh haerubirru17. Hak Cipta Dilindungi.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    function switchSection(sectionId, element) {
+      // Toggle active link class
+      document.querySelectorAll('.legal-menu-link').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      element.classList.add('active');
+
+      // Toggle active card section
+      document.querySelectorAll('.legal-section-card').forEach(card => {
+        card.classList.remove('active');
+      });
+      const activeCard = document.getElementById(sectionId);
+      if (activeCard) {
+        activeCard.classList.add('active');
+        window.scrollTo({
+          top: activeCard.offsetTop - 80,
+          behavior: 'smooth'
+        });
+      }
+    }
+
+    // Handle initial hash routing
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash;
+      if (hash === '#privacy') {
+        const privacyBtn = document.querySelectorAll('.legal-menu-link')[1];
+        if (privacyBtn) switchSection('privacy', privacyBtn);
+      } else {
+        const termsBtn = document.querySelectorAll('.legal-menu-link')[0];
+        if (termsBtn) switchSection('terms', termsBtn);
+      }
+    });
+  </script>
+</body>
+
+</html>

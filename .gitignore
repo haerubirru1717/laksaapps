@@ -1,0 +1,31 @@
+# Dependencies and build output
+**/node_modules/
+**/dist/
+**/.wrangler/
+
+# Secrets and local environment
+**/.env
+**/.env.*
+**/.dev.vars
+**/.dev.vars.*
+!**/.dev.vars.example
+
+# Local deployment/debug artifacts
+*.log
+*.bak
+*.zip
+*.json_backup
+laksa_backup_*.json
+token github.txt
+deploy.ps1
+
+# Editor/OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local tool state
+.gemini/
+ui-ux-pro-max-skill/
+codebase-memory-mcp/

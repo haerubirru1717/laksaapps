@@ -1,0 +1,15 @@
+/* ══════════════════════════════════════════
+   reports.css — Laporan & Export Page Layout
+   ══════════════════════════════════════════ */
+
+#page-reports {
+  position: relative;
+}
+
+.report-chart-card {
+  background: var(--card);
+  border: 1.5px solid var(--gs-border);
+  border-radius: 20px;
+  padding: 1.2rem;
+  box-shadow: var(--shd);
+}

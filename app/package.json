@@ -1,0 +1,18 @@
+{
+  "name": "laksaapps",
+  "version": "1.0.0",
+  "description": "Laksa Apps Workspace",
+  "main": "cloudflare-worker.js",
+  "scripts": {
+    "build": "node scripts/build-public.mjs",
+    "deploy:worker": "wrangler deploy",
+    "dev:worker": "wrangler dev cloudflare-worker.js --port 8787",
+    "dev:frontend": "npx http-server -p 5500",
+    "dev:pages": "npm run build && wrangler pages dev dist --port 5500"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "sharp": "^0.35.3",
+    "wrangler": "^4.113.0"
+  }
+}

@@ -1,0 +1,42 @@
+/* ══════════════════════════════════════════
+   keuangan.css — Keuangan Sub-panels (Budget, Goals, Bills, Piutang)
+   ══════════════════════════════════════════ */
+
+.keu-seg {
+  display: flex;
+  gap: .3rem;
+  padding: .3rem;
+  background: var(--gs-3);
+  border: 1px solid var(--gs-border);
+  border-radius: 14px;
+  margin-bottom: 1.2rem;
+  overflow-x: auto;
+}
+
+.keu-tab {
+  flex: 1;
+  padding: .5rem .8rem;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--ink3);
+  font-family: inherit;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .14s;
+}
+
+.keu-tab.active {
+  background: var(--gs-4);
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+
+.keu-summary-card {
+  background: var(--card);
+  border: 1.5px solid var(--gs-border);
+  border-radius: 20px;
+  padding: 1.2rem;
+}

@@ -1,0 +1,140 @@
+/* ══════════════════════════════════════════
+   sheets.css — Bottom Sheets (Tx Detail, Account Detail, FAB)
+   ══════════════════════════════════════════ */
+
+/* TX DETAIL SHEET */
+.tx-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8500;
+  background: rgba(15, 23, 42, .4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .28s ease;
+}
+
+.tx-sheet-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.tx-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 8501;
+  background: var(--gs-7);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-top: 1.5px solid var(--gs-border-hi);
+  border-radius: 24px 24px 0 0;
+  padding: .8rem 1.2rem calc(1.4rem + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -16px 48px rgba(15,23,42,.22);
+  transform: translateY(100%);
+  transition: transform .32s cubic-bezier(.32,.72,0,1);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.tx-sheet-overlay.open .tx-sheet {
+  transform: translateY(0);
+}
+
+.tx-sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--gs-border-hi);
+  margin: 0 auto .9rem;
+}
+
+/* ACCOUNT DETAIL BOTTOM SHEET */
+.acc-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8500;
+  background: rgba(15, 23, 42, .4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .28s ease;
+}
+
+.acc-sheet-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.acc-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 8501;
+  background: var(--gs-7);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-top: 1.5px solid var(--gs-border-hi);
+  border-radius: 24px 24px 0 0;
+  padding: .8rem 1.2rem calc(1.4rem + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -16px 48px rgba(15,23,42,.22);
+  transform: translateY(100%);
+  transition: transform .32s cubic-bezier(.32,.72,0,1);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.acc-sheet-overlay.open .acc-sheet {
+  transform: translateY(0);
+}
+
+.acc-sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--gs-border-hi);
+  margin: 0 auto .9rem;
+}
+
+/* FAB SHEET */
+.fab-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8500;
+  background: rgba(15, 23, 42, .4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .28s ease;
+}
+
+.fab-sheet-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.fab-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 8501;
+  background: var(--gs-7);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-top: 1.5px solid var(--gs-border-hi);
+  border-radius: 24px 24px 0 0;
+  padding: .8rem 1.2rem calc(1.4rem + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -16px 48px rgba(15,23,42,.22);
+  transform: translateY(100%);
+  transition: transform .32s cubic-bezier(.32,.72,0,1);
+}
+
+.fab-sheet-overlay.open .fab-sheet {
+  transform: translateY(0);
+}
