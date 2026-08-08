@@ -5,6 +5,7 @@
   "description": "Laksa user app, admin panel, and Cloudflare Worker monorepo",
   "scripts": {
     "install:app": "npm --prefix app ci",
+    "test:security": "node --no-warnings --test tests/security/*.test.mjs",
     "build:app": "npm --prefix app run build",
     "dev:app": "npm --prefix app run dev:frontend",
     "dev:admin": "npx http-server admin -p 5501",

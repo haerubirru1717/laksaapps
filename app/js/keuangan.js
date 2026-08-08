@@ -1,6 +1,32 @@
 // ══════════════════════════════════════
 // keuangan.js — Keuangan (Budget, Goals, Bills)
 // ══════════════════════════════════════
+function bindKeuanganActions() {
+  if (document._keuanganActionsBound) return;
+  document._keuanganActionsBound = true;
+  document.addEventListener('click', event => {
+    const button = event.target?.closest?.('[data-keu-action]');
+    if (!button) return;
+    const id = button.dataset.id;
+    const action = button.dataset.keuAction;
+    if (action === 'delete-budget') return delBud(id);
+    if (action === 'delete-goal') return delGoal(id);
+    if (action === 'bill-history') return openBillHistory(id);
+    if (action === 'edit-bill') return openEditBill(id);
+    if (action === 'delete-bill') return delBill(id);
+    if (action === 'delete-piutang') return delPiutang(id);
+    if (action === 'add-to-goal') {
+      const goal = getGoals().find(item => item.id === id);
+      if (goal) openModal('addToGoal', goal);
+      return;
+    }
+    if (action === 'edit-piutang' || action === 'return-piutang') {
+      const piutang = getPiutang().find(item => item.id === id);
+      if (piutang) openModal(action === 'edit-piutang' ? 'addPiutang' : 'returnPiutang', piutang);
+    }
+  });
+}
+bindKeuanganActions();
 
 function renderBudg() {
   const buds = getBud(), grid = el('budgGrid'), emp = el('budgEmpty');
@@ -68,7 +94,7 @@ function renderBudg() {
           <div class="bcard-glass-icon">${catIcon}</div>
           <div><div class="bcard-glass-name">${catName}</div></div>
         </div>
-        <button class="bcard-glass-close" onclick="delBud('${b.id}')" title="Hapus">
+        <button class="bcard-glass-close" data-keu-action="delete-budget" data-id="${esc(b.id)}" title="Hapus">
           <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         </button>
       </div>
@@ -173,7 +199,7 @@ function renderGoals() {
       const diff = Math.ceil((new Date(g.deadline) - new Date()) / 86400000);
       dlHtml = `<div class="gcard-glass-deadline"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> ${diff > 0 ? diff + ' hari lagi' : diff === 0 ? 'Hari ini!' : 'Sudah lewat'} — ${fDate(g.deadline)}</div>`;
     }
-    const gj = JSON.stringify(g).replace(/"/g, '&quot;');
+
     const iconSvg = getGoalIconSvg(g.icon || 'target', 18);
     const pctBadgeClass = isAchieved ? 'green' : '';
     const pctLabel = isAchieved ? '100% ✓' : rawPct.toFixed(0) + '%';
@@ -189,7 +215,7 @@ function renderGoals() {
           <div class="gcard-glass-icon">${iconSvg}</div>
           <div><div class="gcard-glass-name">${esc(g.name)}</div></div>
         </div>
-        <button class="gcard-glass-close" onclick="delGoal('${g.id}')" title="Hapus">
+        <button class="gcard-glass-close" data-keu-action="delete-goal" data-id="${esc(g.id)}" title="Hapus">
           <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         </button>
       </div>
@@ -206,7 +232,7 @@ function renderGoals() {
       ${dlHtml}
       <div class="gcard-glass-footer">
         ${hintHtml}
-        <button class="btn-add-glass" onclick='openModal("addToGoal",${gj})'>
+        <button class="btn-add-glass" data-keu-action="add-to-goal" data-id="${esc(g.id)}">
           <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg> Tabung
         </button>
       </div>
@@ -387,9 +413,9 @@ function renderBills() {
     const isPaid = b.status === 'paid';
 
     const actionBtns = `<div class="card-actions" style="display:flex;gap:6px;align-items:center;">
-      <button class="bill-btn-hist-new" onclick="openBillHistory('${b.id}')" title="Riwayat Pembayaran"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
-      <button class="bill-btn-edit-new" onclick="openEditBill('${b.id}')" title="Edit"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      <button class="bill-btn-del-new" onclick="delBill('${b.id}')" title="Hapus"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 3.5h10M5.5 3.5V2.5h3v1M5 3.5l.5 8M9 3.5l-.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="bill-btn-hist-new" data-keu-action="bill-history" data-id="${esc(b.id)}" title="Riwayat Pembayaran"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
+      <button class="bill-btn-edit-new" data-keu-action="edit-bill" data-id="${esc(b.id)}" title="Edit"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="bill-btn-del-new" data-keu-action="delete-bill" data-id="${esc(b.id)}" title="Hapus"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 3.5h10M5.5 3.5V2.5h3v1M5 3.5l.5 8M9 3.5l-.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>`;
 
     if (isPaid) {
@@ -402,7 +428,7 @@ function renderBills() {
 
     return `<div class="card-wrap">
   <div class="action-bg"><div class="check-label"><div class="check-circle">✓</div> Tandai Lunas</div></div>
-  <div class="bill-card ${st.cls}" data-id="${b.id}">
+  <div class="bill-card ${st.cls}" data-id="${esc(b.id)}">
     <div class="card-top"><div class="card-left"><div class="bill-dot ${st.cls}"></div><div><div class="bill-name">${esc(b.name)}</div><div class="bill-meta">${dueLabel} · ${typeLbl}</div></div></div>${actionBtns}</div>
     <div class="bill-divider"></div>
     <div class="card-bottom"><div style="display:flex;align-items:center;gap:8px;"><div class="bill-badge ${st.cls}">${st.label}</div><div class="swipe-hint"><div class="arrows"><span></span><span></span></div> geser untuk lunas</div></div>${amtHtml}</div>
@@ -752,26 +778,24 @@ function renderPiutang() {
     const levelCls = isPaid ? 'ok' : rawPct >= 60 ? 'ok' : rawPct >= 30 ? 'warn' : 'bad';
     const progressBar = `<div class="ptrack" style="margin:6px 0 2px"><div class="pfill ${levelCls}" style="width:${rawPct}%"></div></div>`;
 
-    const pJ = JSON.stringify(p).replace(/"/g, '&quot;');
-
     const actionBtns = isPaid
       ? `<div class="card-actions" style="display:flex;gap:6px">
-          <button class="bill-btn-edit-new" onclick='openModal("addPiutang",${pJ})' title="Edit">
+          <button class="bill-btn-edit-new" data-keu-action="edit-piutang" data-id="${esc(p.id)}" title="Edit">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button class="bill-btn-del-new" onclick="delPiutang('${p.id}')" title="Hapus">
+          <button class="bill-btn-del-new" data-keu-action="delete-piutang" data-id="${esc(p.id)}" title="Hapus">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 3.5h10M5.5 3.5V2.5h3v1M5 3.5l.5 8M9 3.5l-.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>`
       : `<div class="card-actions" style="display:flex;gap:6px">
-          <button class="btn-add-glass" style="font-size:.72rem;padding:.3rem .65rem" onclick='openModal("returnPiutang",${pJ})' title="Bayar/Cicil">
+          <button class="btn-add-glass" style="font-size:.72rem;padding:.3rem .65rem" data-keu-action="return-piutang" data-id="${esc(p.id)}" title="Bayar/Cicil">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>
             Bayar
           </button>
-          <button class="bill-btn-edit-new" onclick='openModal("addPiutang",${pJ})' title="Edit">
+          <button class="bill-btn-edit-new" data-keu-action="edit-piutang" data-id="${esc(p.id)}" title="Edit">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button class="bill-btn-del-new" onclick="delPiutang('${p.id}')" title="Hapus">
+          <button class="bill-btn-del-new" data-keu-action="delete-piutang" data-id="${esc(p.id)}" title="Hapus">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 3.5h10M5.5 3.5V2.5h3v1M5 3.5l.5 8M9 3.5l-.5 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>`;

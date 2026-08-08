@@ -188,6 +188,7 @@ async function verifyAdminJWT(req, env) {
   const payload = await verifyJWT(token, env.JWT_SECRET);
   if (!payload) return null;
   if (payload.role !== "admin") return null;
+  if (!env.ADMIN_TELEGRAM_ID || String(payload.sub) !== String(env.ADMIN_TELEGRAM_ID)) return null;
   return payload;
 }
 
@@ -432,7 +433,6 @@ async function handleDeleteAccount(req, body, env) {
   await env.DB.prepare("DELETE FROM pending_scans WHERE user_id = ?").bind(uid).run().catch(() => {});
   await env.DB.prepare("DELETE FROM pending_texts WHERE user_id = ?").bind(uid).run().catch(() => {});
   await env.DB.prepare("DELETE FROM usage_logs WHERE user_id = ?").bind(uid).run().catch(() => {});
-  await env.DB.prepare("DELETE FROM payment_requests WHERE user_id = ?").bind(uid).run().catch(() => {});
   await env.DB.prepare("DELETE FROM bot_messages WHERE user_id = ?").bind(uid).run().catch(() => {});
   await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(uid).run();
   return jsonRes({ status: "deleted", message: "Akun dan semua data berhasil dihapus." });
@@ -621,7 +621,7 @@ async function ensureDedup(env) {
   if (_dedupReady) return;
   try {
     await env.DB.prepare(
-      "CREATE TABLE IF NOT EXISTS processed_updates (update_id TEXT PRIMARY KEY, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
+      "CREATE TABLE IF NOT EXISTS processed_bot_updates (update_id TEXT PRIMARY KEY, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
     ).run();
     await env.DB.prepare(
       "ALTER TABLE transactions ADD COLUMN idempotency_key TEXT"
@@ -638,6 +638,20 @@ async function ensureDedup(env) {
     _dedupReady = true;
   } catch (e) {
     console.warn("ensureDedup:", e.message);
+  }
+}
+
+async function claimTelegramUpdate(botName, updateId, env) {
+  if (updateId === undefined || updateId === null) return true;
+  try {
+    await env.DB.prepare(
+      "INSERT INTO processed_bot_updates (update_id) VALUES (?)"
+    ).bind(`${botName}:${updateId}`).run();
+    return true;
+  } catch (e) {
+    const message = String(e?.message || "");
+    if (message.includes("UNIQUE") || message.includes("constraint")) return false;
+    throw e;
   }
 }
 
@@ -678,16 +692,8 @@ export default {
 
         // ── Deduplication: cegah triple insert dari Telegram webhook retry ──
         const updateId = body?.update_id;
-        if (updateId) {
-          try {
-            await env.DB.prepare(
-              "INSERT INTO processed_updates (update_id) VALUES (?)"
-            ).bind(String(updateId)).run();
-          } catch (e) {
-            // UNIQUE constraint or any insert error = already processed → skip
-            console.log("Duplicate update_id ignored:", updateId);
-            return new Response("OK");
-          }
+        if (!await claimTelegramUpdate("consumer", updateId, env)) {
+          return new Response("OK");
         }
 
         // Balas Telegram SEGERA sebelum processing dimulai (cegah timeout → retry)
@@ -709,6 +715,10 @@ export default {
           return new Response("Unauthorized", { status: 403 });
         }
         const body = await request.json();
+        await ensureDedup(env);
+        if (!await claimTelegramUpdate("admin", body?.update_id, env)) {
+          return new Response("OK");
+        }
         ctx.waitUntil(handleAdminBot(body, env));
         return new Response("OK");
       }
@@ -1055,6 +1065,10 @@ async function routeAPI(req, url, env) {
 // ─────────────────────────────────────────────────────
 // TELEGRAM DISPATCHER
 // ─────────────────────────────────────────────────────
+function requirePrivateTelegramChat(chat, fromId) {
+  return chat?.type === "private" && String(chat.id) === String(fromId);
+}
+
 async function handleTelegram(body, env, updateId) {
   const chatId = body?.callback_query?.message?.chat?.id || body?.message?.chat?.id;
   try {
@@ -1062,6 +1076,7 @@ async function handleTelegram(body, env, updateId) {
 
     const msg = body?.message;
     if (!msg) return;
+    if (!requirePrivateTelegramChat(msg.chat, msg.from?.id)) return;
 
     const rawTgId = String(msg.from.id);
     const userId = await resolveUserByTelegramId(rawTgId, env);
@@ -1115,6 +1130,7 @@ async function handleTelegram(body, env, updateId) {
 // CALLBACK HANDLER
 // ─────────────────────────────────────────────────────
 async function handleCallback(cb, env, updateId) {
+  if (!requirePrivateTelegramChat(cb.message?.chat, cb.from?.id)) return;
   const chatId = cb.message.chat.id;
   const rawTgId = String(cb.from.id);
   const userId = await resolveUserByTelegramId(rawTgId, env);
@@ -2876,7 +2892,6 @@ async function handleAdminDeleteUser(adminId, userId, env) {
     await env.DB.prepare("DELETE FROM pending_scans WHERE user_id = ?").bind(userId).run().catch(() => {});
     await env.DB.prepare("DELETE FROM pending_texts WHERE user_id = ?").bind(userId).run().catch(() => {});
     await env.DB.prepare("DELETE FROM usage_logs WHERE user_id = ?").bind(userId).run().catch(() => {});
-    await env.DB.prepare("DELETE FROM payment_requests WHERE user_id = ?").bind(userId).run().catch(() => {});
     await env.DB.prepare("DELETE FROM bot_messages WHERE user_id = ?").bind(userId).run().catch(() => {});
     await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(userId).run();
 
@@ -3429,16 +3444,14 @@ async function setupDatabase(env) {
       )
     `).run();
 
-    // Migration check: Drop categories table if it only has 'id' as primary key
-    try {
-      const { results: cols } = await env.DB.prepare("PRAGMA table_info(categories)").all();
-      if (cols && cols.length > 0) {
-        const pkCols = cols.filter(c => c.pk > 0);
-        if (pkCols.length === 1 && pkCols[0].name === "id") {
-          await env.DB.prepare("DROP TABLE categories").run();
-        }
+    // Fail closed: a legacy single-column primary key needs a reviewed copy migration.
+    const { results: categoryColumns } = await env.DB.prepare("PRAGMA table_info(categories)").all();
+    if (categoryColumns && categoryColumns.length > 0) {
+      const pkCols = categoryColumns.filter(column => column.pk > 0);
+      if (pkCols.length === 1 && pkCols[0].name === "id") {
+        throw new Error("Legacy categories schema requires an explicit backup-and-copy migration");
       }
-    } catch (_) {}
+    }
 
     await env.DB.prepare(`
       CREATE TABLE IF NOT EXISTS categories (
@@ -3540,8 +3553,8 @@ async function setupDatabase(env) {
     `).run();
 
     await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS processed_updates (
-        update_id INTEGER PRIMARY KEY,
+      CREATE TABLE IF NOT EXISTS processed_bot_updates (
+        update_id TEXT PRIMARY KEY,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `).run();
@@ -4082,7 +4095,7 @@ async function getBudgets(uid, env) {
 }
 
 async function createBudget(uid, body, env) {
-  const id = body.id || randomId();
+  const id = randomId();
   await env.DB.prepare("INSERT INTO budgets (id, user_id, category_id, limit_amount, month) VALUES (?, ?, ?, ?, ?)")
     .bind(id, uid, body.category_id, body.limit_amount, body.month || new Date().toISOString().slice(0, 7))
     .run();
@@ -4100,7 +4113,7 @@ async function getGoals(uid, env) {
 }
 
 async function createGoal(uid, body, env) {
-  const id = body.id || randomId();
+  const id = randomId();
   await env.DB.prepare("INSERT INTO goals (id, user_id, name, target, current, deadline, icon) VALUES (?, ?, ?, ?, ?, ?, ?)")
     .bind(id, uid, body.name, body.target, body.current || 0, body.deadline || null, body.icon || "target")
     .run();
@@ -4133,7 +4146,7 @@ async function getBills(uid, env) {
 }
 
 async function createBill(uid, body, env) {
-  const id = body.id || randomId();
+  const id = randomId();
   await env.DB.prepare(`
     INSERT INTO bills (id, user_id, name, amount, status, due_type, due_day, due_date, paid_date)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -4454,6 +4467,7 @@ async function deletePiutang(uid, id, env) {
 async function handleAdminBot(body, env) {
   const msg = body?.message;
   if (!msg) return;
+  if (!requirePrivateTelegramChat(msg.chat, msg.from?.id)) return;
 
   const chatId = msg.chat.id;
   const fromId = String(msg.from.id);
@@ -4488,7 +4502,7 @@ async function handleAdminBot(body, env) {
 
   try {
     if (text === '/start' || text === '/help') {
-      await adminSend(chatId, `🔐 *Admin Panel Laksa*\n\n*Perintah tersedia:*\n\n📋 *User Management*\n/users — List semua user\n/search email — Cari user\n/user email — Detail user\n/ban email — Ban user\n/unban email — Buka blokir user\n/resetpw email password — Reset password user\n/deleteuser email — Hapus akun permanen\n\n💎 *Premium Management*\n/extend email durasi — Perpanjang premium administratif\n/revoke email — Cabut premium\n/pending — Pantau pembayaran yang menunggu gateway\n/receipt email — Bukti pembayaran KlikQRIS terverifikasi\n\n💰 *Pricing*\n/pricing — Lihat harga saat ini\n/setprice id harga — Update harga\n/setoriginal id harga — Set harga coret\n\n🎫 *Kupon*\n/coupon list — Lihat semua kupon\n/coupon create KODE tipe nilai\n/coupon delete KODE — Hapus kupon\n\n📊 *Statistik*\n/stats — Overview dashboard\n/revenue — Revenue summary\n\nPembayaran hanya diaktifkan otomatis setelah verifikasi KlikQRIS MY PG.`, ADMIN_TOKEN);
+      await adminSend(chatId, `🔐 *Admin Panel Laksa*\n\n*Perintah tersedia:*\n\n📋 *User Management*\n/users — List semua user\n/search email — Cari user\n/user email — Detail user\n/ban email — Ban user\n/unban email — Buka blokir user\n/deleteuser email — Hapus akun permanen\n\n💎 *Premium Management*\n/extend email durasi — Perpanjang premium administratif\n/revoke email — Cabut premium\n/pending — Pantau pembayaran yang menunggu gateway\n/receipt email — Bukti pembayaran KlikQRIS terverifikasi\n\n💰 *Pricing*\n/pricing — Lihat harga saat ini\n/setprice id harga — Update harga\n/setoriginal id harga — Set harga coret\n\n🎫 *Kupon*\n/coupon list — Lihat semua kupon\n/coupon create KODE tipe nilai\n/coupon delete KODE — Hapus kupon\n\n📊 *Statistik*\n/stats — Overview dashboard\n/revenue — Revenue summary\n\nPembayaran hanya diaktifkan otomatis setelah verifikasi KlikQRIS MY PG.`, ADMIN_TOKEN);
       return;
     }
 
@@ -4608,26 +4622,9 @@ async function handleAdminBot(body, env) {
       await env.DB.prepare("DELETE FROM pending_scans WHERE user_id = ?").bind(uid).run().catch(() => {});
       await env.DB.prepare("DELETE FROM pending_texts WHERE user_id = ?").bind(uid).run().catch(() => {});
       await env.DB.prepare("DELETE FROM usage_logs WHERE user_id = ?").bind(uid).run().catch(() => {});
-      await env.DB.prepare("DELETE FROM payment_requests WHERE user_id = ?").bind(uid).run().catch(() => {});
       await env.DB.prepare("DELETE FROM bot_messages WHERE user_id = ?").bind(uid).run().catch(() => {});
       await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(uid).run();
       await adminSend(chatId, `🗑️ *Akun dihapus permanen*\n\n*User:* ${user.name} (${email})\n\nSemua data (transaksi, rekening, kategori, dll) telah dihapus.`, ADMIN_TOKEN);
-      return;
-    }
-
-    if (text === '/resetpw') { await adminSend(chatId, "📝 Format: /resetpw email@contoh.com passwordbaru", ADMIN_TOKEN); return; }
-    if (text.startsWith('/resetpw ')) {
-      const parts = text.slice(9).trim().split(/\s+/);
-      const email = parts[0]?.toLowerCase();
-      const newPw = parts[1];
-      if (!email || !newPw) { await adminSend(chatId, "📝 Format: /resetpw email@contoh.com passwordbaru\n\nPassword harus 10–256 karakter.", ADMIN_TOKEN); return; }
-      if (!validPassword(newPw)) { await adminSend(chatId, "❌ Password harus 10–256 karakter.", ADMIN_TOKEN); return; }
-      const user = await env.DB.prepare("SELECT id, name FROM users WHERE email = ?").bind(email).first();
-      if (!user) { await adminSend(chatId, `❌ User "${email}" tidak ditemukan.`, ADMIN_TOKEN); return; }
-      const salt = crypto.randomUUID();
-      const hash = await hashPassword(newPw, salt);
-      await env.DB.prepare("UPDATE users SET password_hash = ?, salt = ?, pbkdf2_iterations = 600000, token_version = COALESCE(token_version, 0) + 1 WHERE id = ?").bind(hash, salt, user.id).run();
-      await adminSend(chatId, `✅ *Password direset!*\n\n*User:* ${user.name} (${email})\n*Password baru:* \`${newPw}\`\n\nSampaikan ke user secara pribadi.`, ADMIN_TOKEN);
       return;
     }
 
@@ -4814,8 +4811,9 @@ async function adminSend(chatId, text, token) {
 
 async function cleanupOldData(env) {
   try {
+    await ensureDedup(env);
     await env.DB.prepare(
-      "DELETE FROM processed_updates WHERE created_at < datetime('now', '-7 days')"
+      "DELETE FROM processed_bot_updates WHERE created_at < datetime('now', '-7 days')"
     ).run();
     await env.DB.prepare("DELETE FROM telegram_link_challenges WHERE expires_at < datetime('now', '-1 day')").run();
     await env.DB.prepare("DELETE FROM otp_challenges WHERE expires_at < datetime('now', '-1 day')").run();

@@ -28,4 +28,4 @@ compatibility_date = "2024-03-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "laksa-db"
-database_id = "local-db"
+database_id = "832158ab-90f5-4879-9ea9-16453a7a1197"
