@@ -40,3 +40,14 @@ test('payment outbox reclaims stale processing leases', () => {
   assert.match(body, /status = 'processing'/);
   assert.match(body, /datetime\('now', '-5 minutes'\)/);
 });
+
+test('premium checkout always restores button and uses the real toast helper', () => {
+  const frontend = readFileSync(new URL('../../app/js/app.js', import.meta.url), 'utf8');
+  const start = frontend.indexOf("const btnPay = overlay.querySelector('#btnUpgradePay')");
+  const end = frontend.indexOf('\n}', start);
+  const body = frontend.slice(start, end);
+  assert.doesNotMatch(body, /showToast\(/);
+  assert.match(body, /toast\(/);
+  assert.match(body, /finally\s*{/);
+  assert.match(body, /btnPay\.disabled = false/);
+});

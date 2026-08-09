@@ -518,24 +518,28 @@ async function showUpgradeModal(message) {
     const selected = overlay.querySelector('input[name="upgrade-plan"]:checked');
     const pricingId = selected?.value;
     if (!pricingId) {
-      showToast('Pilih paket Premium terlebih dahulu.', 'error');
+      toast('Pilih paket Premium terlebih dahulu.', 'error');
       return;
     }
     const couponCode = window._appliedCoupon?.code || '';
     btnPay.disabled = true;
     btnPay.textContent = 'Menyiapkan pembayaran...';
     try {
-      const payment = await api('POST', '/payment/request', {
-        pricing_id: pricingId,
-        coupon_code: couponCode
-      });
+      const payment = await Promise.race([
+        api('POST', '/payment/request', {
+          pricing_id: pricingId,
+          coupon_code: couponCode
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Penyedia pembayaran tidak merespons. Silakan coba lagi.')), 20000))
+      ]);
       const checkout = new URL(payment.checkout_url);
       if (checkout.protocol !== 'https:' || checkout.hostname !== 'klikqris.com') {
         throw new Error('URL pembayaran tidak valid');
       }
       window.location.assign(checkout.toString());
     } catch (error) {
-      showToast(error?.message || 'Gagal membuat pembayaran.', 'error');
+      toast(error?.message || 'Gagal membuat pembayaran.', 'error', 6000);
+    } finally {
       btnPay.disabled = false;
       btnPay.textContent = 'Bayar Sekarang';
     }
