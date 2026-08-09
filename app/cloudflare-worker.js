@@ -1,3 +1,5 @@
+import { renderPaymentReceiptHtml, renderPaymentReceiptText } from "./payment-receipt-email.js";
+
 /**
  * LAKSA BOT & BACKEND API — Cloudflare Worker v3.0
  * ─────────────────────────────────────────────────────
@@ -1054,6 +1056,39 @@ async function routeAPI(req, url, env) {
     });
     if (!result.ok) return jsonRes({ error: result.error }, result.status);
     return jsonRes(result);
+  }
+  const paymentOrderMatch = path.match(/^\/payment\/orders\/([^/]+)$/);
+  if (paymentOrderMatch && m === "GET") {
+    if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
+    return handleGetPaymentOrder(uid, decodeURIComponent(paymentOrderMatch[1]), env);
+  }
+  const paymentRefreshMatch = path.match(/^\/payment\/orders\/([^/]+)\/refresh$/);
+  if (paymentRefreshMatch && m === "POST") {
+    if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
+    return handleRefreshPaymentOrder(uid, decodeURIComponent(paymentRefreshMatch[1]), env);
+  }
+  if (path === "/notifications" && m === "GET") {
+    if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
+    return handleListNotifications(uid, url, env);
+  }
+  if (path === "/notifications/unread-count" && m === "GET") {
+    if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
+    await ensurePaymentIntegritySchema(env);
+    const row = await env.DB.prepare("SELECT COUNT(*) count FROM user_notifications WHERE user_id = ? AND read_at IS NULL").bind(uid).first();
+    return jsonRes({ count: Number(row?.count || 0) });
+  }
+  if (path === "/notifications/read-all" && m === "POST") {
+    if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
+    await ensurePaymentIntegritySchema(env);
+    await env.DB.prepare("UPDATE user_notifications SET read_at = CURRENT_TIMESTAMP WHERE user_id = ? AND read_at IS NULL").bind(uid).run();
+    return jsonRes({ ok: true });
+  }
+  const notificationReadMatch = path.match(/^\/notifications\/([^/]+)\/read$/);
+  if (notificationReadMatch && m === "POST") {
+    if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
+    await ensurePaymentIntegritySchema(env);
+    const changed = await env.DB.prepare("UPDATE user_notifications SET read_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?").bind(decodeURIComponent(notificationReadMatch[1]), uid).run();
+    return (changed.meta?.changes || 0) ? jsonRes({ ok: true }) : jsonRes({ error: "Notifikasi tidak ditemukan" }, 404);
   }
 
   // Web AI proxy (usage limited)
@@ -3207,38 +3242,28 @@ async function createKlikQrisCheckout(uid, pricingId, rawCouponCode, env, { reus
   if (reusePending) {
     const existing = couponCode
       ? await env.DB.prepare(`
-          SELECT id, provider_total, provider_reference
+          SELECT id, provider_total, provider_qris_url, provider_expired_at
           FROM payment_requests
           WHERE user_id = ? AND pricing_id = ? AND coupon_code = ?
             AND status = 'pending' AND datetime(created_at) >= datetime('now', '-15 minutes')
           ORDER BY created_at DESC LIMIT 1
         `).bind(uid, normalizedPricingId, couponCode).first()
       : await env.DB.prepare(`
-          SELECT id, provider_total, provider_reference
+          SELECT id, provider_total, provider_qris_url, provider_expired_at
           FROM payment_requests
           WHERE user_id = ? AND pricing_id = ? AND coupon_code IS NULL
             AND status = 'pending' AND datetime(created_at) >= datetime('now', '-15 minutes')
           ORDER BY created_at DESC LIMIT 1
         `).bind(uid, normalizedPricingId).first();
-    if (existing?.provider_reference) {
-      try {
-        const existingUrl = new URL(existing.provider_reference);
-        if (
-          existingUrl.protocol === "https:" &&
-          existingUrl.hostname === "klikqris.com" &&
-          Number.isSafeInteger(Number(existing.provider_total))
-        ) {
-          return {
-            ok: true,
-            order_id: existing.id,
-            amount: Number(existing.provider_total),
-            checkout_url: existingUrl.toString(),
-            reused: true
-          };
-        }
-      } catch {
-        // Abaikan record lama yang URL-nya tidak valid dan buat order baru.
-      }
+    if (sanitizeKlikQrisUrl(existing?.provider_qris_url) && Number.isSafeInteger(Number(existing.provider_total))) {
+      return {
+        ok: true,
+        order_id: existing.id,
+        amount: Number(existing.provider_total),
+        checkout_url: `/checkout?order=${encodeURIComponent(existing.id)}`,
+        expired_at: existing.provider_expired_at || null,
+        reused: true
+      };
     }
   }
 
@@ -3248,8 +3273,8 @@ async function createKlikQrisCheckout(uid, pricingId, rawCouponCode, env, { reus
     // Coupon reservation: capacity is consumed atomically before provider creation.
     const reservation = await env.DB.batch([
       env.DB.prepare("UPDATE coupons SET used_count = used_count + 1 WHERE code = ? AND active = 1 AND (max_uses = 0 OR used_count < max_uses)").bind(couponCode),
-      env.DB.prepare("INSERT INTO payment_requests (id, user_id, email, pricing_id, amount, coupon_code, coupon_reserved, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, 'creating', ?)")
-        .bind(reqId, uid, user.email, normalizedPricingId, amount, couponCode, createdAt)
+      env.DB.prepare("INSERT INTO payment_requests (id, user_id, email, pricing_id, base_amount, discount_amount, amount, coupon_code, coupon_reserved, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'creating', ?)")
+        .bind(reqId, uid, user.email, normalizedPricingId, basePrice, discount, amount, couponCode, createdAt)
     ]);
     if ((reservation[0]?.meta?.changes || 0) !== 1) {
       await env.DB.prepare("DELETE FROM payment_requests WHERE id = ? AND status = 'creating'").bind(reqId).run();
@@ -3257,8 +3282,8 @@ async function createKlikQrisCheckout(uid, pricingId, rawCouponCode, env, { reus
     }
   } else {
     await env.DB.prepare(
-      "INSERT INTO payment_requests (id, user_id, email, pricing_id, amount, coupon_code, coupon_reserved, status, created_at) VALUES (?, ?, ?, ?, ?, NULL, 0, 'creating', ?)"
-    ).bind(reqId, uid, user.email, normalizedPricingId, amount, createdAt).run();
+      "INSERT INTO payment_requests (id, user_id, email, pricing_id, base_amount, discount_amount, amount, coupon_code, coupon_reserved, status, created_at) VALUES (?, ?, ?, ?, ?, 0, ?, NULL, 0, 'creating', ?)"
+    ).bind(reqId, uid, user.email, normalizedPricingId, basePrice, amount, createdAt).run();
   }
 
   const createUrl = "https://klikqris.com/api/qris/create";
@@ -3298,6 +3323,9 @@ async function createKlikQrisCheckout(uid, pricingId, rawCouponCode, env, { reus
     checkout = null;
   }
   const providerTotal = Number(created.total_amount);
+  const adminFee = Math.max(0, providerTotal - amount);
+  const maxAdminFee = Math.min(10_000, Math.max(500, Math.ceil(amount * 0.10)));
+  const providerExpiry = normalizeKlikQrisExpiry(created.expired_at) || new Date(Date.now() + 15 * 60_000).toISOString();
   if (
     created.order_id !== reqId ||
     !checkout ||
@@ -3305,6 +3333,7 @@ async function createKlikQrisCheckout(uid, pricingId, rawCouponCode, env, { reus
     checkout.hostname !== "klikqris.com" ||
     !Number.isSafeInteger(providerTotal) ||
     providerTotal < amount ||
+    adminFee > maxAdminFee ||
     typeof created.signature !== "string" ||
     created.signature.length < 16
   ) {
@@ -3317,16 +3346,24 @@ async function createKlikQrisCheckout(uid, pricingId, rawCouponCode, env, { reus
 
   await env.DB.prepare(`
     UPDATE payment_requests
-    SET status = 'pending', provider_signature = ?, provider_total = ?, provider_reference = ?
+    SET status = 'pending', provider_signature = ?, provider_total = ?, provider_reference = ?,
+        provider_qris_url = ?, provider_expired_at = ?
     WHERE id = ? AND status = 'creating'
-  `).bind(created.signature, providerTotal, checkout.toString(), reqId).run();
+  `).bind(created.signature, providerTotal, checkout.toString(), checkout.toString(), providerExpiry, reqId).run();
+  await env.DB.prepare(`INSERT OR IGNORE INTO user_notifications
+    (id, user_id, event_key, type, title, message, entity_type, entity_id, metadata_json)
+    VALUES (?, ?, ?, 'payment.pending', 'Pembayaran dibuat', ?, 'payment', ?, ?)`)
+    .bind(`notif_${crypto.randomUUID()}`, uid, `payment:${reqId}:pending`,
+      `QRIS ${providerTotal.toLocaleString('id-ID')} menunggu pembayaran.`, reqId,
+      JSON.stringify({ total_amount: providerTotal, expired_at: providerExpiry })).run();
 
   return {
     ok: true,
     order_id: reqId,
     amount: providerTotal,
-    checkout_url: checkout.toString(),
-    expired_at: created.expired_at || null,
+    admin_fee: adminFee,
+    checkout_url: `/checkout?order=${encodeURIComponent(reqId)}`,
+    expired_at: providerExpiry,
     reused: false
   };
 }
@@ -3341,7 +3378,102 @@ async function ensurePaymentIntegritySchema(env) {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`).run();
-  await env.DB.prepare("ALTER TABLE payment_requests ADD COLUMN coupon_reserved INTEGER NOT NULL DEFAULT 0").run().catch(() => {});
+  await addPaymentColumn(env, "coupon_reserved INTEGER NOT NULL DEFAULT 0");
+  await addPaymentColumn(env, "base_amount INTEGER");
+  await addPaymentColumn(env, "discount_amount INTEGER NOT NULL DEFAULT 0");
+  await addPaymentColumn(env, "provider_expired_at DATETIME");
+  await addPaymentColumn(env, "provider_qris_url TEXT");
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS user_notifications (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL, event_key TEXT NOT NULL UNIQUE,
+    type TEXT NOT NULL, title TEXT NOT NULL, message TEXT NOT NULL,
+    entity_type TEXT, entity_id TEXT, metadata_json TEXT, read_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`).run();
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_user_notifications_user_created ON user_notifications(user_id, created_at DESC)").run();
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS notification_deliveries (
+    id TEXT PRIMARY KEY, event_key TEXT NOT NULL, user_id TEXT NOT NULL,
+    channel TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0,
+    provider_message_id TEXT, last_error_code TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(event_key, channel)
+  )`).run();
+}
+
+async function addPaymentColumn(env, definition) {
+  if (!/^[a-z_]+ (?:INTEGER|TEXT|DATETIME)(?: NOT NULL DEFAULT \d+)?$/i.test(definition)) throw new Error("Invalid payment migration definition");
+  try {
+    await env.DB.prepare(`ALTER TABLE payment_requests ADD COLUMN ${definition}`).run();
+  } catch (error) {
+    if (!/duplicate column name/i.test(String(error?.message || ""))) throw error;
+  }
+}
+
+async function handleListNotifications(uid, url, env) {
+  await ensurePaymentIntegritySchema(env);
+  const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
+  const result = await env.DB.prepare("SELECT id, type, title, message, entity_type, entity_id, metadata_json, read_at, created_at FROM user_notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?")
+    .bind(uid, limit).all();
+  return jsonRes({ notifications: result.results || [] });
+}
+
+function sanitizeKlikQrisUrl(rawUrl) {
+  try {
+    const url = new URL(String(rawUrl || ""));
+    return url.protocol === "https:" && url.hostname === "klikqris.com" ? url.toString() : null;
+  } catch { return null; }
+}
+
+function normalizeKlikQrisExpiry(rawValue) {
+  if (!rawValue) return null;
+  const raw = String(rawValue).trim();
+  const parsed = new Date(raw.includes("T") ? raw : `${raw.replace(" ", "T")}+07:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+async function handleGetPaymentOrder(uid, orderId, env) {
+  await ensurePaymentIntegritySchema(env);
+  if (!/^LAKSA-\d{10,}-[a-f0-9-]{8}$/i.test(orderId)) return jsonRes({ error: "Pembayaran tidak ditemukan" }, 404);
+  const payment = await env.DB.prepare(`
+    SELECT pr.id, pr.pricing_id, pr.base_amount, pr.discount_amount, pr.amount,
+           pr.provider_total, pr.provider_qris_url, pr.provider_expired_at,
+           pr.status, pr.created_at, pr.resolved_at, p.label, p.duration_days
+    FROM payment_requests pr LEFT JOIN pricing p ON p.id = pr.pricing_id
+    WHERE pr.id = ? AND pr.user_id = ?
+  `).bind(orderId, uid).first();
+  if (!payment) return jsonRes({ error: "Pembayaran tidak ditemukan" }, 404);
+  const subtotal = Number(payment.amount || 0);
+  const total = Number(payment.provider_total || subtotal);
+  return jsonRes({
+    order_id: payment.id,
+    pricing_id: payment.pricing_id,
+    label: payment.label || payment.pricing_id,
+    duration_days: Number(payment.duration_days || 0),
+    status: payment.status,
+    base_amount: Number(payment.base_amount ?? subtotal),
+    discount_amount: Number(payment.discount_amount || 0),
+    subtotal_amount: subtotal,
+    admin_fee: Math.max(0, total - subtotal),
+    total_amount: total,
+    qris_url: sanitizeKlikQrisUrl(payment.provider_qris_url),
+    expired_at: payment.provider_expired_at,
+    created_at: payment.created_at,
+    paid_at: payment.resolved_at
+  });
+}
+
+async function handleRefreshPaymentOrder(uid, orderId, env) {
+  await ensurePaymentIntegritySchema(env);
+  if (!/^LAKSA-\d{10,}-[a-f0-9-]{8}$/i.test(orderId)) return jsonRes({ error: "Pembayaran tidak ditemukan" }, 404);
+  const payment = await env.DB.prepare("SELECT id, user_id, status, provider_signature FROM payment_requests WHERE id = ? AND user_id = ?")
+    .bind(orderId, uid).first();
+  if (!payment) return jsonRes({ error: "Pembayaran tidak ditemukan" }, 404);
+  if (["approved", "expired", "failed"].includes(payment.status)) return handleGetPaymentOrder(uid, orderId, env);
+  if (!await checkRateLimit(`payment-refresh:${uid}:${orderId}`, env, 12, 60_000)) {
+    return jsonRes({ error: "Terlalu banyak pemeriksaan status" }, 429);
+  }
+  // Reuse the same server-side provider verification and idempotent fulfillment as webhooks.
+  const verified = await handleKlikQrisWebhook({ order_id: orderId, status: "SUCCESS", signature: payment.provider_signature }, env);
+  if (verified.status >= 500) return verified;
+  return handleGetPaymentOrder(uid, orderId, env);
 }
 
 async function handleKlikQrisWebhook(body, env) {
@@ -3443,6 +3575,16 @@ async function handleKlikQrisWebhook(body, env) {
     INSERT OR IGNORE INTO payment_outbox (id, payment_id, user_id, status)
     SELECT ?, id, user_id, 'pending' FROM payment_requests WHERE id = ? AND status = 'pending'
   `).bind(`outbox_${orderId}`, orderId));
+  const successEventKey = `payment:${orderId}:verified`;
+  statements.push(env.DB.prepare(`INSERT OR IGNORE INTO user_notifications
+    (id, user_id, event_key, type, title, message, entity_type, entity_id, metadata_json)
+    VALUES (?, ?, ?, 'payment.verified', 'Pembayaran berhasil', ?, 'payment', ?, ?)`)
+    .bind(`notif_${crypto.randomUUID()}`, payment.user_id, successEventKey,
+      `${payment.label} sudah aktif.`, orderId,
+      JSON.stringify({ total_amount: Number(payment.provider_total), pricing_id: payment.pricing_id })));
+  statements.push(env.DB.prepare(`INSERT OR IGNORE INTO notification_deliveries
+    (id, event_key, user_id, channel, status) VALUES (?, ?, ?, 'email', 'pending')`)
+    .bind(`delivery_${crypto.randomUUID()}`, successEventKey, payment.user_id));
   statements.push(env.DB.prepare(`
     UPDATE payment_requests
     SET status = 'approved', resolved_at = ?, resolved_by = 'klikqris'
@@ -3460,7 +3602,43 @@ async function handleKlikQrisWebhook(body, env) {
   }, env);
 
   await retryFailedOutbox(env, orderId);
+  await retryNotificationDeliveries(env, orderId);
   return jsonRes({ status: true });
+}
+
+async function retryNotificationDeliveries(env, onlyPaymentId = null) {
+  if (!env.RESEND_API_KEY) return;
+  const sql = `SELECT d.*, u.email, u.name, p.id payment_id, p.base_amount, p.discount_amount,
+    p.amount, p.provider_total, p.resolved_at, p.pricing_id, pr.label, u.plan_expired_at
+    FROM notification_deliveries d JOIN users u ON u.id = d.user_id
+    JOIN payment_requests p ON d.event_key = ('payment:' || p.id || ':verified')
+    LEFT JOIN pricing pr ON pr.id = p.pricing_id
+    WHERE d.channel = 'email' AND (d.status IN ('pending','failed') OR
+      (d.status = 'processing' AND d.updated_at < datetime('now', '-5 minutes'))) AND d.attempts < 5
+      AND (? IS NULL OR p.id = ?) LIMIT 20`;
+  const rows = await env.DB.prepare(sql).bind(onlyPaymentId, onlyPaymentId).all();
+  for (const row of rows.results || []) {
+    const claim = await env.DB.prepare("UPDATE notification_deliveries SET status='processing', updated_at=CURRENT_TIMESTAMP WHERE id=? AND (status IN ('pending','failed') OR (status='processing' AND updated_at < datetime('now', '-5 minutes')))").bind(row.id).run();
+    if ((claim.meta?.changes || 0) !== 1) continue;
+    const subtotal = Number(row.amount || 0), total = Number(row.provider_total || subtotal);
+    const data = { customerName: row.name, orderId: row.payment_id, planLabel: row.label || row.pricing_id,
+      baseAmount: Number(row.base_amount ?? subtotal), discountAmount: Number(row.discount_amount || 0),
+      subtotalAmount: subtotal, adminFee: Math.max(0, total - subtotal), totalAmount: total,
+      paidAt: row.resolved_at, premiumExpiresAt: row.plan_expired_at,
+      receiptUrl: `https://laksaapp.my.id/checkout?order=${encodeURIComponent(row.payment_id)}&view=receipt` };
+    try {
+      const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: {
+        "Authorization": `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json",
+        "Idempotency-Key": `laksa-receipt-${row.event_key}`
+      }, body: JSON.stringify({ from: env.RESEND_FROM || "Laksa <noreply@laksaapp.my.id>", to: [row.email],
+        subject: "Pembayaran berhasil — Premium Laksa aktif", html: renderPaymentReceiptHtml(data), text: renderPaymentReceiptText(data) }) });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(`resend_${response.status}`);
+      await env.DB.prepare("UPDATE notification_deliveries SET status='completed', attempts=attempts+1, provider_message_id=?, updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(String(payload.id || ""), row.id).run();
+    } catch (error) {
+      await env.DB.prepare("UPDATE notification_deliveries SET status='failed', attempts=attempts+1, last_error_code=?, updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(String(error.message || "email_failed").slice(0,80), row.id).run();
+    }
+  }
 }
 
 async function retryFailedOutbox(env, onlyPaymentId = null) {
@@ -3514,6 +3692,7 @@ async function reconcilePendingPayments(env) {
     }
   }
   await retryFailedOutbox(env);
+  await retryNotificationDeliveries(env);
 }
 
 async function handleAdminGetCoupons(adminId, env) {

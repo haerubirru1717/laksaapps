@@ -532,11 +532,10 @@ async function showUpgradeModal(message) {
         }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Penyedia pembayaran tidak merespons. Silakan coba lagi.')), 20000))
       ]);
-      const checkout = new URL(payment.checkout_url);
-      if (checkout.protocol !== 'https:' || checkout.hostname !== 'klikqris.com') {
-        throw new Error('URL pembayaran tidak valid');
+      if (!/^LAKSA-\d{10,}-[a-f0-9-]{8}$/i.test(payment.order_id || '')) {
+        throw new Error('Order pembayaran tidak valid');
       }
-      window.location.assign(checkout.toString());
+      window.location.assign(`/checkout?order=${encodeURIComponent(payment.order_id)}`);
     } catch (error) {
       toast(error?.message || 'Gagal membuat pembayaran.', 'error', 6000);
     } finally {

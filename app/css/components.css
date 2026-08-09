@@ -6361,4 +6361,5 @@ html[data-theme="education"] .tx-date-group-card {
   box-shadow: 0 0 16px rgba(99, 102, 241, 0.45) !important;
   transform: scale(0.98) !important;
 }
-
+.notification-panel{position:fixed;z-index:9999;right:12px;top:72px;width:min(420px,calc(100vw - 24px));max-height:75vh;overflow:auto;padding:16px;border:1px solid rgba(255,255,255,.7);border-radius:22px;background:rgba(255,248,242,.94);box-shadow:0 24px 70px rgba(83,43,18,.22);backdrop-filter:blur(18px)}
+.notification-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.notification-head h3{margin:0}.notification-head button{border:0;background:none;color:#b9501e;font-weight:700}.notification-list{display:grid;gap:10px;margin-top:14px}.notification-item{display:grid;gap:5px;width:100%;padding:14px;text-align:left;border:1px solid #ecd9cb;border-radius:15px;background:#fff;color:#34251e}.notification-item.unread{border-color:#df793f;background:#fff7f0}.notification-item span{font-size:13px;color:#66544b}.notification-item small{color:#90786b}.bell-dot{place-items:center;min-width:16px;height:16px;padding:0 4px;font-size:9px;color:#fff;background:#d34f20;border-radius:99px}

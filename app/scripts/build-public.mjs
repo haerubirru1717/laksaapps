@@ -4,7 +4,7 @@ import { extname, join, relative } from "node:path";
 const root = process.cwd();
 const out = join(root, "dist");
 const files = [
-  "index.html", "app.html", "legal.html", "manifest.json", "service-worker.js",
+  "index.html", "app.html", "checkout.html", "legal.html", "manifest.json", "service-worker.js",
   "banks.js", "bankColors.js", "ai-chat.js", "CNAME", "_headers", "_redirects"
 ];
 const directories = ["css", "js", "icons", "ewallet", "Banks Logo", "logo app"];

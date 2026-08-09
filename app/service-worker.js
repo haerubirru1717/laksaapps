@@ -1,8 +1,12 @@
-const CACHE_NAME = 'laksa-v39';
+const CACHE_NAME = 'laksa-v40';
 
 const ASSETS = [
   '/',
   '/index.html',
+  '/checkout.html',
+  '/js/checkout.js',
+  '/js/notifications.js',
+  '/css/pages/checkout.css',
   '/css/core.css',
   '/css/layout.css',
   '/css/components.css',
