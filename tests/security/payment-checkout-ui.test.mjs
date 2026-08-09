@@ -14,7 +14,7 @@ test('checkout source files and production build integration exist', () => {
   assert.ok(existsSync(jsPath));
   assert.ok(existsSync(cssPath));
   assert.match(read('app/scripts/build-public.mjs'), /"checkout\.html"/);
-  assert.match(read('app/_redirects'), /^\/checkout\s+\/checkout\.html\s+200$/m);
+  assert.doesNotMatch(read('app/_redirects'), /^\/checkout\s+\/checkout\.html\s+200$/m);
   assert.match(read('app/service-worker.js'), /\/checkout\.html/);
   assert.match(read('app/service-worker.js'), /\/js\/checkout\.js/);
   assert.match(read('app/service-worker.js'), /\/css\/pages\/checkout\.css/);
