@@ -77,6 +77,12 @@ test('all request JSON bodies use the bounded stream parser', () => {
   assert.match(worker, /status\s*=\s*413/);
 });
 
+test('PBKDF2 iteration count stays within Cloudflare Workers runtime limit', () => {
+  assert.match(worker, /const PBKDF2_ITERATIONS = 100000/);
+  assert.doesNotMatch(worker, /600000/);
+  assert.match(worker, /hashPassword\(password, salt, PBKDF2_ITERATIONS\)/);
+});
+
 test('server generates IDs for budget goal and bill objects', () => {
   for (const name of ['createBudget', 'createGoal', 'createBill']) {
     const body = bodyOf(name);

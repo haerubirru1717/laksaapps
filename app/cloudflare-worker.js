@@ -71,6 +71,8 @@ const PENDING_TEXT_TTL_MS = 5 * 60 * 1000; // 5 menit
 
 // JWT config
 const JWT_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 hari
+// Batas PBKDF2 yang saat ini didukung runtime Cloudflare Workers.
+const PBKDF2_ITERATIONS = 100000;
 const MAX_JSON_BODY_BYTES = 1_000_000;
 const MAX_AI_MESSAGES = 40;
 const MAX_AI_MESSAGE_CHARS = 40_000;
@@ -120,10 +122,8 @@ const LIMITED_FEATURES = ['ai_chat', 'scan_receipt', 'report_view', 'export_csv'
 // ─────────────────────────────────────────────────────
 // AUTH UTILITIES (PBKDF2 + JWT via Web Crypto API)
 // ─────────────────────────────────────────────────────
-// CATATAN: jangan ubah nilai iterations begitu saja — semua hash lama dibuat dengan
-// 100.000 iterasi dan akan gagal diverifikasi. Untuk naik ke 600.000 (rekomendasi OWASP),
-// tambahkan kolom `pbkdf2_iterations` di tabel users lalu migrasi bertahap saat user login.
-async function hashPassword(password, salt, iterations = 600000) {
+// Iterasi disimpan per-user agar migrasi algoritma/KDF di masa depan tetap kompatibel.
+async function hashPassword(password, salt, iterations = PBKDF2_ITERATIONS) {
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveBits"]);
   const bits = await crypto.subtle.deriveBits(
@@ -369,9 +369,9 @@ async function handleRegister(body, env) {
   if (existing) return jsonRes({ error: "Email sudah terdaftar" }, 409);
   const id = "usr_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
   const salt = crypto.randomUUID();
-  const passwordHash = await hashPassword(password, salt);
+  const passwordHash = await hashPassword(password, salt, PBKDF2_ITERATIONS);
   await env.DB.prepare(
-    "INSERT INTO users (id, email, name, password_hash, salt, pbkdf2_iterations, created_at) VALUES (?, ?, ?, ?, ?, 600000, ?)"
+    "INSERT INTO users (id, email, name, password_hash, salt, pbkdf2_iterations, created_at) VALUES (?, ?, ?, ?, ?, 100000, ?)"
   ).bind(id, emailLower, name.trim(), passwordHash, salt, new Date().toISOString()).run();
   // Seed default categories + default account for new user
   await seedCategories(id, env);
@@ -389,9 +389,9 @@ async function handleLogin(body, env) {
   if (!user) return jsonRes({ error: "Email atau password salah" }, 401);
   const valid = await verifyPassword(password, user.salt, user.password_hash, user.pbkdf2_iterations);
   if (!valid) return jsonRes({ error: "Email atau password salah" }, 401);
-  if (Number(user.pbkdf2_iterations || 100000) < 600000) {
-    const upgradedHash = await hashPassword(password, user.salt, 600000);
-    await env.DB.prepare("UPDATE users SET password_hash = ?, pbkdf2_iterations = 600000 WHERE id = ?")
+  if (Number(user.pbkdf2_iterations || PBKDF2_ITERATIONS) < PBKDF2_ITERATIONS) {
+    const upgradedHash = await hashPassword(password, user.salt, PBKDF2_ITERATIONS);
+    await env.DB.prepare("UPDATE users SET password_hash = ?, pbkdf2_iterations = 100000 WHERE id = ?")
       .bind(upgradedHash, user.id).run();
   }
   if (user.is_banned) return jsonRes({ error: "Akun diblokir" }, 403);
@@ -615,7 +615,7 @@ async function handleResetPassword(req, body, env) {
   const passwordHash = await hashPassword(password, salt);
 
   await env.DB.prepare(
-    "UPDATE users SET password_hash = ?, salt = ?, pbkdf2_iterations = 600000, token_version = COALESCE(token_version, 0) + 1 WHERE id = ?"
+    "UPDATE users SET password_hash = ?, salt = ?, pbkdf2_iterations = 100000, token_version = COALESCE(token_version, 0) + 1 WHERE id = ?"
   ).bind(passwordHash, salt, userId).run();
 
   return jsonRes({ message: "Password berhasil diperbarui! Silakan login kembali dengan password baru." });
@@ -3030,7 +3030,7 @@ async function handleAdminResetPassword(adminId, userId, body, env) {
     const salt = crypto.randomUUID();
     const passwordHash = await hashPassword(password, salt);
 
-    await env.DB.prepare("UPDATE users SET password_hash = ?, salt = ?, pbkdf2_iterations = 600000, token_version = COALESCE(token_version, 0) + 1 WHERE id = ?").bind(passwordHash, salt, userId).run();
+    await env.DB.prepare("UPDATE users SET password_hash = ?, salt = ?, pbkdf2_iterations = 100000, token_version = COALESCE(token_version, 0) + 1 WHERE id = ?").bind(passwordHash, salt, userId).run();
     await logAdminAction(adminId, "reset_password", userId, { email: user.email }, env);
 
     return jsonRes({ ok: true, message: "Password user berhasil direset" });
@@ -3630,7 +3630,7 @@ async function setupDatabase(env) {
         name TEXT NOT NULL,
         password_hash TEXT NOT NULL,
         salt TEXT NOT NULL,
-        pbkdf2_iterations INTEGER NOT NULL DEFAULT 600000,
+        pbkdf2_iterations INTEGER NOT NULL DEFAULT 100000,
         telegram_id TEXT,
         plan TEXT DEFAULT 'free',
         plan_expired_at DATETIME,
