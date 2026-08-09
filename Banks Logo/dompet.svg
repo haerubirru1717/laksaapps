@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="268 598 108 108" width="100%" height="100%">
+  <defs>
+    <clipPath id="clip_wallet">
+      <rect x="268" y="598" width="108" height="108" rx="8" fill="white"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#clip_wallet)">
+    <rect x="268" y="598" width="108" height="108" rx="8" fill="white"/>
+
+    <!-- Bill 1 - belakang, miring kiri -->
+    <g transform="rotate(-15, 322, 632)">
+      <rect x="284" y="609" width="72" height="40" rx="4" fill="#C0392B"/>
+    </g>
+
+    <!-- Bill 2 - tengah -->
+    <g transform="rotate(-5, 322, 632)">
+      <rect x="284" y="609" width="72" height="40" rx="4" fill="#1A5276"/>
+    </g>
+
+    <!-- Bill 3 - depan, miring kanan -->
+    <g transform="rotate(5, 322, 632)">
+      <rect x="284" y="609" width="72" height="40" rx="4" fill="#1E8449"/>
+    </g>
+
+    <!-- Wallet body -->
+    <rect x="278" y="638" width="86" height="56" rx="9" fill="#1B2E5E"/>
+
+    <!-- Clasp holder -->
+    <rect x="340" y="652" width="28" height="28" rx="7" fill="#1B2E5E" stroke="white" stroke-width="2.5"/>
+
+    <!-- Logo Rp dalam lingkaran -->
+    <circle cx="354" cy="666" r="9" fill="#1B2E5E" stroke="white" stroke-width="2"/>
+    <text x="354" y="670" font-family="Arial" font-size="9" font-weight="bold" fill="white" text-anchor="middle">Rp</text>
+
+  </g>
+</svg>

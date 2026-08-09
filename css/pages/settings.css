@@ -1,0 +1,29 @@
+/* ══════════════════════════════════════════
+   settings.css — Settings Profile & Theme Picker
+   ══════════════════════════════════════════ */
+
+.settings-card {
+  background: var(--card);
+  border: 1.5px solid var(--gs-border);
+  border-radius: 16px;
+  padding: 0;
+  margin-bottom: 0;
+}
+
+.theme-opt {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .8rem 1rem;
+  border-radius: 14px;
+  border: 1.5px solid var(--gs-border);
+  background: var(--gs-1);
+  color: var(--ink);
+  cursor: pointer;
+  transition: all .14s;
+}
+
+.theme-opt.active {
+  border-color: var(--accent);
+  background: var(--gs-4);
+}

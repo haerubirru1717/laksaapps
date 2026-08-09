@@ -1,0 +1,1600 @@
+*,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      /* Glass theme palette */
+      --bg: #dbeafe;
+      --bg2: rgba(255, 255, 255, 0.4);
+      --bg3: rgba(255, 255, 255, 0.25);
+      --ink: #0f172a;
+      --ink2: #334155;
+      --ink3: #64748b;
+      --border: rgba(255, 255, 255, 0.7);
+      --border-hi: rgba(255, 255, 255, 0.9);
+      --card: rgba(255, 255, 255, 0.72);
+      --accent: #2563eb;
+      --accent2: #0ea5e9;
+      --income: #10b981;
+      --income-dim: rgba(16, 185, 129, .1);
+      --expense: #ef4444;
+      --expense-dim: rgba(239, 68, 68, .08);
+      --gold: #f59e0b;
+      --gold-dim: rgba(245, 158, 11, .1);
+      --purple: #8b5cf6;
+      --r: 14px;
+      --shd: 0 4px 24px rgba(37, 99, 235, .1), 0 1px 4px rgba(0, 0, 0, .05);
+      --shd-lg: 0 12px 40px rgba(37, 99, 235, .16), 0 2px 8px rgba(0, 0, 0, .07);
+      --t1: #0f172a;
+      --t2: #334155;
+      --t3: #64748b;
+      --bdr: rgba(255, 255, 255, 0.7);
+      --bdr-hi: rgba(255, 255, 255, 0.9);
+      --modal-bg: rgba(255, 255, 255, 0.96);
+      --sidebar: rgba(255, 255, 255, 0.75);
+      --hero-grad: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
+      /* Glass surface variables — frosted glass */
+      --gs-1: rgba(255, 255, 255, .45);
+      /* card / widget */
+      --gs-2: rgba(255, 255, 255, .35);
+      /* segmented, rres-hdr, sbox */
+      --gs-3: rgba(255, 255, 255, .30);
+      /* tgl-grp, rtabs, fbar bg */
+      --gs-4: rgba(255, 255, 255, .50);
+      /* finp, fsel, icat */
+      --gs-5: rgba(255, 255, 255, .28);
+      /* empty, rawtext */
+      --gs-6: rgba(235, 242, 255, .55);
+      /* bnav */
+      --gs-7: rgba(240, 246, 255, .70);
+      /* tx-sheet */
+      --gs-8: rgba(235, 242, 255, .55);
+      /* fab-opt */
+      --gs-9: rgba(225, 236, 255, .50);
+      /* fbar */
+      --gs-border: rgba(255, 255, 255, .55);
+      --gs-border-hi: rgba(255, 255, 255, .75);
+      --mesh-a: radial-gradient(ellipse 80% 60% at 15% 5%, rgba(99, 179, 237, .4) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 85% 15%, rgba(167, 139, 250, .22) 0%, transparent 55%), radial-gradient(ellipse 70% 60% at 50% 90%, rgba(52, 211, 153, .18) 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 5% 75%, rgba(251, 191, 36, .12) 0%, transparent 50%), linear-gradient(135deg, #dbeafe 0%, #ede9fe 45%, #d1fae5 100%);
+      --mesh-b: radial-gradient(circle 350px at 10% -5%, rgba(37, 99, 235, .18) 0%, transparent 70%), radial-gradient(circle 300px at 90% 25%, rgba(139, 92, 246, .14) 0%, transparent 70%), radial-gradient(circle 280px at 30% 95%, rgba(16, 185, 129, .12) 0%, transparent 70%);
+    }
+
+    /* ── DARK GLASS THEME ── */
+    html[data-theme="dark"] {
+      --bg: #020203;
+      --bg2: rgba(255, 255, 255, .10);
+      --bg3: rgba(255, 255, 255, .03);
+      --ink: #ededef;
+      --ink2: #94a3b8;
+      --ink3: #64748b;
+      --border: rgba(255, 255, 255, .10);
+      --border-hi: rgba(255, 255, 255, .18);
+      --card: rgba(255, 255, 255, .13);
+      --accent: #5e6ad2;
+      --accent2: #f7931a;
+      --t1: #ededef;
+      --t2: #94a3b8;
+      --t3: #64748b;
+      --bdr: rgba(255, 255, 255, .10);
+      --bdr-hi: rgba(255, 255, 255, .18);
+      --modal-bg: rgba(5, 5, 6, .96);
+      --sidebar: rgba(5, 5, 6, .75);
+      --shd: 0 8px 32px rgba(94, 106, 210, .15), 0 1px 4px rgba(0, 0, 0, .5);
+      --shd-lg: 0 24px 64px rgba(94, 106, 210, .22), 0 2px 12px rgba(0, 0, 0, .6);
+      --income-dim: rgba(16, 185, 129, .15);
+      --expense-dim: rgba(239, 68, 68, .12);
+      --gold-dim: rgba(245, 158, 11, .12);
+      /* Glass surface overrides — dark */
+      --gs-1: rgba(255, 255, 255, .07);
+      --gs-2: rgba(255, 255, 255, .09);
+      --gs-3: rgba(255, 255, 255, .07);
+      --gs-4: rgba(255, 255, 255, .10);
+      --gs-5: rgba(255, 255, 255, .06);
+      --gs-6: rgba(5, 5, 6, .93);
+      --gs-7: rgba(5, 5, 6, .96);
+      --gs-8: rgba(5, 5, 6, .90);
+      --gs-9: rgba(255, 255, 255, .12);
+      --gs-border: rgba(255, 255, 255, .16);
+      --gs-border-hi: rgba(255, 255, 255, .28);
+      --mesh-a: radial-gradient(circle 600px at 15% 10%, rgba(94, 106, 210, .15) 0%, transparent 60%), radial-gradient(circle 500px at 85% 85%, rgba(247, 147, 26, .1) 0%, transparent 65%), #020203;
+      --mesh-b: radial-gradient(circle 450px at 50% 50%, rgba(94, 106, 210, .08) 0%, transparent 70%);
+    }
+
+    /* ── EDUCATIONAL PLATFORM THEME (CLAYMORPHISM + BLOCK-BASED) ── */
+    html[data-theme="education"] {
+      --bg: #faf8f5;
+      --bg2: rgba(15, 23, 42, 0.04);
+      --bg3: rgba(15, 23, 42, 0.02);
+      --ink: #0f172a;
+      --ink2: #334155;
+      --ink3: #64748b;
+      --border: #0f172a;
+      --border-hi: #0f172a;
+      --card: #ffffff;
+      --accent: #10b981; /* Vibrant green */
+      --accent2: #bae6fd; /* Soft sky blue */
+      --income: #10b981;
+      --income-dim: rgba(16, 185, 129, 0.15);
+      --expense: #f87171; /* Playful soft red */
+      --expense-dim: rgba(248, 113, 113, 0.1);
+      --gold: #f59e0b;
+      --gold-dim: rgba(245, 158, 11, 0.1);
+      --purple: #a78bfa;
+      --r: 20px; /* Playful very rounded corners */
+      --shd: 5px 5px 0px #0f172a; /* Solid block shadow */
+      --shd-lg: 7px 7px 0px #0f172a; /* Larger block shadow */
+      --t1: #0f172a;
+      --t2: #334155;
+      --t3: #64748b;
+      --bdr: #0f172a;
+      --bdr-hi: #0f172a;
+      --modal-bg: #faf8f5;
+      --sidebar: #ffffff;
+      --hero-grad: linear-gradient(135deg, #fedbd4 0%, #bae6fd 100%); /* Peach to Soft Blue */
+      --gs-1: #ffffff;
+      --gs-2: #ffffff;
+      --gs-3: #f1f5f9;
+      --gs-4: #ffffff;
+      --gs-5: #ffffff;
+      --gs-6: #ffffff;
+      --gs-7: #ffffff;
+      --gs-8: #ffffff;
+      --gs-9: #ffffff;
+      --gs-border: #0f172a;
+      --gs-border-hi: #0f172a;
+      --mesh-a: linear-gradient(135deg, #faf8f5 0%, #faf8f5 100%);
+      --mesh-b: linear-gradient(135deg, #faf8f5 0%, #faf8f5 100%);
+    }
+
+    /* ── EDUCATION: component overrides ── */
+    html[data-theme="education"] body {
+      background-color: #faf8f5;
+      color: #0f172a;
+    }
+    html[data-theme="education"] .widget,
+    html[data-theme="education"] .card,
+    html[data-theme="education"] .sidebar-profile,
+    html[data-theme="education"] .desk-compose,
+    html[data-theme="education"] .btn2,
+    html[data-theme="education"] .finp,
+    html[data-theme="education"] .modal,
+    html[data-theme="education"] .tx-detail-card,
+    html[data-theme="education"] .toast,
+    html[data-theme="education"] .acc-item,
+    html[data-theme="education"] .tx-item {
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      border-radius: 20px !important;
+      background: #ffffff !important;
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    }
+    html[data-theme="education"] .widget:hover,
+    html[data-theme="education"] .card:hover,
+    html[data-theme="education"] .sidebar-profile:hover,
+    html[data-theme="education"] .tx-item:hover {
+      transform: translate(-2px, -2px) !important;
+      box-shadow: 6px 6px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .profile-avatar-card {
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      border-radius: 20px !important;
+      background: #ffffff !important;
+    }
+    html[data-theme="education"] .flbl {
+      color: #0f172a !important;
+      font-weight: 800 !important;
+    }
+    html[data-theme="education"] .finp:focus {
+      outline: none !important;
+      border-color: #10b981 !important;
+    }
+    html[data-theme="education"] .btn {
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      border-radius: 30px !important;
+      background: #10b981 !important;
+      color: #ffffff !important;
+      font-weight: 800 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.05em !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .btn:hover {
+      transform: translate(-2px, -2px) !important;
+      box-shadow: 6px 6px 0px #0f172a !important;
+      background: #059669 !important;
+    }
+    html[data-theme="education"] .btn:active {
+      transform: translate(1px, 1px) !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .nav-item {
+      border-radius: 14px !important;
+      border: 2px solid transparent !important;
+      font-weight: 700 !important;
+      color: #475569 !important;
+    }
+    html[data-theme="education"] .nav-item:hover {
+      background: #bae6fd !important;
+      border-color: #0f172a !important;
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .nav-item.active {
+      background: #fedbd4 !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .nav-item.active .ni svg {
+      stroke: #0f172a !important;
+      filter: none !important;
+    }
+    html[data-theme="education"] .sidebar {
+      border-right: 3px solid #0f172a !important;
+      background: #ffffff !important;
+      box-shadow: none !important;
+    }
+    html[data-theme="education"] .sfooter {
+      border-top: 2.5px solid #0f172a !important;
+    }
+    html[data-theme="education"] .sfooter::before {
+      display: none !important;
+    }
+    html[data-theme="education"] .brand-name {
+      background: none !important;
+      -webkit-background-clip: initial !important;
+      -webkit-text-fill-color: initial !important;
+      color: #0f172a !important;
+      font-weight: 900 !important;
+    }
+    html[data-theme="education"] .bnav-item.active {
+      color: #10b981 !important;
+    }
+    html[data-theme="education"] .btn2 {
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+      background: #ffffff !important;
+      color: #0f172a !important;
+      font-weight: 700 !important;
+      border-radius: 12px !important;
+    }
+    html[data-theme="education"] .btn2:hover {
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      background: #f1f5f9 !important;
+    }
+    html[data-theme="education"] .tgl-grp,
+    html[data-theme="education"] .keu-seg {
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      background: #ffffff !important;
+      border-radius: 14px !important;
+    }
+    html[data-theme="education"] .tgl,
+    html[data-theme="education"] .keu-tab {
+      font-weight: 700 !important;
+      color: #64748b !important;
+      border-radius: 10px !important;
+    }
+    html[data-theme="education"] .tgl.active,
+    html[data-theme="education"] .keu-tab.active {
+      background: #bae6fd !important;
+      border: 2px solid #0f172a !important;
+      color: #0f172a !important;
+      box-shadow: none !important;
+    }
+
+    /* ── EDUCATION: Mobile Bottom Navbar Overrides ── */
+    html[data-theme="education"] .bnav-capsule {
+      background: #ffffff !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      border: 3px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .bnav-item {
+      color: #64748b !important;
+    }
+    html[data-theme="education"] .bnav-item.active {
+      color: #10b981 !important;
+      background: #bae6fd !important;
+      border: 2px solid #0f172a !important;
+    }
+    html[data-theme="education"] .bnav-item.active svg {
+      filter: none !important;
+    }
+    html[data-theme="education"] .bnav-add {
+      background: #10b981 !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      border-radius: 50% !important;
+    }
+    html[data-theme="education"] .fab-sheet {
+      background: #faf8f5 !important;
+      border-top: 3px solid #0f172a !important;
+      box-shadow: 0 -5px 0px rgba(15,23,42,.05) !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    html[data-theme="education"] .fab-sheet-handle {
+      background: #0f172a !important;
+    }
+    html[data-theme="education"] .fab-sheet-title {
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .fab-sheet-item {
+      background: #ffffff !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      border-radius: 14px !important;
+    }
+    html[data-theme="education"] .fab-sheet-item span {
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .fab-sheet-item:active {
+      transform: translate(1.5px, 1.5px) !important;
+      box-shadow: 1.5px 1.5px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .ai-orb-core {
+      background: #10b981 !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .ai-orb-text text {
+      fill: #0f172a !important;
+    }
+
+    /* ── EDUCATION: Hero Card (.nw-card) Block Styling ── */
+    html[data-theme="education"] .nw-card {
+      background: linear-gradient(135deg, rgba(29, 78, 216, 0.95) 0%, rgba(14, 165, 233, 0.9) 60%, rgba(6, 182, 212, 0.85) 100%) !important;
+      color: #ffffff !important;
+      border: 3px solid #0f172a !important;
+      box-shadow: 6px 6px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .nw-card::before,
+    html[data-theme="education"] .nw-card::after {
+      display: none !important;
+    }
+    html[data-theme="education"] .nw-card .nw-label {
+      color: rgba(255, 255, 255, 0.82) !important;
+    }
+    html[data-theme="education"] .nw-card .nw-val {
+      color: #ffffff !important;
+    }
+    html[data-theme="education"] .nw-card .nw-accs {
+      color: rgba(255, 255, 255, 0.7) !important;
+    }
+    html[data-theme="education"] .nw-card .nw-item-lbl {
+      color: rgba(255, 255, 255, 0.78) !important;
+    }
+    html[data-theme="education"] .nw-card .nw-item-growth.neu {
+      color: rgba(255, 255, 255, 0.6) !important;
+    }
+
+    /* ── EDUCATION: Account Cards (.dc) & E-Wallets (.ecard) Block Styling ── */
+    html[data-theme="education"] .dc,
+    html[data-theme="education"] .ecard {
+      border: 3px solid #0f172a !important;
+      box-shadow: 5px 5px 0px #0f172a !important;
+      border-radius: 20px !important;
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    }
+    html[data-theme="education"] .dc:hover,
+    html[data-theme="education"] .ecard:hover {
+      transform: translate(-2px, -2px) !important;
+      box-shadow: 7px 7px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .dc-bar-wrap {
+      border: 1.5px solid #0f172a !important;
+      border-radius: 99px !important;
+      overflow: hidden !important;
+      background: rgba(255, 255, 255, 0.18) !important;
+    }
+    html[data-theme="education"] .dc-logo-wrap {
+      border: 2px solid #0f172a !important;
+      border-radius: 8px !important;
+      background: #ffffff !important;
+      padding: 2px 4.5px !important;
+      box-shadow: none !important;
+    }
+    html[data-theme="education"] .dc-add,
+    html[data-theme="education"] .ec-add {
+      background: #ffffff !important;
+      border: 3px solid #0f172a !important;
+      box-shadow: 5px 5px 0px #0f172a !important;
+      color: #0f172a !important;
+      border-radius: 20px !important;
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    }
+    html[data-theme="education"] .dc-add:hover,
+    html[data-theme="education"] .ec-add:hover {
+      background: #f8fafc !important;
+      transform: translate(-2px, -2px) !important;
+      box-shadow: 7px 7px 0px #0f172a !important;
+    }
+
+    /* ── EDUCATION: Scan Struk & OCR Overrides ── */
+    html[data-theme="education"] label[for="rfileCamera"] {
+      background: #bae6fd !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      color: #0f172a !important;
+      border-radius: 20px !important;
+      font-weight: 800 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.05em !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] label[for="rfileCamera"]:hover {
+      background: #7dd3fc !important;
+      transform: translate(-1.5px, -1.5px) !important;
+      box-shadow: 5.5px 5.5px 0px #0f172a !important;
+    }
+    html[data-theme="education"] #scanBtn,
+    html[data-theme="education"] #savePanel button {
+      background: #10b981 !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      color: #ffffff !important;
+      border-radius: 30px !important;
+      font-weight: 800 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.05em !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] #scanBtn:hover,
+    html[data-theme="education"] #savePanel button:hover {
+      background: #059669 !important;
+      transform: translate(-1.5px, -1.5px) !important;
+      box-shadow: 5.5px 5.5px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .dropzone {
+      border: 2.5px dashed #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      background: #ffffff !important;
+      border-radius: 20px !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .dropzone:hover {
+      background: #faf8f5 !important;
+      transform: translate(-1.5px, -1.5px) !important;
+      box-shadow: 5.5px 5.5px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .clr-btn {
+      background: #fedbd4 !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      color: #0f172a !important;
+      border-radius: 12px !important;
+      font-weight: 700 !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .clr-btn:hover {
+      background: #fca5a5 !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .rtabs {
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      background: #ffffff !important;
+      border-radius: 14px !important;
+    }
+    html[data-theme="education"] .rtab {
+      font-weight: 700 !important;
+      color: #64748b !important;
+      border-radius: 10px !important;
+    }
+    html[data-theme="education"] .rtab.active {
+      background: #bae6fd !important;
+      border: 2px solid #0f172a !important;
+      color: #0f172a !important;
+      box-shadow: none !important;
+    }
+
+    /* ── EDUCATION: Keuangan Page Overrides ── */
+    html[data-theme="education"] .keu-summary-card,
+    html[data-theme="education"] .bills-hero-main,
+    html[data-theme="education"] .bills-stat-card,
+    html[data-theme="education"] .gcard-glass,
+    html[data-theme="education"] .bill-card,
+    html[data-theme="education"] .bcard-glass {
+      background: #ffffff !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      border-radius: 20px !important;
+      color: #0f172a !important;
+      transition: all 0.2s ease !important;
+    }
+    html[data-theme="education"] .keu-summary-card:hover,
+    html[data-theme="education"] .bills-hero-main:hover,
+    html[data-theme="education"] .bills-stat-card:hover,
+    html[data-theme="education"] .gcard-glass:hover,
+    html[data-theme="education"] .bill-card:hover,
+    html[data-theme="education"] .bcard-glass:hover {
+      transform: translate(-1.5px, -1.5px) !important;
+      box-shadow: 5.5px 5.5px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .bills-hero-total,
+    html[data-theme="education"] .bills-stat-val,
+    html[data-theme="education"] .keu-summary-value {
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .bills-hero-total {
+      font-weight: 800 !important;
+    }
+    html[data-theme="education"] .keu-summary-label,
+    html[data-theme="education"] .bills-hero-label-sm,
+    html[data-theme="education"] .bills-hero-sub,
+    html[data-theme="education"] .bills-stat-lbl,
+    html[data-theme="education"] .bills-stat-sub {
+      color: #64748b !important;
+    }
+    html[data-theme="education"] .btn-add-glass {
+      background: #fedbd4 !important;
+      border: 2.5px solid #0f172a !important;
+      color: #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      border-radius: 12px !important;
+      font-weight: 700 !important;
+    }
+    html[data-theme="education"] .btn-add-glass:hover {
+      background: #bae6fd !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 4.5px 4.5px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .ptrack {
+      border: 1.5px solid #0f172a !important;
+      border-radius: 99px !important;
+      background: rgba(15, 23, 42, 0.05) !important;
+      overflow: hidden !important;
+    }
+    html[data-theme="education"] .pfill.ok {
+      background: #10b981 !important;
+      box-shadow: none !important;
+    }
+    html[data-theme="education"] .pfill.warn {
+      background: #f59e0b !important;
+      box-shadow: none !important;
+    }
+    html[data-theme="education"] .pfill.bad {
+      background: #ef4444 !important;
+      box-shadow: none !important;
+    }
+    html[data-theme="education"] .goals-nearest {
+      color: #b45309 !important;
+    }
+    html[data-theme="education"] .goal-card-icon,
+    html[data-theme="education"] .bills-stat-icon {
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .bill-btn-edit-new {
+      background: #bae6fd !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+      color: #0f172a !important;
+      border-radius: 8px !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .bill-btn-edit-new:hover {
+      background: #7dd3fc !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .bill-btn-del-new {
+      background: #fedbd4 !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+      color: #0f172a !important;
+      border-radius: 8px !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .bill-btn-del-new:hover {
+      background: #fca5a5 !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .gcard-glass-close,
+    html[data-theme="education"] .bcard-glass-close {
+      background: #fedbd4 !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+      color: #0f172a !important;
+      border-radius: 6px !important;
+      width: 22px !important;
+      height: 22px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .gcard-glass-close:hover,
+    html[data-theme="education"] .bcard-glass-close:hover {
+      background: #fca5a5 !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .bill-divider {
+      border-top: 2px solid #0f172a !important;
+      opacity: 1 !important;
+    }
+    html[data-theme="education"] .action-bg {
+      border: 2.5px solid #0f172a !important;
+      border-radius: 20px !important;
+      background: #10b981 !important;
+    }
+
+    /* ── EDUCATION: AI Chatbot & Confirmation Card Overrides ── */
+    html[data-theme="education"] .ai-panel {
+      background: #faf8f5 !important;
+      border-left: 3px solid #0f172a !important;
+      border-top: 3px solid #0f172a !important;
+      box-shadow: -8px 0px 0px rgba(15, 23, 42, 0.05) !important;
+    }
+    @media(min-width:769px) {
+      html[data-theme="education"] .ai-panel {
+        border: 3px solid #0f172a !important;
+        border-radius: 20px 20px 0 0 !important;
+        box-shadow: -5px -5px 0px #0f172a !important;
+      }
+    }
+    /* .ai-fab removed — replaced by inline .ai-orb in page headers */
+    html[data-theme="education"] .ai-hdr {
+      border-bottom: 2.5px solid #0f172a !important;
+      background: #ffffff !important;
+    }
+    html[data-theme="education"] .ai-hdr-close {
+      background: #fedbd4 !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+      color: #0f172a !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .ai-hdr-close:hover {
+      background: #fca5a5 !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .ai-msg.bot .ai-bubble,
+    html[data-theme="education"] .ai-wlc-card {
+      background: #ffffff !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      border-radius: 20px !important;
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .ai-msg.user .ai-bubble {
+      background: #bae6fd !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: -4px 4px 0px #0f172a !important;
+      border-radius: 20px !important;
+      border-bottom-right-radius: 5px !important;
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .ai-sug,
+    html[data-theme="education"] .ai-wlc-chip {
+      background: #ffffff !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      color: #0f172a !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .ai-sug:hover,
+    html[data-theme="education"] .ai-wlc-chip:hover {
+      background: #bae6fd !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .ai-wlc-chip-icon {
+      background: #bae6fd !important;
+      border: 1.5px solid #0f172a !important;
+      border-radius: 6px !important;
+    }
+    html[data-theme="education"] .ai-tx-confirm {
+      background: #ffffff !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      border-radius: 20px !important;
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .ai-tx-confirm-title {
+      color: #10b981 !important;
+      font-weight: 800 !important;
+    }
+    html[data-theme="education"] .ai-tx-btn-ok {
+      background: #10b981 !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+      color: #ffffff !important;
+      font-weight: 700 !important;
+      border-radius: 10px !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .ai-tx-btn-ok:hover {
+      background: #059669 !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .ai-tx-btn-edit {
+      background: #bae6fd !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+      color: #0f172a !important;
+      font-weight: 700 !important;
+      border-radius: 10px !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .ai-tx-btn-edit:hover {
+      background: #7dd3fc !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .ai-tx-btn-cancel {
+      background: #fedbd4 !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+      color: #ef4444 !important;
+      font-weight: 700 !important;
+      border-radius: 10px !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .ai-tx-btn-cancel:hover {
+      background: #fca5a5 !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .ai-input-row {
+      background: #ffffff !important;
+      border-top: 2.5px solid #0f172a !important;
+    }
+    html[data-theme="education"] .ai-input {
+      background: #ffffff !important;
+      border: 2px solid #0f172a !important;
+      border-radius: 14px !important;
+      color: #0f172a !important;
+      font-size: 0.8rem !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .ai-input:focus {
+      border-color: #10b981 !important;
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15) !important;
+    }
+    html[data-theme="education"] .ai-send {
+      background: #10b981 !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .ai-send:hover {
+      background: #059669 !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+    }
+
+    /* ── EDUCATION: Urgency Badge & Dot Overrides ── */
+    html[data-theme="education"] .bill-badge {
+      border: 1.5px solid #0f172a !important;
+      box-shadow: 1.5px 1.5px 0px #0f172a !important;
+      font-weight: 800 !important;
+    }
+    html[data-theme="education"] .bill-dot {
+      border: 1.5px solid #0f172a !important;
+      box-shadow: none !important;
+    }
+
+    /* ── EDUCATION: Transaction & Account Detail Sheets Overrides ── */
+    html[data-theme="education"] .tx-sheet,
+    html[data-theme="education"] .acc-sheet {
+      background: #faf8f5 !important;
+      border-top: 3px solid #0f172a !important;
+      box-shadow: 0 -10px 0px rgba(15, 23, 42, 0.05) !important;
+      border-radius: 26px 26px 0 0 !important;
+    }
+    html[data-theme="education"] .tx-sheet-handle,
+    html[data-theme="education"] .acc-sheet-handle {
+      background: #0f172a !important;
+      border: 1px solid #0f172a !important;
+    }
+    html[data-theme="education"] .acc-sheet-close {
+      background: #fedbd4 !important;
+      border: 2px solid #0f172a !important;
+      box-shadow: 2px 2px 0px #0f172a !important;
+      color: #0f172a !important;
+      border-radius: 50% !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .acc-sheet-close:hover {
+      background: #fca5a5 !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .acc-group-card {
+      background: #ffffff !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      border-radius: 20px !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    html[data-theme="education"] .acc-stat {
+      background: #ffffff !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      border-radius: 14px !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    html[data-theme="education"] .acc-seg {
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      background: #ffffff !important;
+      border-radius: 14px !important;
+    }
+    html[data-theme="education"] .acc-tab {
+      font-weight: 700 !important;
+      color: #64748b !important;
+      border-radius: 10px !important;
+    }
+    html[data-theme="education"] .acc-tab.active {
+      background: #bae6fd !important;
+      border: 2px solid #0f172a !important;
+      color: #0f172a !important;
+      box-shadow: none !important;
+    }
+    html[data-theme="education"] .acc-mon-sel {
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      background: #ffffff !important;
+      border-radius: 14px !important;
+      color: #0f172a !important;
+      font-family: inherit !important;
+      font-weight: 700 !important;
+      padding: .3rem .6rem !important;
+      outline: none !important;
+    }
+    html[data-theme="education"] .acc-sheet-foot button {
+      background: #bae6fd !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      color: #0f172a !important;
+      border-radius: 30px !important;
+      font-weight: 800 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.05em !important;
+      transition: all 0.15s ease !important;
+    }
+    html[data-theme="education"] .acc-sheet-foot button:hover {
+      background: #7dd3fc !important;
+      transform: translate(-1.5px, -1.5px) !important;
+      box-shadow: 5.5px 5.5px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .acc-tx-item {
+      border: 2px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      border-radius: 14px !important;
+      background: #ffffff !important;
+      margin-bottom: 0.5rem !important;
+    }
+    html[data-theme="education"] .acc-tx-date {
+      background: #bae6fd !important;
+      border: 1.5px solid #0f172a !important;
+      border-radius: 8px !important;
+      color: #0f172a !important;
+      font-weight: 700 !important;
+      padding: 0.2rem 0.6rem !important;
+      display: inline-block !important;
+      margin-bottom: 0.4rem !important;
+    }
+    html[data-theme="education"] .tx-sheet-body > div:nth-child(2) {
+      background: #ffffff !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+      border-radius: 20px !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    html[data-theme="education"] .tx-sheet-body > div:nth-child(1) span {
+      background: #ffffff !important;
+      border: 1.5px solid #0f172a !important;
+      box-shadow: 1.5px 1.5px 0px #0f172a !important;
+      border-radius: 8px !important;
+      color: #0f172a !important;
+    }
+    html[data-theme="education"] .tx-sheet-foot button:first-child {
+      background: #bae6fd !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      color: #0f172a !important;
+      border-radius: 12px !important;
+      transition: all 0.15s ease !important;
+      font-weight: 700 !important;
+    }
+    html[data-theme="education"] .tx-sheet-foot button:first-child:hover {
+      background: #7dd3fc !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+    }
+    html[data-theme="education"] .tx-sheet-foot button:last-child {
+      background: #fedbd4 !important;
+      border: 2.5px solid #0f172a !important;
+      box-shadow: 3px 3px 0px #0f172a !important;
+      color: #ef4444 !important;
+      border-radius: 12px !important;
+      transition: all 0.15s ease !important;
+      font-weight: 700 !important;
+    }
+    html[data-theme="education"] .tx-sheet-foot button:last-child:hover {
+      background: #fca5a5 !important;
+      transform: translate(-1px, -1px) !important;
+      box-shadow: 4px 4px 0px #0f172a !important;
+    }
+
+    /* ── DARK: component overrides ── */
+    html[data-theme="dark"] body {
+      color: var(--ink);
+      background: var(--bg)
+    }
+
+    html[data-theme="dark"] .widget,
+    html[data-theme="dark"] .card {
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .nav-item {
+      color: rgba(148,163,184,.7)
+    }
+
+    html[data-theme="dark"] .nav-item:hover {
+      background: rgba(255,255,255,.07);
+      color: var(--ink);
+      border-color: rgba(255,255,255,.1)
+    }
+
+    html[data-theme="dark"] .nav-item.active {
+      background: linear-gradient(135deg, rgba(37,99,235,.35), rgba(14,165,233,.25));
+      color: #bfdbfe;
+      border-color: rgba(99,179,237,.3);
+      box-shadow: 0 4px 16px rgba(37,99,235,.25), inset 0 1px 0 rgba(255,255,255,.1)
+    }
+
+    html[data-theme="dark"] .nav-item.active .ni svg {
+      filter: drop-shadow(0 0 6px rgba(99,179,237,.6))
+    }
+
+    html[data-theme="dark"] .brand-name {
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .brand-logo {
+      background: rgba(37,99,235,.3);
+      box-shadow: 0 0 20px rgba(37,99,235,.4), inset 0 1px 0 rgba(255,255,255,.15)
+    }
+
+    html[data-theme="dark"] .bnav-capsule {
+      background: rgba(8, 8, 12, 0.82);
+      border-color: rgba(255, 255, 255, 0.06);
+      box-shadow: 0 4px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    html[data-theme="dark"] .bnav-item {
+      color: rgba(148, 163, 184, 0.6)
+    }
+
+    html[data-theme="dark"] .bnav-item.active {
+      color: #93c5fd;
+      background: rgba(37, 99, 235, 0.18);
+    }
+
+    html[data-theme="dark"] .sidebar {
+      background: linear-gradient(150deg, rgba(5,5,6,.95) 0%, rgba(5,5,6,.92) 100%);
+      border-right-color: rgba(255,255,255,.08);
+      box-shadow: 4px 0 32px rgba(0,0,0,.6), inset -1px 0 0 rgba(255,255,255,.02)
+    }
+
+    html[data-theme="dark"] .sfooter {
+      border-top-color: rgba(255,255,255,.08)
+    }
+
+    html[data-theme="dark"] .sidebar-profile {
+      background: rgba(255,255,255,.05);
+      border-color: rgba(255,255,255,.08)
+    }
+
+    html[data-theme="dark"] .sidebar-profile:hover {
+      background: rgba(255,255,255,.09)
+    }
+
+    html[data-theme="dark"] .sidebar-nav-sect {
+      color: rgba(100,116,139,.6)
+    }
+
+    html[data-theme="dark"] .desk-compose {
+      box-shadow: 0 4px 20px rgba(37,99,235,.45), inset 0 1px 0 rgba(255,255,255,.15)
+    }
+
+    html[data-theme="dark"] .bnav-add {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    html[data-theme="dark"] .finp {
+      color: var(--ink);
+      background: var(--gs-3);
+      border-color: var(--gs-border)
+    }
+
+    html[data-theme="dark"] .finp:focus {
+      border-color: var(--accent)
+    }
+
+    html[data-theme="dark"] .finp option {
+      background: #0d1526;
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] select.finp {
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .fsel {
+      color: var(--ink);
+      background: var(--gs-3)
+    }
+
+    html[data-theme="dark"] .fsel option {
+      background: #0d1526;
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .modal {
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .modal-hdr {
+      border-bottom: 1.5px solid var(--gs-border)
+    }
+
+    html[data-theme="dark"] .modal-hdr h2 {
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .flbl {
+      color: var(--ink2)
+    }
+
+    html[data-theme="dark"] .swipe-confirm-sheet {
+      background: rgba(10, 11, 20, 0.96) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.65) !important;
+    }
+
+    /* dark mode — dash topbar */
+    html[data-theme="dark"] .dash-greeting-time {
+      color: var(--ink3)
+    }
+
+    html[data-theme="dark"] .dash-greeting-name {
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .dash-avatar-inner {
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, .15), 0 0 0 4.5px rgba(37, 99, 235, .25), 0 6px 18px rgba(0, 0, 0, .4)
+    }
+
+    html[data-theme="dark"] .btn2 {
+      color: var(--ink2);
+      border-color: var(--gs-border)
+    }
+
+    html[data-theme="dark"] .btn2:hover {
+      background: var(--gs-2);
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .tgl {
+      color: var(--ink3)
+    }
+
+    html[data-theme="dark"] .tgl.active {
+      background: rgba(37, 99, 235, .2);
+      color: var(--accent)
+    }
+
+    html[data-theme="dark"] .rtab {
+      color: var(--ink3)
+    }
+
+    html[data-theme="dark"] .rtab.active {
+      background: var(--gs-2);
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .ai-input-row {
+      background: var(--gs-3);
+      border-top: 1.5px solid var(--gs-border)
+    }
+
+    html[data-theme="dark"] .ai-input {
+      background: var(--gs-4);
+      border: 1.5px solid var(--gs-border);
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .ai-input::placeholder {
+      color: var(--ink3)
+    }
+
+    html[data-theme="dark"] .ai-sug {
+      background: var(--gs-2);
+      border-color: var(--gs-border);
+      color: var(--ink2)
+    }
+
+    html[data-theme="dark"] .tx-detail-card {
+      background: var(--gs-2);
+      border-color: var(--gs-border)
+    }
+
+    html[data-theme="dark"] .tx-detail-lbl {
+      color: var(--ink3)
+    }
+
+    html[data-theme="dark"] .tx-detail-val {
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .acc-item {
+      color: var(--ink2)
+    }
+
+    html[data-theme="dark"] .danger-zone {
+      border-color: rgba(239, 68, 68, .2);
+      background: rgba(239, 68, 68, .05)
+    }
+
+    html[data-theme="dark"] .chip {
+      background: var(--gs-2);
+      border-color: var(--gs-border);
+      color: var(--ink2)
+    }
+
+    html[data-theme="dark"] .hint {
+      color: var(--ink3)
+    }
+
+    html[data-theme="dark"] .sprev {
+      color: var(--ink3)
+    }
+
+    html[data-theme="dark"] .tbl thead th {
+      background: var(--gs-3);
+      color: var(--ink3)
+    }
+
+    html[data-theme="dark"] .tbl tbody td {
+      background: var(--gs-2);
+      border-color: var(--gs-border);
+      color: var(--ink2)
+    }
+
+    html[data-theme="dark"] .tbl tbody tr:hover td {
+      background: var(--gs-3)
+    }
+
+    html[data-theme="dark"] .theme-opt {
+      background: var(--gs-2);
+      border-color: var(--gs-border);
+      color: var(--ink2)
+    }
+
+    html[data-theme="dark"] .theme-opt.active {
+      border-color: var(--accent);
+      color: var(--accent)
+    }
+
+    html[data-theme="dark"] .budg-card,
+    html[data-theme="dark"] .goal-card {
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .tx-item {
+      border-color: var(--gs-border)
+    }
+
+    html[data-theme="dark"] .tx-item:hover {
+      background: var(--gs-2)
+    }
+
+    html[data-theme="dark"] .txcl-item:hover {
+      background: var(--gs-2)
+    }
+
+    html[data-theme="dark"] .txcl-name {
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .txcl-cat {
+      opacity: .85
+    }
+
+    html[data-theme="dark"] .fbar {
+      background: rgba(10, 11, 20, 0.96) !important;
+      border-color: rgba(255, 255, 255, 0.08) !important;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35) !important;
+    }
+
+    html[data-theme="dark"] .fsrch-ico {
+      color: var(--ink3)
+    }
+
+    html[data-theme="dark"] .finput,
+    html[data-theme="dark"] .fsel {
+      background: rgba(0, 0, 0, 0.40) !important;
+      border-color: rgba(255, 255, 255, 0.08) !important;
+      color: var(--ink) !important;
+    }
+
+    /* acc-sheet dark */
+    html[data-theme="dark"] .acc-sheet-name {
+      color: var(--ink3)
+    }
+
+    html[data-theme="dark"] .acc-sheet-bal {
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .acc-stat {
+      background: var(--gs-2);
+      border-color: var(--gs-border)
+    }
+
+    html[data-theme="dark"] .acc-stat-lbl {
+      color: var(--ink3)
+    }
+
+    html[data-theme="dark"] .acc-stat-val:not(.t-inc):not(.t-exp):not(.t-trf) {
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .acc-seg {
+      background: var(--gs-2);
+      border-color: var(--gs-border)
+    }
+
+    html[data-theme="dark"] .acc-seg-btn {
+      color: var(--ink3)
+    }
+
+    html[data-theme="dark"] .acc-seg-btn.active {
+      background: var(--gs-4);
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .acc-mon-sel {
+      background: var(--gs-2);
+      border-color: var(--gs-border);
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .acc-mon-sel option {
+      background: #0d1526;
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .acc-tx-date {
+      color: var(--ink3);
+      background: var(--gs-3)
+    }
+
+    html[data-theme="dark"] .acc-tx-item {
+      background: var(--gs-2);
+      border-color: var(--gs-border)
+    }
+
+    html[data-theme="dark"] .acc-tx-name {
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .acc-tx-cat {
+      color: var(--ink3)
+    }
+
+    html[data-theme="dark"] .acc-sheet-body .empty {
+      background: var(--gs-3)
+    }
+
+    /* tx-sheet dark */
+    html[data-theme="dark"] .tx-sheet-handle {
+      background: var(--gs-border)
+    }
+
+    html[data-theme="dark"] .tx-detail-card {
+      background: var(--gs-2);
+      border-color: var(--gs-border)
+    }
+
+    html[data-theme="dark"] .tx-detail-lbl {
+      color: var(--ink3)
+    }
+
+    html[data-theme="dark"] .tx-detail-val {
+      color: var(--ink)
+    }
+
+    html[data-theme="dark"] .tx-sheet-foot {
+      border-top-color: var(--gs-border)
+    }
+
+    /* toast dark */
+    html[data-theme="dark"] .toast.ok {
+      background: rgba(10, 16, 30, .97);
+      border-color: rgba(16, 185, 129, .3)
+    }
+
+    html[data-theme="dark"] .toast.err {
+      background: rgba(10, 16, 30, .97);
+      border-color: rgba(239, 68, 68, .3)
+    }
+
+    /* dropdown dark */
+    html[data-theme="dark"] .cdd-menu {
+      background: rgba(10, 16, 30, .98);
+      border-color: var(--gs-border)
+    }
+
+    html[data-theme="dark"] .cdd-item {
+      color: var(--ink2)
+    }
+
+    html[data-theme="dark"] .cdd-item:hover {
+      background: var(--gs-2);
+      color: var(--ink)
+    }
+
+    /* Fintech Crypto OLED overrides */
+    html[data-theme="dark"] .nw-card {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.45) 0%, rgba(5, 5, 6, 0.75) 100%) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      box-shadow: 0 16px 56px rgba(94, 106, 210, 0.15), 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+    }
+
+    /* Sub-navigation Toggles in Dark Mode */
+    html[data-theme="dark"] .keu-seg,
+    html[data-theme="dark"] .tgl-grp {
+      background: rgba(255, 255, 255, 0.03) !important;
+      border: 1px solid rgba(255, 255, 255, 0.06) !important;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+    }
+    html[data-theme="dark"] .keu-tab,
+    html[data-theme="dark"] .tgl {
+      color: rgba(255, 255, 255, 0.5) !important;
+    }
+    html[data-theme="dark"] .keu-tab.active,
+    html[data-theme="dark"] .tgl.active {
+      background: var(--accent) !important; /* Premium Indigo violet */
+      color: #fff !important;
+      border: none !important;
+      box-shadow: 0 4px 14px rgba(94, 106, 210, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+    }
+    html[data-theme="dark"] .keu-tab:not(.active):hover,
+    html[data-theme="dark"] .tgl:not(.active):hover {
+      background: rgba(255, 255, 255, 0.05) !important;
+      color: #fff !important;
+    }
+
+    /* OLED Frosted Glassmorphism Overrides */
+    html[data-theme="dark"] .keu-summary-card,
+    html[data-theme="dark"] .bcard-glass,
+    html[data-theme="dark"] .gcard-glass,
+    html[data-theme="dark"] .bills-hero-main,
+    html[data-theme="dark"] .bills-stat-card,
+    html[data-theme="dark"] .glass-card,
+    html[data-theme="dark"] .widget,
+    html[data-theme="dark"] .card,
+    html[data-theme="dark"] .gc,
+    html[data-theme="dark"] .modal,
+    html[data-theme="dark"] .toast,
+    html[data-theme="dark"] .tx-item,
+    html[data-theme="dark"] .sidebar-profile,
+    html[data-theme="dark"] .acc-item,
+    html[data-theme="dark"] .settings-card,
+    html[data-theme="dark"] .bill-card,
+    html[data-theme="dark"] .keu-summary-card-redesign {
+      background: rgba(10, 11, 20, 0.96) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+      color: var(--ink) !important;
+    }
+
+    html[data-theme="dark"] .widget:hover,
+    html[data-theme="dark"] .card:hover,
+    html[data-theme="dark"] .gc:hover,
+    html[data-theme="dark"] .tx-item:hover,
+    html[data-theme="dark"] .sidebar-profile:hover,
+    html[data-theme="dark"] .settings-card:hover,
+    html[data-theme="dark"] .bill-card:hover,
+    html[data-theme="dark"] .keu-summary-card-redesign:hover {
+      border-color: rgba(99, 102, 241, 0.25) !important;
+      background: rgba(15, 17, 30, 0.96) !important;
+      box-shadow: 0 20px 60px rgba(99, 102, 241, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+      transform: translateY(-1.5px);
+    }
+
+    html[data-theme="dark"] .keu-summary-card {
+      border-radius: 16px !important;
+    }
+    html[data-theme="dark"] .bills-stat-card {
+      border-radius: 16px !important;
+    }
+
+    /* Grid Latar Belakang untuk Tema Gelap OLED */
+    html[data-theme="dark"] body::before {
+      background-image: linear-gradient(rgba(99, 102, 241, 0.03) 1.2px, transparent 1.2px),
+                        linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1.2px, transparent 1.2px),
+                        radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.16) 0%, transparent 60%),
+                        radial-gradient(circle at 85% 85%, rgba(16, 185, 129, 0.1) 0%, transparent 60%);
+      background-size: 45px 45px, 45px 45px, 100% 100%, 100% 100%;
+      background-color: #000000 !important;
+    }
+
+    /* Glowing Neon Indicators for Budget Progress */
+    html[data-theme="dark"] .ptrack {
+      background: rgba(255, 255, 255, 0.05) !important;
+    }
+    html[data-theme="dark"] .pfill.ok {
+      background: linear-gradient(90deg, #10b981, #34d399) !important;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.45) !important;
+    }
+    html[data-theme="dark"] .pfill.warn {
+      background: linear-gradient(90deg, #f59e0b, #fbbf24) !important;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.4) !important;
+    }
+    html[data-theme="dark"] .pfill.bad {
+      background: linear-gradient(90deg, #ef4444, #f87171) !important;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.45) !important;
+    }
+
+    /* Premium Add Button in Goals */
+    html[data-theme="dark"] .btn-add-glass {
+      background: rgba(94, 106, 210, 0.12) !important;
+      border: 1px solid rgba(94, 106, 210, 0.3) !important;
+      color: #8b96fc !important;
+      box-shadow: 0 4px 12px rgba(94, 106, 210, 0.15) !important;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+    html[data-theme="dark"] .btn-add-glass:hover {
+      background: rgba(94, 106, 210, 0.25) !important;
+      border-color: rgba(94, 106, 210, 0.5) !important;
+      color: #bfdbfe !important;
+      box-shadow: 0 6px 16px rgba(94, 106, 210, 0.35) !important;
+      transform: translateY(-1px) !important;
+    }
+
+    /* Premium Remove Button */
+    html[data-theme="dark"] .bcard-glass-close,
+    html[data-theme="dark"] .gcard-glass-close {
+      background: rgba(255, 255, 255, 0.03) !important;
+      border: 1px solid rgba(255, 255, 255, 0.05) !important;
+      color: rgba(255, 255, 255, 0.4) !important;
+      transition: all 0.2s ease !important;
+    }
+    html[data-theme="dark"] .bcard-glass-close:hover,
+    html[data-theme="dark"] .gcard-glass-close:hover {
+      background: rgba(239, 68, 68, 0.2) !important;
+      border-color: rgba(239, 68, 68, 0.3) !important;
+      color: #ef4444 !important;
+    }
+
+    /* Minimalist Urgency styles for Bills */
+    html[data-theme="dark"] .bill-card.overdue {
+      background: linear-gradient(0deg, rgba(239, 68, 68, 0.10), rgba(239, 68, 68, 0.10)), rgba(10, 11, 20, 0.96) !important;
+      border-color: rgba(239, 68, 68, 0.28) !important;
+      box-shadow: 0 8px 32px rgba(239, 68, 68, 0.10) !important;
+    }
+    html[data-theme="dark"] .bill-card.due-soon {
+      background: linear-gradient(0deg, rgba(245, 158, 11, 0.10), rgba(245, 158, 11, 0.10)), rgba(10, 11, 20, 0.96) !important;
+      border-color: rgba(245, 158, 11, 0.24) !important;
+      box-shadow: 0 8px 32px rgba(245, 158, 11, 0.10) !important;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      background: var(--mesh-a);
+      pointer-events: none;
+      transition: background .4s;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background: var(--mesh-b);
+      opacity: .85;
+      transition: background .4s;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      overflow-x: hidden
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      transition: background .3s, color .3s
+    }
+
+    /* ── DESKTOP SCROLLING FIX ── */
+    @media(min-width:769px) {
+
+      html,
+      body {
+        height: auto;
+        overflow-y: auto
+      }
+
+      .main {
+        overflow-y: visible;
+        min-height: 100vh
+      }
+    }
+
+    /* ══════════════════════════════════════════
+       PERFORMANCE OPTIMIZATIONS
+       ══════════════════════════════════════════ */
+
+    /* Pages not visible → skip rendering entirely */
+    .page:not(.active) {
+      content-visibility: hidden;
+    }
+
+    /* Isolate repaints within cards/widgets */
+    .widget, .card, .gc, .glass-card, .acc-item, .tx-item {
+      contain: layout style paint;
+    }
+
+    /* GPU-composite blurred elements (glass theme) */
+    .sidebar, .bnav-capsule, .modal, .fab-sheet, .tx-sheet, .acc-sheet {
+      will-change: transform;
+    }
+
+    /* Reduce box-shadow on mobile for less paint */
+    @media (max-width: 768px) {
+      .widget, .card, .gc, .glass-card {
+        box-shadow: 0 2px 8px rgba(0,0,0,.06) !important;
+      }
+      html[data-theme="dark"] .widget,
+      html[data-theme="dark"] .card,
+      html[data-theme="dark"] .gc,
+      html[data-theme="dark"] .glass-card {
+        box-shadow: 0 4px 16px rgba(0,0,0,.4) !important;
+      }
+    }
+
+    /* Dark theme: disable ALL backdrop-filter (opaque bg = no visual benefit) */
+    html[data-theme="dark"] *:not(.sidebar):not(.bnav-capsule) {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
+    /* Reduce motion for users who prefer it */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }

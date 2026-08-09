@@ -1,0 +1,24 @@
+/* ══════════════════════════════════════════
+   empty-states.css — Empty State Placeholders
+   ══════════════════════════════════════════ */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--ink3);
+}
+
+.empty-ico {
+  font-size: 2.2rem;
+  margin-bottom: .6rem;
+  opacity: .7;
+}
+
+.empty-txt {
+  font-size: .84rem;
+  font-weight: 500;
+}

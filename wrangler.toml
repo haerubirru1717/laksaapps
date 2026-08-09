@@ -1,0 +1,28 @@
+name = "laksana"
+main = "cloudflare-worker.js"
+compatibility_date = "2024-03-01"
+
+# ─────────────────────────────────────────────────────
+#  JANGAN PERNAH menaruh secret di [vars].
+#  [vars] ter-deploy sebagai environment variable PLAINTEXT dan ikut ter-commit.
+#
+#  Set semuanya sebagai secret (terenkripsi, tidak pernah masuk repo):
+#    wrangler secret put JWT_SECRET
+#    wrangler secret put SETUP_SECRET
+#    wrangler secret put TELEGRAM_TOKEN
+#    wrangler secret put TELEGRAM_WEBHOOK_SECRET
+#    wrangler secret put ADMIN_BOT_TOKEN
+#    wrangler secret put ADMIN_TELEGRAM_WEBHOOK_SECRET
+#    wrangler secret put ADMIN_TELEGRAM_ID
+#    wrangler secret put GROQ_API_KEY
+#    wrangler secret put PREMIUM_AI_API_KEY
+#    wrangler secret put RESEND_API_KEY
+#    wrangler secret put INTERNAL_SECRET
+#
+#  Untuk dev lokal, pakai file .dev.vars (sudah masuk .gitignore).
+# ─────────────────────────────────────────────────────
+
+[[d1_databases]]
+binding = "DB"
+database_name = "laksa-db"
+database_id = "local-db"

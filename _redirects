@@ -1,0 +1,26 @@
+# ── Blokir file sensitif dari akses publik ──
+# PENTING: Cloudflare Pages menyajikan SEMUA file di folder output, termasuk file
+# konfigurasi. Repo private tidak melindungi ini — hasil deploy-nya tetap publik.
+/.gitignore          /404 404
+/package.json        /404 404
+/package-lock.json   /404 404
+/README.md           /404 404
+/README.id.md        /404 404
+/SKILL.md            /404 404
+/wrangler.toml       /404 404
+/cloudflare-worker.js /404 404
+/.agents/*           /404 404
+/skills/*            /404 404
+/*.toml              /404 404
+/*.ps1               /404 404
+/*.json_backup       /404 404
+
+# ── SPA Page Routing Rules ──
+/login       /app 200
+/register    /app 200
+/dashboard   /app 200
+/transactions /app 200
+/receipt     /app 200
+/reports     /app 200
+/settings    /app 200
+/keuangan*   /app 200

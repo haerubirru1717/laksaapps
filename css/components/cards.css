@@ -1,0 +1,35 @@
+/* ══════════════════════════════════════════
+   cards.css — Stat Cards, Debit Card, E-Wallets & Glass Cards
+   ══════════════════════════════════════════ */
+
+.card, .widget, .glass-card {
+  background: var(--card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid var(--gs-border);
+  border-radius: 20px;
+  padding: 1.2rem;
+  box-shadow: var(--shd);
+  transition: transform .18s, box-shadow .18s, border-color .18s;
+}
+
+.card:hover, .widget:hover {
+  border-color: var(--gs-border-hi);
+  box-shadow: var(--shd-lg);
+}
+
+/* Account Card Carousel (.dc) & E-Wallet Cards (.ecard) */
+.dc, .ecard {
+  border: 1.5px solid var(--gs-border);
+  border-radius: 18px;
+  padding: 1rem;
+  background: var(--gs-1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: all .18s;
+}
+
+.dc:hover, .ecard:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
