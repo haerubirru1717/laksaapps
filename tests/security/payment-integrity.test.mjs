@@ -20,6 +20,13 @@ test('Telegram transfer writes both legs and balances in one atomic batch', () =
   assert.match(body, /UPDATE accounts SET balance = balance \+/);
 });
 
+test('checkout ensures payment schema before using reservation columns', () => {
+  const body = bodyOf('createKlikQrisCheckout');
+  const ensure = body.indexOf('await ensurePaymentIntegritySchema(env)');
+  const insert = body.indexOf('INSERT INTO payment_requests');
+  assert.ok(ensure >= 0 && ensure < insert);
+});
+
 test('checkout atomically reserves coupon capacity before provider call', () => {
   const body = bodyOf('createKlikQrisCheckout');
   assert.match(body, /coupon reservation/i);

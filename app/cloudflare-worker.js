@@ -3145,6 +3145,9 @@ async function releaseCouponReservation(orderId, env) {
 }
 
 async function createKlikQrisCheckout(uid, pricingId, rawCouponCode, env, { reusePending = false } = {}) {
+  // Existing production databases may predate coupon/outbox columns.
+  // Ensure the additive payment schema before any checkout read/write.
+  await ensurePaymentIntegritySchema(env);
   const merchantId = String(env.KLIKQRIS_MERCHANT_ID || "").trim();
   const apiKey = String(env.KLIKQRIS_API_KEY || "").trim();
   if (!/^[a-zA-Z0-9_-]{3,100}$/.test(merchantId) || apiKey.length < 16) {
