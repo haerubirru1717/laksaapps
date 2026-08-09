@@ -45,19 +45,19 @@ test('delegated finance action passes malicious legacy ID as data, not code', ()
 });
 
 test('bot dedup uses a separate text-key table for namespaced update IDs', () => {
-  const schemas = [...worker.matchAll(/CREATE TABLE IF NOT EXISTS processed_bot_updates\s*\([\s\S]*?\)/g)];
+  const schemas = [...worker.matchAll(/CREATE TABLE IF NOT EXISTS processed_bot_updates_v2\s*\([\s\S]*?\)/g)];
   assert.ok(schemas.length >= 1);
   for (const schema of schemas) assert.match(schema[0], /update_id TEXT PRIMARY KEY/);
-  assert.match(bodyOf('claimTelegramUpdate'), /INSERT INTO processed_bot_updates/);
+  assert.match(bodyOf('claimTelegramUpdate'), /INSERT INTO processed_bot_updates_v2/);
 });
 
 test('namespaced consumer and admin update IDs coexist in SQLite', () => {
   const db = new DatabaseSync(':memory:');
-  db.exec('CREATE TABLE processed_bot_updates (update_id TEXT PRIMARY KEY, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)');
-  const insert = db.prepare('INSERT INTO processed_bot_updates (update_id) VALUES (?)');
+  db.exec('CREATE TABLE processed_bot_updates_v2 (update_id TEXT PRIMARY KEY, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)');
+  const insert = db.prepare('INSERT INTO processed_bot_updates_v2 (update_id) VALUES (?)');
   insert.run('consumer:42');
   insert.run('admin:42');
-  const rows = db.prepare('SELECT update_id FROM processed_bot_updates ORDER BY update_id').all();
+  const rows = db.prepare('SELECT update_id FROM processed_bot_updates_v2 ORDER BY update_id').all();
   assert.deepEqual(rows.map(row => row.update_id), ['admin:42', 'consumer:42']);
   assert.throws(() => insert.run('admin:42'));
   db.close();
@@ -67,6 +67,14 @@ test('legacy categories schema detection fails closed', () => {
   const setup = bodyOf('setupDatabase');
   assert.match(setup, /Legacy categories schema requires an explicit backup-and-copy migration/);
   assert.doesNotMatch(setup, /catch \(_\) \{\}/);
+});
+
+test('all request JSON bodies use the bounded stream parser', () => {
+  assert.match(worker, /async function readJsonBodyBounded/);
+  assert.doesNotMatch(worker, /await\s+(?:request|req)\.json\(\)/);
+  assert.match(worker, /reader\.read\(\)/);
+  assert.match(worker, /total\s*>\s*maxBytes/);
+  assert.match(worker, /status\s*=\s*413/);
 });
 
 test('server generates IDs for budget goal and bill objects', () => {
@@ -100,6 +108,17 @@ test('admin JWT is tied to the currently configured admin identity', () => {
   assert.match(bodyOf('verifyAdminJWT'), /ADMIN_TELEGRAM_ID/);
 });
 
-test('admin webhook claims update IDs before dispatch', () => {
-  assert.match(worker, /claimTelegramUpdate\("admin"/);
+test('webhook processing uses durable processing completed failed states', () => {
+  assert.match(worker, /status TEXT NOT NULL DEFAULT 'completed'/);
+  assert.match(worker, /payload TEXT/);
+  assert.match(worker, /markTelegramUpdate\([^)]*"completed"/);
+  assert.match(worker, /botName === "admin" \? "terminal_failed" : "failed"/);
+  assert.match(worker, /retryFailedBotUpdates/);
+  assert.match(worker, /attempts < 5/);
+});
+
+test('Telegram webhooks reject updates without an integer update_id', () => {
+  assert.match(worker, /function validTelegramUpdateId/);
+  assert.doesNotMatch(bodyOf('claimTelegramUpdate'), /updateId === undefined.*return true/s);
+  assert.match(worker, /if \(!validTelegramUpdateId\(body\?\.update_id\)\)/);
 });

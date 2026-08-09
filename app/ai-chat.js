@@ -1621,6 +1621,34 @@ async function aiCallGroq() {
   }
 }
 
+const aiTxPayloads = new Map();
+const aiBillsPayloads = new Map();
+function aiCreatePayloadKey(prefix = 'payload') {
+  return `${prefix}_${Date.now()}_${crypto.randomUUID()}`.replace(/[^A-Za-z0-9_-]/g, '');
+}
+function aiReleasePayloadForBubble(bubbleId) {
+  const key = el(bubbleId)?.dataset?.payloadKey;
+  if (key) { aiTxPayloads.delete(key); aiBillsPayloads.delete(key); }
+}
+function aiBindConfirmActions() {
+  if (document._aiConfirmActionsBound) return;
+  document._aiConfirmActionsBound = true;
+  document.addEventListener('click', async event => {
+    const button = event.target?.closest?.('[data-ai-action]');
+    if (!button) return;
+    const { aiAction: action, payloadKey, bubbleId, inputId } = button.dataset;
+    const tx = payloadKey ? aiTxPayloads.get(payloadKey) : undefined;
+    const bills = payloadKey ? aiBillsPayloads.get(payloadKey) : undefined;
+    if (action === 'confirm-tx' && tx) await aiConfirmTx(tx, bubbleId);
+    else if (action === 'edit-tx' && tx) aiEditTx(tx, bubbleId, payloadKey);
+    else if (action === 'submit-edit' && tx) await aiSubmitEdit(inputId, tx, bubbleId);
+    else if (action === 'cancel-edit' && tx) aiCancelEdit(bubbleId, tx, payloadKey);
+    else if (action === 'confirm-bills' && bills) await window.aiConfirmBills(bills, bubbleId);
+    else if (action === 'cancel') aiCancelTx(bubbleId);
+  });
+}
+aiBindConfirmActions();
+
 // ── TRANSACTION CONFIRM BUBBLE ──
 function aiAppendTxConfirm(tx) {
   const wrap = el('aiMsgs');
@@ -1629,6 +1657,8 @@ function aiAppendTxConfirm(tx) {
   const typeClass = txType === 'income' ? 'inc' : txType === 'transfer' ? '' : 'exp';
   const typeIco = txType === 'income' ? '↑' : txType === 'transfer' ? '⇄' : '↓';
   const txId = 'txc_' + Date.now();
+  const payloadKey = aiCreatePayloadKey('tx');
+  aiTxPayloads.set(payloadKey, tx);
 
   // Sembunyikan suggestion cards saat confirm card muncul
   const sugsEl = el('aiSugs');
@@ -1688,6 +1718,7 @@ function aiAppendTxConfirm(tx) {
   div.className = 'ai-msg bot';
   div.id = txId;
   div.dataset.idempotencyKey = idemKey;
+  div.dataset.payloadKey = payloadKey;
   div.innerHTML = `
     <div class="ai-tx-confirm">
       <div class="ai-tx-confirm-title">
@@ -1705,15 +1736,15 @@ function aiAppendTxConfirm(tx) {
       </div>
       ${balanceHtml}
       <div class="ai-tx-confirm-btns">
-        <button class="ai-tx-btn-ok" onclick="aiConfirmTx(${JSON.stringify(tx).replace(/"/g, '&quot;')},'${txId}')">
+        <button class="ai-tx-btn-ok" data-ai-action="confirm-tx" data-payload-key="${payloadKey}" data-bubble-id="${txId}">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
           Catat
         </button>
-        <button class="ai-tx-btn-edit" onclick="aiEditTx(${JSON.stringify(tx).replace(/"/g, '&quot;')},'${txId}')">
+        <button class="ai-tx-btn-edit" data-ai-action="edit-tx" data-payload-key="${payloadKey}" data-bubble-id="${txId}">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Edit
         </button>
-        <button class="ai-tx-btn-cancel" onclick="aiCancelTx('${txId}')">
+        <button class="ai-tx-btn-cancel" data-ai-action="cancel" data-bubble-id="${txId}">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           Batal
         </button>
@@ -1857,6 +1888,7 @@ async function aiConfirmTx(tx, bubbleId) {
       const btns = bubble.querySelector('.ai-tx-confirm-btns');
       if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done">✅ Berhasil dicatat!</div>';
     }
+    aiReleasePayloadForBubble(bubbleId);
     toast('Transaksi dicatat via Laksa.na!', 'ok');
   } catch (e) {
     window.aiProcessingBubbles.delete(bubbleId);
@@ -1868,7 +1900,7 @@ async function aiConfirmTx(tx, bubbleId) {
   }
 }
 
-function aiEditTx(tx, bubbleId) {
+function aiEditTx(tx, bubbleId, payloadKey) {
   const bubble = el(bubbleId);
   if (!bubble) return;
   const btns = bubble.querySelector('.ai-tx-confirm-btns');
@@ -1883,8 +1915,8 @@ function aiEditTx(tx, bubbleId) {
       </div>
       <div class="ai-tx-edit-row">
         <input class="ai-tx-edit-input" id="${editId}" placeholder="Tulis koreksi..." autofocus />
-        <button class="ai-tx-edit-send" onclick="aiSubmitEdit('${editId}',${JSON.stringify(tx).replace(/"/g, '&quot;')},'${bubbleId}')">Kirim</button>
-        <button class="ai-tx-edit-cancel" onclick="aiCancelEdit('${bubbleId}',${JSON.stringify(tx).replace(/"/g, '&quot;')})">✗</button>
+        <button class="ai-tx-edit-send" data-ai-action="submit-edit" data-input-id="${editId}" data-payload-key="${payloadKey}" data-bubble-id="${bubbleId}">Kirim</button>
+        <button class="ai-tx-edit-cancel" data-ai-action="cancel-edit" data-payload-key="${payloadKey}" data-bubble-id="${bubbleId}">✗</button>
       </div>
     </div>`;
 
@@ -1913,10 +1945,11 @@ async function aiSubmitEdit(inputId, originalTx, bubbleId) {
   // Kirim sebagai chat message biasa — AI akan proses ulang
   const chatInput = el('aiInput');
   if (chatInput) { chatInput.value = text; }
+  aiReleasePayloadForBubble(bubbleId);
   await aiSend();
 }
 
-function aiCancelEdit(bubbleId, tx) {
+function aiCancelEdit(bubbleId, tx, payloadKey) {
   const bubble = el(bubbleId);
   if (!bubble) return;
   // Bug #11 fix: JANGAN generate UUID baru saat Edit dibatalkan.
@@ -1929,15 +1962,15 @@ function aiCancelEdit(bubbleId, tx) {
     const txId = bubbleId;
     editArea.parentElement.innerHTML = `
       <div class="ai-tx-confirm-btns">
-        <button class="ai-tx-btn-ok" onclick="aiConfirmTx(${JSON.stringify(tx).replace(/"/g, '&quot;')},'${txId}')">
+        <button class="ai-tx-btn-ok" data-ai-action="confirm-tx" data-payload-key="${payloadKey}" data-bubble-id="${txId}">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
           Catat
         </button>
-        <button class="ai-tx-btn-edit" onclick="aiEditTx(${JSON.stringify(tx).replace(/"/g, '&quot;')},'${txId}')">
+        <button class="ai-tx-btn-edit" data-ai-action="edit-tx" data-payload-key="${payloadKey}" data-bubble-id="${txId}">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Edit
         </button>
-        <button class="ai-tx-btn-cancel" onclick="aiCancelTx('${txId}')">
+        <button class="ai-tx-btn-cancel" data-ai-action="cancel" data-bubble-id="${txId}">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           Batal
         </button>
@@ -1951,14 +1984,18 @@ function aiCancelTx(bubbleId) {
     const btns = bubble.querySelector('.ai-tx-confirm-btns');
     if (btns) btns.innerHTML = '<div class="ai-tx-confirm-done">✗ Dibatalkan</div>';
   }
+  aiReleasePayloadForBubble(bubbleId);
 }
 
 window.aiAppendBillsConfirm = function(bills) {
   const wrap = el('aiMsgs');
   const bId = 'bills_' + Date.now();
+  const payloadKey = aiCreatePayloadKey('bills');
+  aiBillsPayloads.set(payloadKey, bills);
   const div = document.createElement('div');
   div.className = 'ai-msg bot';
   div.id = bId;
+  div.dataset.payloadKey = payloadKey;
 
   let rowsHtml = bills.map((b, i) => `
     <div style="padding:8px 0; border-bottom:1px solid rgba(0,0,0,0.05); ${i === bills.length-1 ? 'border:none;' : ''}">
@@ -1984,11 +2021,11 @@ window.aiAppendBillsConfirm = function(bills) {
         ${rowsHtml}
       </div>
       <div class="ai-tx-confirm-btns">
-        <button class="ai-tx-btn-ok" onclick="aiConfirmBills(${JSON.stringify(bills).replace(/"/g, '&quot;')},'${bId}')">
+        <button class="ai-tx-btn-ok" data-ai-action="confirm-bills" data-payload-key="${payloadKey}" data-bubble-id="${bId}">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
           Simpan Semua
         </button>
-        <button class="ai-tx-btn-cancel" onclick="aiCancelTx('${bId}')">Batal</button>
+        <button class="ai-tx-btn-cancel" data-ai-action="cancel" data-bubble-id="${bId}">Batal</button>
       </div>
     </div>`;
   wrap.appendChild(div);
@@ -2039,6 +2076,7 @@ window.aiConfirmBills = async function(bills, bubbleId) {
       const btns = bubble.querySelector('.ai-tx-confirm-btns');
       if (btns) btns.innerHTML = `<div class="ai-tx-confirm-done">✅ ${successCount} tagihan berhasil dicatat!</div>`;
     }
+    aiReleasePayloadForBubble(bubbleId);
     toast(`${successCount} tagihan dicatat!`, 'ok');
   } catch(e) {
     window.aiProcessingBubbles.delete(bubbleId);

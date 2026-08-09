@@ -78,6 +78,41 @@ const MAX_AI_TOKENS = 4096;
 const MAX_RECEIPT_BYTES = 8 * 1024 * 1024;
 const ALLOWED_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
+async function readJsonBodyBounded(request, maxBytes = MAX_JSON_BODY_BYTES) {
+  const contentLength = Number(request.headers.get("Content-Length") || 0);
+  if (contentLength > maxBytes) {
+    const error = new Error("Payload terlalu besar");
+    error.status = 413;
+    throw error;
+  }
+  if (!request.body) return {};
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel().catch(() => {});
+      const error = new Error("Payload terlalu besar");
+      error.status = 413;
+      throw error;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  try {
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    const error = new Error("JSON tidak valid");
+    error.status = 400;
+    throw error;
+  }
+}
+
 // Freemium config
 const FREE_LIMIT_PER_FEATURE = 3; // 3x per fitur per hari
 const LIMITED_FEATURES = ['ai_chat', 'scan_receipt', 'report_view', 'export_csv'];
@@ -205,20 +240,30 @@ async function authenticateUserToken(req, env) {
   return { payload, user };
 }
 
-async function logAdminAction(adminId, action, target, details, env) {
-  const id = "log_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
-  await env.DB.prepare(
+function adminAuditStatement(adminId, action, target, details, env) {
+  return env.DB.prepare(
     "INSERT INTO admin_audit_logs (id, admin_id, action, target, details, created_at) VALUES (?, ?, ?, ?, ?, ?)"
   ).bind(
-    id,
+    "log_" + crypto.randomUUID(),
     adminId,
     action,
     target || null,
     details ? JSON.stringify(details) : null,
     new Date().toISOString()
-  ).run().catch(e => {
-    console.error("logAdminAction error:", e.message);
-  });
+  );
+}
+
+async function logAdminAction(adminId, action, target, details, env) {
+  await adminAuditStatement(adminId, action, target, details, env).run();
+}
+
+async function auditAdminBotMutation(adminId, updateId, action, target, details, env) {
+  await logAdminAction(adminId, action, target, {
+    ...details,
+    update_id: updateId,
+    channel: "telegram_admin_bot",
+    outcome: "authorized_intent"
+  }, env);
 }
 
 // ─────────────────────────────────────────────────────
@@ -417,6 +462,10 @@ async function handleDeleteAccount(req, body, env) {
   if (!payload) return jsonRes({ error: "Token tidak valid" }, 401);
   const { password } = body || {};
   if (!password) return jsonRes({ error: "Password diperlukan untuk konfirmasi" }, 400);
+  const ip = req.headers.get("CF-Connecting-IP") || req.headers.get("X-Forwarded-For") || "unknown";
+  if (!await checkRateLimit(`delete-account:${payload.sub}:${ip}`, env, 5, 15 * 60 * 1000)) {
+    return jsonRes({ error: "Terlalu banyak percobaan. Coba lagi dalam 15 menit." }, 429);
+  }
   const user = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(payload.sub).first();
   if (!user) return jsonRes({ error: "User tidak ditemukan" }, 404);
   const valid = await verifyPassword(password, user.salt, user.password_hash, user.pbkdf2_iterations);
@@ -621,8 +670,9 @@ async function ensureDedup(env) {
   if (_dedupReady) return;
   try {
     await env.DB.prepare(
-      "CREATE TABLE IF NOT EXISTS processed_bot_updates (update_id TEXT PRIMARY KEY, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
+      "CREATE TABLE IF NOT EXISTS processed_bot_updates_v2 (update_id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'completed', payload TEXT, attempts INTEGER NOT NULL DEFAULT 0, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
     ).run();
+
     await env.DB.prepare(
       "ALTER TABLE transactions ADD COLUMN idempotency_key TEXT"
     ).run().catch(() => {});
@@ -635,23 +685,77 @@ async function ensureDedup(env) {
     await env.DB.prepare(
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_tx_dedup_hash ON transactions (dedup_hash) WHERE dedup_hash IS NOT NULL"
     ).run().catch(() => {});
+    await env.DB.prepare(
+      "ALTER TABLE transactions ADD COLUMN transfer_group_id TEXT"
+    ).run().catch(() => {});
+    await env.DB.prepare(
+      "CREATE INDEX IF NOT EXISTS idx_tx_transfer_group ON transactions (transfer_group_id) WHERE transfer_group_id IS NOT NULL"
+    ).run().catch(() => {});
     _dedupReady = true;
   } catch (e) {
-    console.warn("ensureDedup:", e.message);
+    _dedupReady = false;
+    throw new Error(`Dedup schema unavailable: ${e.message}`);
   }
 }
 
-async function claimTelegramUpdate(botName, updateId, env) {
-  if (updateId === undefined || updateId === null) return true;
+function validTelegramUpdateId(updateId) {
+  return Number.isSafeInteger(updateId) && updateId >= 0;
+}
+
+async function claimTelegramUpdate(botName, updateId, payload, env) {
+  if (!validTelegramUpdateId(updateId)) throw new Error("Invalid Telegram update_id");
+  const key = `${botName}:${updateId}`;
   try {
     await env.DB.prepare(
-      "INSERT INTO processed_bot_updates (update_id) VALUES (?)"
-    ).bind(`${botName}:${updateId}`).run();
+      "INSERT INTO processed_bot_updates_v2 (update_id, status, payload, attempts, updated_at) VALUES (?, 'processing', ?, 1, CURRENT_TIMESTAMP)"
+    ).bind(key, JSON.stringify(payload)).run();
     return true;
   } catch (e) {
     const message = String(e?.message || "");
-    if (message.includes("UNIQUE") || message.includes("constraint")) return false;
+    if (message.includes("UNIQUE") || message.includes("constraint")) {
+      const retry = await env.DB.prepare(`UPDATE processed_bot_updates_v2 SET status = 'processing', payload = ?, attempts = attempts + 1, updated_at = CURRENT_TIMESTAMP WHERE update_id = ? AND attempts < 5 AND (status = 'failed' OR (status = 'processing' AND updated_at < datetime('now', '-5 minutes')))`)
+        .bind(JSON.stringify(payload), key).run();
+      return (retry.meta?.changes || 0) === 1;
+    }
     throw e;
+  }
+}
+
+async function markTelegramUpdate(botName, updateId, status, env) {
+  if (updateId === undefined || updateId === null) return;
+  await env.DB.prepare("UPDATE processed_bot_updates_v2 SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE update_id = ?")
+    .bind(status, `${botName}:${updateId}`).run();
+}
+
+async function processTelegramUpdate(botName, body, env) {
+  try {
+    if (botName === "admin") await handleAdminBot(body, env, body?.update_id);
+    else await handleTelegram(body, env, body?.update_id);
+    await markTelegramUpdate(botName, body?.update_id, "completed", env);
+  } catch (error) {
+    const failureStatus = botName === "admin" ? "terminal_failed" : "failed";
+    await markTelegramUpdate(botName, body?.update_id, failureStatus, env).catch(() => {});
+    throw error;
+  }
+}
+
+async function retryFailedBotUpdates(env) {
+  await ensureDedup(env);
+  const { results = [] } = await env.DB.prepare("SELECT update_id, payload FROM processed_bot_updates_v2 WHERE status = 'failed' AND attempts < 5 ORDER BY updated_at LIMIT 20").all();
+  for (const row of results) {
+    try {
+      const split = row.update_id.indexOf(':');
+      const botName = row.update_id.slice(0, split);
+      const body = JSON.parse(row.payload || '{}');
+      if (!validTelegramUpdateId(body?.update_id)) throw new Error("Malformed persisted Telegram payload");
+      if (await claimTelegramUpdate(botName, body.update_id, body, env)) {
+        await processTelegramUpdate(botName, body, env).catch(() => {});
+      }
+    } catch (error) {
+      await env.DB.prepare("UPDATE processed_bot_updates_v2 SET status = 'terminal_failed', updated_at = CURRENT_TIMESTAMP WHERE update_id = ?")
+        .bind(row.update_id).run().catch(() => {});
+      console.error("telegram retry payload:", row.update_id, error.message);
+    }
   }
 }
 
@@ -684,7 +788,8 @@ export default {
           return new Response("Unauthorized", { status: 403 });
         }
 
-        const body = await request.json(); // parse body setelah auth check
+        const body = await readJsonBodyBounded(request); // parse body setelah auth check
+        if (!validTelegramUpdateId(body?.update_id)) return new Response("Bad Request", { status: 400 });
 
         // ── Auto-ensure dedup infrastructure exists (lazy migration) ──
         await ensureSecuritySchema(env);
@@ -692,13 +797,13 @@ export default {
 
         // ── Deduplication: cegah triple insert dari Telegram webhook retry ──
         const updateId = body?.update_id;
-        if (!await claimTelegramUpdate("consumer", updateId, env)) {
+        if (!await claimTelegramUpdate("consumer", updateId, body, env)) {
           return new Response("OK");
         }
 
         // Balas Telegram SEGERA sebelum processing dimulai (cegah timeout → retry)
         // ctx.waitUntil() memastikan handleTelegram tetap berjalan di background
-        ctx.waitUntil(handleTelegram(body, env, updateId));
+        ctx.waitUntil(processTelegramUpdate("consumer", body, env));
         return new Response("OK");
 
       }
@@ -714,22 +819,26 @@ export default {
         if (headerSecret !== secret) {
           return new Response("Unauthorized", { status: 403 });
         }
-        const body = await request.json();
+        const body = await readJsonBodyBounded(request);
+        if (!validTelegramUpdateId(body?.update_id)) return new Response("Bad Request", { status: 400 });
         await ensureDedup(env);
-        if (!await claimTelegramUpdate("admin", body?.update_id, env)) {
+        if (!await claimTelegramUpdate("admin", body?.update_id, body, env)) {
           return new Response("OK");
         }
-        ctx.waitUntil(handleAdminBot(body, env));
+        ctx.waitUntil(processTelegramUpdate("admin", body, env));
         return new Response("OK");
       }
       return cors(await routeAPI(request, url, env), request);
     } catch (e) {
+      if (e?.status === 400 || e?.status === 413) {
+        return cors(jsonRes({ error: e.message }, e.status), request);
+      }
       console.error("Worker error:", e.message, e.stack);
       return cors(jsonRes({ error: "Terjadi kesalahan internal", request_id: crypto.randomUUID() }, 500), request);
     }
   },
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(cleanupOldData(env));
+    ctx.waitUntil(Promise.all([cleanupOldData(env), retryFailedBotUpdates(env), reconcilePendingPayments(env)]));
   }
 };
 
@@ -760,8 +869,8 @@ async function routeAPI(req, url, env) {
     if (!await checkRateLimit(`admin-auth:${ip}`, env, 8, 15 * 60 * 1000)) {
       return jsonRes({ error: "Terlalu banyak percobaan. Coba lagi dalam 15 menit." }, 429);
     }
-    if (path === "/admin/auth/otp-request") return handleAdminOtpRequest(await req.json(), env);
-    if (path === "/admin/auth/otp-verify") return handleAdminOtpVerify(await req.json(), ip, env);
+    if (path === "/admin/auth/otp-request") return handleAdminOtpRequest(await readJsonBodyBounded(req), env);
+    if (path === "/admin/auth/otp-verify") return handleAdminOtpVerify(await readJsonBodyBounded(req), ip, env);
   }
 
   if (path.startsWith("/admin/")) {
@@ -782,13 +891,13 @@ async function routeAPI(req, url, env) {
       return handleAdminGetPricing(adminId, env);
     }
     if (path === "/admin/pricing" && m === "POST") {
-      return handleAdminUpdatePricing(adminId, await req.json(), env);
+      return handleAdminUpdatePricing(adminId, await readJsonBodyBounded(req), env);
     }
     if (path === "/admin/coupons" && m === "GET") {
       return handleAdminGetCoupons(adminId, env);
     }
     if (path === "/admin/coupons" && m === "POST") {
-      return handleAdminCreateCoupon(adminId, await req.json(), env);
+      return handleAdminCreateCoupon(adminId, await readJsonBodyBounded(req), env);
     }
     if (path === "/admin/audit-logs" && m === "GET") {
       return handleAdminGetAuditLogs(adminId, url, env);
@@ -815,12 +924,12 @@ async function routeAPI(req, url, env) {
 
     const userResetPwMatch = path.match(/^\/admin\/users\/([^/]+)\/reset-password$/);
     if (userResetPwMatch && m === "POST") {
-      return handleAdminResetPassword(adminId, userResetPwMatch[1], await req.json(), env);
+      return handleAdminResetPassword(adminId, userResetPwMatch[1], await readJsonBodyBounded(req), env);
     }
 
     const userExtendMatch = path.match(/^\/admin\/users\/([^/]+)\/extend$/);
     if (userExtendMatch && m === "POST") {
-      return handleAdminExtendUser(adminId, userExtendMatch[1], await req.json(), env);
+      return handleAdminExtendUser(adminId, userExtendMatch[1], await readJsonBodyBounded(req), env);
     }
 
     const userRevokeMatch = path.match(/^\/admin\/users\/([^/]+)\/revoke$/);
@@ -843,15 +952,15 @@ async function routeAPI(req, url, env) {
       return jsonRes({ error: "Terlalu banyak percobaan. Coba lagi dalam 15 menit." }, 429);
     }
   }
-  if (path === "/auth/register" && m === "POST") return handleRegister(await req.json(), env);
-  if (path === "/auth/login"    && m === "POST") return handleLogin(await req.json(), env);
+  if (path === "/auth/register" && m === "POST") return handleRegister(await readJsonBodyBounded(req), env);
+  if (path === "/auth/login"    && m === "POST") return handleLogin(await readJsonBodyBounded(req), env);
   if (path === "/auth/me"       && m === "GET")  return handleMe(req, env);
   if (path === "/auth/refresh"  && m === "POST") return handleRefreshToken(req, env);
   if (path === "/auth/link-telegram" && m === "POST") return jsonRes({ error: "Endpoint lama dinonaktifkan. Gunakan pairing code." }, 410);
   if (path === "/auth/telegram-link/start" && m === "POST") return handleStartTelegramLink(req, env);
-  if (path === "/auth/delete-account" && m === "POST") return handleDeleteAccount(req, await req.json(), env);
-  if (path === "/auth/forgot-password" && m === "POST") return handleForgotPassword(req, await req.json(), env);
-  if (path === "/auth/reset-password" && m === "POST") return handleResetPassword(req, await req.json(), env);
+  if (path === "/auth/delete-account" && m === "POST") return handleDeleteAccount(req, await readJsonBodyBounded(req), env);
+  if (path === "/auth/forgot-password" && m === "POST") return handleForgotPassword(req, await readJsonBodyBounded(req), env);
+  if (path === "/auth/reset-password" && m === "POST") return handleResetPassword(req, await readJsonBodyBounded(req), env);
 
   // Public pricing endpoint
   if (path === "/pricing" && m === "GET") {
@@ -861,7 +970,7 @@ async function routeAPI(req, url, env) {
 
   // KlikQRIS MY PG webhook. Signature and provider status are both verified.
   if (path === "/payment/klikqris-webhook" && m === "POST") {
-    return handleKlikQrisWebhook(await req.json(), env);
+    return handleKlikQrisWebhook(await readJsonBodyBounded(req), env);
   }
 
   // Resolve user_id: prefer JWT token, fallback to query param (secured with secret header)
@@ -911,7 +1020,7 @@ async function routeAPI(req, url, env) {
   // Validate coupon
   if (path === "/coupon/validate" && m === "POST") {
     if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
-    const { code, pricing_id } = await req.json();
+    const { code, pricing_id } = await readJsonBodyBounded(req);
     if (!code) return jsonRes({ error: "Kode kupon diperlukan" }, 400);
     try {
       const coupon = await env.DB.prepare(
@@ -939,7 +1048,7 @@ async function routeAPI(req, url, env) {
   // server so the browser cannot choose its own price.
   if (path === "/payment/request" && m === "POST") {
     if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
-    const body = await req.json();
+    const body = await readJsonBodyBounded(req);
     const result = await createKlikQrisCheckout(uid, body.pricing_id, body.coupon_code, env, {
       reusePending: true
     });
@@ -955,7 +1064,7 @@ async function routeAPI(req, url, env) {
       if (usage.reason === 'banned') return jsonRes({ error: "Akun diblokir" }, 403);
       return jsonRes({ error: "Batas harian AI Chat tercapai. Upgrade ke Premium untuk akses unlimited.", upgrade: true, used: usage.used, limit: usage.limit }, 429);
     }
-    return handleAiChat(uid, await req.json(), env);
+    return handleAiChat(uid, await readJsonBodyBounded(req), env);
   }
   if (path === "/scan-receipt" && m === "POST") {
     if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
@@ -964,7 +1073,8 @@ async function routeAPI(req, url, env) {
       if (usage.reason === 'banned') return jsonRes({ error: "Akun diblokir" }, 403);
       return jsonRes({ error: "Batas harian Scan Struk tercapai. Upgrade ke Premium untuk akses unlimited.", upgrade: true, used: usage.used, limit: usage.limit }, 429);
     }
-    return handleScanReceipt(uid, await req.json(), env);
+    const scanJsonLimit = Math.ceil(MAX_RECEIPT_BYTES * 4 / 3) + 100_000;
+    return handleScanReceipt(uid, await readJsonBodyBounded(req, scanJsonLimit), env);
   }
 
   if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
@@ -981,19 +1091,19 @@ async function routeAPI(req, url, env) {
   // accounts
   if (path === "/accounts") {
     if (m === "GET")  return getAccounts(uid, env);
-    if (m === "POST") return createAccount(uid, await req.json(), env);
+    if (m === "POST") return createAccount(uid, await readJsonBodyBounded(req), env);
     if (m === "DELETE") return deleteAllAccounts(uid, env);
   }
   const accM = path.match(/^\/accounts\/([^/]+)$/);
   if (accM) {
-    if (m === "PATCH")  return updateAccount(uid, accM[1], await req.json(), env);
+    if (m === "PATCH")  return updateAccount(uid, accM[1], await readJsonBodyBounded(req), env);
     if (m === "DELETE") return deleteAccount(uid, accM[1], env);
   }
 
   // categories
   if (path === "/categories") {
     if (m === "GET")  return getCategories(uid, env);
-    if (m === "POST") return createCategory(uid, await req.json(), env);
+    if (m === "POST") return createCategory(uid, await readJsonBodyBounded(req), env);
     if (m === "DELETE") return deleteAllCategories(uid, env);
   }
   const catM = path.match(/^\/categories\/([^/]+)$/);
@@ -1002,19 +1112,19 @@ async function routeAPI(req, url, env) {
   // transactions
   if (path === "/transactions") {
     if (m === "GET")  return getTransactions(uid, url, env);
-    if (m === "POST") return createTransaction(uid, await req.json(), env);
+    if (m === "POST") return createTransaction(uid, await readJsonBodyBounded(req), env);
     if (m === "DELETE") return deleteAllTransactions(uid, env);
   }
   const txM = path.match(/^\/transactions\/([^/]+)$/);
   if (txM) {
-    if (m === "PATCH")  return updateTransaction(uid, txM[1], await req.json(), env);
+    if (m === "PATCH")  return updateTransaction(uid, txM[1], await readJsonBodyBounded(req), env);
     if (m === "DELETE") return deleteTransaction(uid, txM[1], env);
   }
 
   // budgets
   if (path === "/budgets") {
     if (m === "GET")  return getBudgets(uid, env);
-    if (m === "POST") return createBudget(uid, await req.json(), env);
+    if (m === "POST") return createBudget(uid, await readJsonBodyBounded(req), env);
   }
   const budM = path.match(/^\/budgets\/([^/]+)$/);
   if (budM && m === "DELETE") return deleteBudget(uid, budM[1], env);
@@ -1022,22 +1132,22 @@ async function routeAPI(req, url, env) {
   // goals
   if (path === "/goals") {
     if (m === "GET")  return getGoals(uid, env);
-    if (m === "POST") return createGoal(uid, await req.json(), env);
+    if (m === "POST") return createGoal(uid, await readJsonBodyBounded(req), env);
   }
   const goalM = path.match(/^\/goals\/([^/]+)$/);
   if (goalM) {
-    if (m === "PATCH")  return updateGoal(uid, goalM[1], await req.json(), env);
+    if (m === "PATCH")  return updateGoal(uid, goalM[1], await readJsonBodyBounded(req), env);
     if (m === "DELETE") return deleteGoal(uid, goalM[1], env);
   }
 
   // bills
   if (path === "/bills") {
     if (m === "GET")  return getBills(uid, env);
-    if (m === "POST") return createBill(uid, await req.json(), env);
+    if (m === "POST") return createBill(uid, await readJsonBodyBounded(req), env);
   }
   const billM = path.match(/^\/bills\/([^/]+)$/);
   if (billM) {
-    if (m === "PATCH")  return updateBill(uid, billM[1], await req.json(), env);
+    if (m === "PATCH")  return updateBill(uid, billM[1], await readJsonBodyBounded(req), env);
     if (m === "DELETE") return deleteBill(uid, billM[1], env);
   }
 
@@ -1051,11 +1161,11 @@ async function routeAPI(req, url, env) {
   // piutang
   if (path === "/piutang") {
     if (m === "GET")  return getPiutang(uid, env);
-    if (m === "POST") return createPiutang(uid, await req.json(), env);
+    if (m === "POST") return createPiutang(uid, await readJsonBodyBounded(req), env);
   }
   const ptgM = path.match(/^\/piutang\/([^/]+)$/);
   if (ptgM) {
-    if (m === "PATCH")  return updatePiutang(uid, ptgM[1], await req.json(), env);
+    if (m === "PATCH")  return updatePiutang(uid, ptgM[1], await readJsonBodyBounded(req), env);
     if (m === "DELETE") return deletePiutang(uid, ptgM[1], env);
   }
 
@@ -1405,18 +1515,25 @@ async function saveTransfer(chatId, userId, parsed, fromAcc, toAcc, rawText, env
   const dedupHashOut = txDedupHash(userId, 'expense', parsed.amount, fromAcc.id, date);
   const dedupHashIn  = txDedupHash(userId, 'income',  parsed.amount, toAcc.id,   date);
 
-  const r1 = await env.DB.prepare(`
-    INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key, dedup_hash)
-    VALUES (?, ?, ?, 'expense', ?, ?, null, ?, null, ?, 'telegram', ?, ?)
-  `).bind(idOut, userId, date, parsed.amount, note, fromAcc.id, rawText, idemKey, dedupHashOut).run();
-
-  const r2 = await env.DB.prepare(`
-    INSERT OR IGNORE INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key, dedup_hash)
-    VALUES (?, ?, ?, 'income', ?, ?, null, ?, null, ?, 'telegram', ?, ?)
-  `).bind(idIn, userId, date, parsed.amount, note, toAcc.id, rawText, idemKey + '_in', dedupHashIn).run();
-
-  if (r1.meta?.changes > 0) await adjustBalance(fromAcc.id, "expense", parsed.amount, +1, env, userId);
-  if (r2.meta?.changes > 0) await adjustBalance(toAcc.id,   "income",  parsed.amount, +1, env, userId);
+  const transferGroupId = crypto.randomUUID();
+  const amount = Number(parsed.amount);
+  if (!Number.isSafeInteger(amount) || amount < 1 || amount > FINANCIAL_MAX_AMOUNT) {
+    throw new Error("Nominal transfer tidak valid");
+  }
+  await env.DB.batch([
+    env.DB.prepare(`
+      INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key, dedup_hash, transfer_group_id)
+      VALUES (?, ?, ?, 'expense', ?, ?, null, ?, null, ?, 'telegram', ?, ?, ?)
+    `).bind(idOut, userId, date, amount, note, fromAcc.id, rawText, idemKey, dedupHashOut, transferGroupId),
+    env.DB.prepare(`
+      INSERT INTO transactions (id, user_id, date, type, amount, note, store, account_id, category_id, raw_text, source, idempotency_key, dedup_hash, transfer_group_id)
+      VALUES (?, ?, ?, 'income', ?, ?, null, ?, null, ?, 'telegram', ?, ?, ?)
+    `).bind(idIn, userId, date, amount, note, toAcc.id, rawText, idemKey + '_in', dedupHashIn, transferGroupId),
+    env.DB.prepare("UPDATE accounts SET balance = balance - ? WHERE id = ? AND user_id = ?")
+      .bind(amount, fromAcc.id, userId),
+    env.DB.prepare("UPDATE accounts SET balance = balance + ? WHERE id = ? AND user_id = ?")
+      .bind(amount, toAcc.id, userId)
+  ]);
 
   await tgSend(chatId,
     `🔄 *Transfer Tersimpan!*\n\n` +
@@ -3018,6 +3135,15 @@ async function handleAdminUpdatePricing(adminId, body, env) {
   }
 }
 
+async function releaseCouponReservation(orderId, env) {
+  const payment = await env.DB.prepare("SELECT coupon_code, coupon_reserved FROM payment_requests WHERE id = ?").bind(orderId).first();
+  if (!payment?.coupon_code || Number(payment.coupon_reserved) !== 1) return;
+  await env.DB.batch([
+    env.DB.prepare("UPDATE coupons SET used_count = MAX(0, used_count - 1) WHERE code = ? AND used_count > 0 AND EXISTS (SELECT 1 FROM payment_requests WHERE id = ? AND coupon_reserved = 1)").bind(payment.coupon_code, orderId),
+    env.DB.prepare("UPDATE payment_requests SET coupon_reserved = 0 WHERE id = ? AND coupon_reserved = 1").bind(orderId)
+  ]);
+}
+
 async function createKlikQrisCheckout(uid, pricingId, rawCouponCode, env, { reusePending = false } = {}) {
   const merchantId = String(env.KLIKQRIS_MERCHANT_ID || "").trim();
   const apiKey = String(env.KLIKQRIS_API_KEY || "").trim();
@@ -3114,14 +3240,25 @@ async function createKlikQrisCheckout(uid, pricingId, rawCouponCode, env, { reus
   }
 
   const reqId = `LAKSA-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
-  await env.DB.prepare(
-    "INSERT INTO payment_requests (id, user_id, email, pricing_id, amount, coupon_code, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'creating', ?)"
-  ).bind(reqId, uid, user.email, normalizedPricingId, amount, couponCode, new Date().toISOString()).run();
+  const createdAt = new Date().toISOString();
+  if (couponCode) {
+    // Coupon reservation: capacity is consumed atomically before provider creation.
+    const reservation = await env.DB.batch([
+      env.DB.prepare("UPDATE coupons SET used_count = used_count + 1 WHERE code = ? AND active = 1 AND (max_uses = 0 OR used_count < max_uses)").bind(couponCode),
+      env.DB.prepare("INSERT INTO payment_requests (id, user_id, email, pricing_id, amount, coupon_code, coupon_reserved, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, 'creating', ?)")
+        .bind(reqId, uid, user.email, normalizedPricingId, amount, couponCode, createdAt)
+    ]);
+    if ((reservation[0]?.meta?.changes || 0) !== 1) {
+      await env.DB.prepare("DELETE FROM payment_requests WHERE id = ? AND status = 'creating'").bind(reqId).run();
+      return { ok: false, status: 410, error: "Kupon sudah habis" };
+    }
+  } else {
+    await env.DB.prepare(
+      "INSERT INTO payment_requests (id, user_id, email, pricing_id, amount, coupon_code, coupon_reserved, status, created_at) VALUES (?, ?, ?, ?, ?, NULL, 0, 'creating', ?)"
+    ).bind(reqId, uid, user.email, normalizedPricingId, amount, createdAt).run();
+  }
 
-  const sandbox = String(env.KLIKQRIS_ENVIRONMENT || "").toLowerCase() === "sandbox";
-  const createUrl = sandbox
-    ? "https://klikqris.com/api/sandbox/qris/create"
-    : "https://klikqris.com/api/qrisv2/create";
+  const createUrl = "https://klikqris.com/api/qris/create";
   let created;
   try {
     const response = await fetchWithTimeout(createUrl, {
@@ -3136,7 +3273,8 @@ async function createKlikQrisCheckout(uid, pricingId, rawCouponCode, env, { reus
         order_id: reqId,
         id_merchant: merchantId,
         amount,
-        keterangan: `Laksa ${String(pricing.label || normalizedPricingId).slice(0, 80)}`
+        keterangan: `Laksa ${String(pricing.label || normalizedPricingId).slice(0, 80)}`,
+        callback_url: "https://laksana.haerubirru17.workers.dev/payment/klikqris-webhook"
       })
     }, 15000);
     const payload = await response.json().catch(() => null);
@@ -3146,17 +3284,19 @@ async function createKlikQrisCheckout(uid, pricingId, rawCouponCode, env, { reus
     await env.DB.prepare(
       "UPDATE payment_requests SET status = 'failed' WHERE id = ? AND status = 'creating'"
     ).bind(reqId).run();
+    await releaseCouponReservation(reqId, env);
     return { ok: false, status: 502, error: "Gagal membuat pembayaran. Coba lagi." };
   }
 
   let checkout;
   try {
-    checkout = new URL(created.direct_url);
+    checkout = new URL(created.qris_url);
   } catch {
     checkout = null;
   }
   const providerTotal = Number(created.total_amount);
   if (
+    created.order_id !== reqId ||
     !checkout ||
     checkout.protocol !== "https:" ||
     checkout.hostname !== "klikqris.com" ||
@@ -3168,6 +3308,7 @@ async function createKlikQrisCheckout(uid, pricingId, rawCouponCode, env, { reus
     await env.DB.prepare(
       "UPDATE payment_requests SET status = 'failed' WHERE id = ? AND status = 'creating'"
     ).bind(reqId).run();
+    await releaseCouponReservation(reqId, env);
     return { ok: false, status: 502, error: "Respons penyedia pembayaran tidak valid" };
   }
 
@@ -3182,11 +3323,26 @@ async function createKlikQrisCheckout(uid, pricingId, rawCouponCode, env, { reus
     order_id: reqId,
     amount: providerTotal,
     checkout_url: checkout.toString(),
+    expired_at: created.expired_at || null,
     reused: false
   };
 }
 
+async function ensurePaymentIntegritySchema(env) {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS payment_outbox (
+    id TEXT PRIMARY KEY,
+    payment_id TEXT NOT NULL UNIQUE,
+    user_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    attempts INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`).run();
+  await env.DB.prepare("ALTER TABLE payment_requests ADD COLUMN coupon_reserved INTEGER NOT NULL DEFAULT 0").run().catch(() => {});
+}
+
 async function handleKlikQrisWebhook(body, env) {
+  await ensurePaymentIntegritySchema(env);
   const merchantId = String(env.KLIKQRIS_MERCHANT_ID || "").trim();
   const apiKey = String(env.KLIKQRIS_API_KEY || "").trim();
   if (!merchantId || !apiKey) return jsonRes({ error: "Payment provider misconfigured" }, 503);
@@ -3197,7 +3353,7 @@ async function handleKlikQrisWebhook(body, env) {
   const callbackSignature = typeof payload?.signature === "string" ? payload.signature : "";
   if (
     !/^LAKSA-\d{10,}-[a-f0-9-]{8}$/i.test(orderId) ||
-    !["PAID", "SUCCESS"].includes(callbackStatus) ||
+    !["PAID", "SUCCESS", "EXPIRED"].includes(callbackStatus) ||
     payload?.merchant_id && String(payload.merchant_id) !== merchantId
   ) {
     return jsonRes({ status: false, error: "Invalid webhook payload" }, 400);
@@ -3219,10 +3375,7 @@ async function handleKlikQrisWebhook(body, env) {
     return jsonRes({ status: false, error: "Invalid signature" }, 403);
   }
 
-  const sandbox = String(env.KLIKQRIS_ENVIRONMENT || "").toLowerCase() === "sandbox";
-  const statusUrl = sandbox
-    ? `https://klikqris.com/api/sandbox/qris/status/${encodeURIComponent(orderId)}`
-    : `https://klikqris.com/api/qrisv2/status/${encodeURIComponent(merchantId)}/${encodeURIComponent(orderId)}`;
+  const statusUrl = `https://klikqris.com/api/qris/status/${encodeURIComponent(orderId)}`;
 
   let providerTransaction;
   try {
@@ -3240,24 +3393,26 @@ async function handleKlikQrisWebhook(body, env) {
     return jsonRes({ status: false, error: "Payment verification unavailable" }, 502);
   }
 
-  if (
-    providerTransaction?.order_id !== orderId ||
-    String(providerTransaction?.status || "").toUpperCase() !== "SUCCESS" ||
-    Number(providerTransaction?.total_amount) !== Number(payment.provider_total)
-  ) {
+  const verifiedStatus = String(providerTransaction?.status || "").toUpperCase();
+  const verifiedOrder = providerTransaction?.order_id === orderId;
+  const verifiedSignature = timingSafeEqual(String(providerTransaction?.signature || ""), payment.provider_signature);
+  const verifiedAmount = Number(providerTransaction?.total_amount) === Number(payment.provider_total);
+  if (!verifiedOrder || !verifiedSignature || !verifiedAmount) {
+    return jsonRes({ status: false, error: "Payment is not verified" }, 409);
+  }
+  if (verifiedStatus === "EXPIRED") {
+    await env.DB.prepare("UPDATE payment_requests SET status = 'expired', resolved_at = ?, resolved_by = 'klikqris' WHERE id = ? AND status IN ('creating', 'pending')")
+      .bind(new Date().toISOString(), orderId).run();
+    await releaseCouponReservation(orderId, env);
+    return jsonRes({ status: true, expired: true });
+  }
+  if (verifiedStatus !== "SUCCESS") {
     return jsonRes({ status: false, error: "Payment is not verified" }, 409);
   }
 
   const now = new Date().toISOString();
   const statements = [];
-  if (payment.coupon_code) {
-    statements.push(env.DB.prepare(`
-      UPDATE coupons SET used_count = used_count + 1
-      WHERE code = ? AND EXISTS (
-        SELECT 1 FROM payment_requests WHERE id = ? AND status = 'pending'
-      )
-    `).bind(payment.coupon_code, orderId));
-  }
+  // Coupon reservation was consumed atomically when the order was created.
 
   if (Number(payment.duration_days) === 0) {
     statements.push(env.DB.prepare(`
@@ -3282,6 +3437,10 @@ async function handleKlikQrisWebhook(body, env) {
   }
 
   statements.push(env.DB.prepare(`
+    INSERT OR IGNORE INTO payment_outbox (id, payment_id, user_id, status)
+    SELECT ?, id, user_id, 'pending' FROM payment_requests WHERE id = ? AND status = 'pending'
+  `).bind(`outbox_${orderId}`, orderId));
+  statements.push(env.DB.prepare(`
     UPDATE payment_requests
     SET status = 'approved', resolved_at = ?, resolved_by = 'klikqris'
     WHERE id = ? AND status = 'pending'
@@ -3297,14 +3456,61 @@ async function handleKlikQrisWebhook(body, env) {
     pricing_id: payment.pricing_id
   }, env);
 
-  const user = await env.DB.prepare("SELECT telegram_id FROM users WHERE id = ?").bind(payment.user_id).first();
-  if (user?.telegram_id) {
-    await tgSend(user.telegram_id,
-      `✅ *Pembayaran berhasil diverifikasi.*\n\nPaket *${payment.label || "Premium"}* sudah aktif otomatis.\nID pembayaran: \`${orderId}\``,
-      env
-    ).catch(() => {});
-  }
+  await retryFailedOutbox(env, orderId);
   return jsonRes({ status: true });
+}
+
+async function retryFailedOutbox(env, onlyPaymentId = null) {
+  await ensurePaymentIntegritySchema(env);
+  const query = onlyPaymentId
+    ? "SELECT o.*, u.telegram_id, p.pricing_id FROM payment_outbox o JOIN users u ON u.id = o.user_id JOIN payment_requests p ON p.id = o.payment_id WHERE o.payment_id = ? AND (o.status IN ('pending','failed') OR (o.status = 'processing' AND o.updated_at < datetime('now', '-5 minutes'))) AND o.attempts < 5"
+    : "SELECT o.*, u.telegram_id, p.pricing_id FROM payment_outbox o JOIN users u ON u.id = o.user_id JOIN payment_requests p ON p.id = o.payment_id WHERE (o.status IN ('pending','failed') OR (o.status = 'processing' AND o.updated_at < datetime('now', '-5 minutes'))) AND o.attempts < 5 ORDER BY o.created_at LIMIT 20";
+  const result = onlyPaymentId
+    ? await env.DB.prepare(query).bind(onlyPaymentId).all()
+    : await env.DB.prepare(query).all();
+  for (const row of result.results || []) {
+    const claimed = await env.DB.prepare("UPDATE payment_outbox SET status = 'processing', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND (status IN ('pending','failed') OR (status = 'processing' AND updated_at < datetime('now', '-5 minutes')))")
+      .bind(row.id).run();
+    if ((claimed.meta?.changes || 0) !== 1) continue;
+    if (!row.telegram_id) {
+      await env.DB.prepare("UPDATE payment_outbox SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(row.id).run();
+      continue;
+    }
+    try {
+      await tgSend(row.telegram_id, `✅ *Pembayaran berhasil diverifikasi.*\n\nPaket Premium sudah aktif otomatis.\nID pembayaran: \`${row.payment_id}\``, env);
+      await env.DB.prepare("UPDATE payment_outbox SET status = 'completed', attempts = attempts + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(row.id).run();
+    } catch {
+      await env.DB.prepare("UPDATE payment_outbox SET status = 'failed', attempts = attempts + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(row.id).run();
+    }
+  }
+}
+
+async function reconcilePendingPayments(env) {
+  await ensurePaymentIntegritySchema(env);
+  const merchantId = String(env.KLIKQRIS_MERCHANT_ID || "").trim();
+  const apiKey = String(env.KLIKQRIS_API_KEY || "").trim();
+  if (!merchantId || !apiKey) return;
+  const { results = [] } = await env.DB.prepare("SELECT id, provider_signature FROM payment_requests WHERE status IN ('creating', 'pending') AND provider_signature IS NOT NULL ORDER BY created_at LIMIT 20").all();
+  for (const payment of results) {
+    try {
+      const response = await fetchWithTimeout(`https://klikqris.com/api/qris/status/${encodeURIComponent(payment.id)}`, {
+        headers: { "Accept": "application/json", "x-api-key": apiKey, "id_merchant": merchantId }
+      }, 15000);
+      if (!response.ok) continue;
+      const payload = await response.json();
+      const transaction = payload?.data;
+      const status = String(transaction?.status || '').toUpperCase();
+      if (!["SUCCESS", "EXPIRED"].includes(status)) continue;
+      await handleKlikQrisWebhook({
+        order_id: payment.id,
+        status,
+        signature: transaction.signature
+      }, env);
+    } catch (error) {
+      console.error("payment reconciliation:", payment.id, error.message);
+    }
+  }
+  await retryFailedOutbox(env);
 }
 
 async function handleAdminGetCoupons(adminId, env) {
@@ -3477,6 +3683,7 @@ async function setupDatabase(env) {
         category_id TEXT,
         raw_text TEXT,
         source TEXT,
+        transfer_group_id TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `).run();
@@ -3553,8 +3760,12 @@ async function setupDatabase(env) {
     `).run();
 
     await env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS processed_bot_updates (
+      CREATE TABLE IF NOT EXISTS processed_bot_updates_v2 (
         update_id TEXT PRIMARY KEY,
+        status TEXT NOT NULL DEFAULT 'completed',
+        payload TEXT,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `).run();
@@ -3622,6 +3833,7 @@ async function setupDatabase(env) {
         pricing_id TEXT,
         amount INTEGER,
         coupon_code TEXT,
+        coupon_reserved INTEGER NOT NULL DEFAULT 0,
         provider_signature TEXT,
         provider_total INTEGER,
         provider_reference TEXT,
@@ -3632,6 +3844,7 @@ async function setupDatabase(env) {
       )
     `).run();
     await env.DB.prepare("ALTER TABLE payment_requests ADD COLUMN coupon_code TEXT").run().catch(() => {});
+    await env.DB.prepare("ALTER TABLE payment_requests ADD COLUMN coupon_reserved INTEGER NOT NULL DEFAULT 0").run().catch(() => {});
     await env.DB.prepare("ALTER TABLE payment_requests ADD COLUMN provider_signature TEXT").run().catch(() => {});
     await env.DB.prepare("ALTER TABLE payment_requests ADD COLUMN provider_total INTEGER").run().catch(() => {});
     await env.DB.prepare("ALTER TABLE payment_requests ADD COLUMN provider_reference TEXT").run().catch(() => {});
@@ -4094,11 +4307,59 @@ async function getBudgets(uid, env) {
   return jsonRes(results);
 }
 
+const FINANCIAL_MAX_AMOUNT = 9_000_000_000_000;
+const FINANCIAL_MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+const FINANCIAL_DATE_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+const BILL_STATUSES = new Set(["unpaid", "paid"]);
+const BILL_DUE_TYPES = new Set(["monthly", "once"]);
+const PIUTANG_STATUSES = new Set(["active", "paid", "overdue"]);
+
+function validateFinancialAmount(value, field, { min = 0, required = true } = {}) {
+  if (!required && (value === undefined || value === null)) return { value: null };
+  if (typeof value !== "number" || !Number.isFinite(value) || !Number.isSafeInteger(value) || value < min || value > FINANCIAL_MAX_AMOUNT) {
+    return { error: `${field} harus berupa bilangan bulat aman antara ${min} dan ${FINANCIAL_MAX_AMOUNT}` };
+  }
+  return { value };
+}
+
+function validateFinancialString(value, field, { min = 1, max = 100, nullable = false } = {}) {
+  if (nullable && (value === null || value === undefined || value === "")) return { value: null };
+  if (typeof value !== "string") return { error: `${field} harus berupa teks` };
+  const trimmed = value.trim();
+  if (trimmed.length < min || trimmed.length > max) return { error: `${field} harus ${min}-${max} karakter` };
+  return { value: trimmed };
+}
+
+function validateFinancialDate(value, field, nullable = true) {
+  if (nullable && (value === null || value === undefined || value === "")) return { value: null };
+  if (typeof value !== "string" || !FINANCIAL_DATE_RE.test(value)) return { error: `${field} harus berformat YYYY-MM-DD` };
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) return { error: `${field} bukan tanggal kalender yang valid` };
+  return { value };
+}
+
+function financialValidationError(...checks) {
+  const failed = checks.find(check => check.error);
+  return failed ? jsonRes({ error: failed.error }, 400) : null;
+}
+
 async function createBudget(uid, body, env) {
+  const category = validateFinancialString(body?.category_id, "category_id", { max: 128 });
+  const amount = validateFinancialAmount(body?.limit_amount, "limit_amount", { min: 1 });
+  const month = body?.month === undefined ? new Date().toISOString().slice(0, 7) : body.month;
+  const invalid = financialValidationError(category, amount);
+  if (invalid) return invalid;
+  if (typeof month !== "string" || !FINANCIAL_MONTH_RE.test(month)) return jsonRes({ error: "month harus berformat YYYY-MM" }, 400);
+  const ownedCategory = await env.DB.prepare("SELECT id FROM categories WHERE id = ? AND user_id = ?").bind(category.value, uid).first();
+  if (!ownedCategory) return jsonRes({ error: "Kategori tidak ditemukan" }, 404);
   const id = randomId();
   await env.DB.prepare("INSERT INTO budgets (id, user_id, category_id, limit_amount, month) VALUES (?, ?, ?, ?, ?)")
-    .bind(id, uid, body.category_id, body.limit_amount, body.month || new Date().toISOString().slice(0, 7))
-    .run();
+    .bind(id, uid, category.value, amount.value, month).run();
   return jsonRes({ id, status: "created" });
 }
 
@@ -4113,9 +4374,16 @@ async function getGoals(uid, env) {
 }
 
 async function createGoal(uid, body, env) {
+  const name = validateFinancialString(body?.name, "name", { max: 100 });
+  const target = validateFinancialAmount(body?.target, "target", { min: 1 });
+  const current = validateFinancialAmount(body?.current ?? 0, "current");
+  const deadline = validateFinancialDate(body?.deadline, "deadline");
+  const icon = validateFinancialString(body?.icon ?? "target", "icon", { max: 50 });
+  const invalid = financialValidationError(name, target, current, deadline, icon);
+  if (invalid) return invalid;
   const id = randomId();
   await env.DB.prepare("INSERT INTO goals (id, user_id, name, target, current, deadline, icon) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .bind(id, uid, body.name, body.target, body.current || 0, body.deadline || null, body.icon || "target")
+    .bind(id, uid, name.value, target.value, current.value, deadline.value, icon.value)
     .run();
   return jsonRes({ id, status: "created" });
 }
@@ -4123,11 +4391,19 @@ async function createGoal(uid, body, env) {
 async function updateGoal(uid, id, body, env) {
   const fields = [];
   const vals = [];
-  if (body.name !== undefined) { fields.push("name = ?"); vals.push(body.name); }
-  if (body.target !== undefined) { fields.push("target = ?"); vals.push(body.target); }
-  if (body.current !== undefined) { fields.push("current = ?"); vals.push(body.current); }
-  if (body.deadline !== undefined) { fields.push("deadline = ?"); vals.push(body.deadline); }
-  if (body.icon !== undefined) { fields.push("icon = ?"); vals.push(body.icon); }
+  const validators = {
+    name: value => validateFinancialString(value, "name", { max: 100 }),
+    target: value => validateFinancialAmount(value, "target", { min: 1 }),
+    current: value => validateFinancialAmount(value, "current"),
+    deadline: value => validateFinancialDate(value, "deadline"),
+    icon: value => validateFinancialString(value, "icon", { max: 50 })
+  };
+  for (const [field, validate] of Object.entries(validators)) {
+    if (body?.[field] === undefined) continue;
+    const checked = validate(body[field]);
+    if (checked.error) return jsonRes({ error: checked.error }, 400);
+    fields.push(`${field} = ?`); vals.push(checked.value);
+  }
   if (fields.length) {
     vals.push(id, uid);
     await env.DB.prepare(`UPDATE goals SET ${fields.join(", ")} WHERE id = ? AND user_id = ?`).bind(...vals).run();
@@ -4146,11 +4422,22 @@ async function getBills(uid, env) {
 }
 
 async function createBill(uid, body, env) {
+  const name = validateFinancialString(body?.name, "name", { max: 100 });
+  const amount = validateFinancialAmount(body?.amount, "amount");
+  const status = body?.status ?? "unpaid";
+  const dueType = body?.due_type ?? "monthly";
+  const dueDay = body?.due_day ?? null;
+  const dueDate = validateFinancialDate(body?.due_date, "due_date");
+  const paidDate = validateFinancialDate(body?.paid_date, "paid_date");
+  const invalid = financialValidationError(name, amount, dueDate, paidDate);
+  if (invalid) return invalid;
+  if (!BILL_STATUSES.has(status) || !BILL_DUE_TYPES.has(dueType)) return jsonRes({ error: "status atau due_type tidak valid" }, 400);
+  if (dueDay !== null && (!Number.isSafeInteger(dueDay) || dueDay < 1 || dueDay > 31)) return jsonRes({ error: "due_day harus 1-31" }, 400);
   const id = randomId();
   await env.DB.prepare(`
     INSERT INTO bills (id, user_id, name, amount, status, due_type, due_day, due_date, paid_date)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(id, uid, body.name, body.amount || 0, body.status || "unpaid", body.due_type || "monthly", body.due_day || null, body.due_date || null, body.paid_date || null)
+  `).bind(id, uid, name.value, amount.value, status, dueType, dueDay, dueDate.value, paidDate.value)
     .run();
   return jsonRes({ id, status: "created" });
 }
@@ -4158,13 +4445,21 @@ async function createBill(uid, body, env) {
 async function updateBill(uid, id, body, env) {
   const fields = [];
   const vals = [];
-  if (body.name !== undefined) { fields.push("name = ?"); vals.push(body.name); }
-  if (body.amount !== undefined) { fields.push("amount = ?"); vals.push(body.amount); }
-  if (body.status !== undefined) { fields.push("status = ?"); vals.push(body.status); }
-  if (body.due_type !== undefined) { fields.push("due_type = ?"); vals.push(body.due_type); }
-  if (body.due_day !== undefined) { fields.push("due_day = ?"); vals.push(body.due_day); }
-  if (body.due_date !== undefined) { fields.push("due_date = ?"); vals.push(body.due_date); }
-  if (body.paid_date !== undefined) { fields.push("paid_date = ?"); vals.push(body.paid_date); }
+  const validators = {
+    name: value => validateFinancialString(value, "name", { max: 100 }),
+    amount: value => validateFinancialAmount(value, "amount"),
+    status: value => BILL_STATUSES.has(value) ? { value } : { error: "status tidak valid" },
+    due_type: value => BILL_DUE_TYPES.has(value) ? { value } : { error: "due_type tidak valid" },
+    due_day: value => value === null || (Number.isSafeInteger(value) && value >= 1 && value <= 31) ? { value } : { error: "due_day harus 1-31" },
+    due_date: value => validateFinancialDate(value, "due_date"),
+    paid_date: value => validateFinancialDate(value, "paid_date")
+  };
+  for (const [field, validate] of Object.entries(validators)) {
+    if (body?.[field] === undefined) continue;
+    const checked = validate(body[field]);
+    if (checked.error) return jsonRes({ error: checked.error }, 400);
+    fields.push(`${field} = ?`); vals.push(checked.value);
+  }
   if (fields.length) {
     vals.push(id, uid);
     await env.DB.prepare(`UPDATE bills SET ${fields.join(", ")} WHERE id = ? AND user_id = ?`).bind(...vals).run();
@@ -4220,7 +4515,11 @@ function cors(response, request = null) {
 function jsonRes(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json" }
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff"
+    }
   });
 }
 
@@ -4422,36 +4721,54 @@ async function getPiutang(uid, env) {
 }
 
 async function createPiutang(uid, body, env) {
-  const { borrower_name, amount, returned = 0, note = "", lend_date, due_date = null, status = "active" } = body;
-  if (!borrower_name?.trim() || !amount) {
-    return jsonRes({ error: "borrower_name dan amount diperlukan" }, 400);
-  }
+  const borrower = validateFinancialString(body?.borrower_name, "borrower_name", { max: 100 });
+  const amount = validateFinancialAmount(body?.amount, "amount", { min: 1 });
+  const returned = validateFinancialAmount(body?.returned ?? 0, "returned");
+  const note = validateFinancialString(body?.note ?? "", "note", { min: 0, max: 500 });
+  const lendDate = validateFinancialDate(body?.lend_date ?? todayStr(), "lend_date", false);
+  const dueDate = validateFinancialDate(body?.due_date, "due_date");
+  const status = body?.status ?? "active";
+  const invalid = financialValidationError(borrower, amount, returned, note, lendDate, dueDate);
+  if (invalid) return invalid;
+  if (!PIUTANG_STATUSES.has(status)) return jsonRes({ error: "status tidak valid" }, 400);
+  if (returned.value > amount.value) return jsonRes({ error: "returned tidak boleh melebihi amount" }, 400);
   const id = randomId();
   await env.DB.prepare(`
     INSERT INTO piutang (id, user_id, borrower_name, amount, returned, note, lend_date, due_date, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(id, uid, borrower_name.trim(), Number(amount), Number(returned), note, lend_date || todayStr(), due_date, status).run();
+  `).bind(id, uid, borrower.value, amount.value, returned.value, note.value, lendDate.value, dueDate.value, status).run();
 
-  return jsonRes(await env.DB.prepare("SELECT * FROM piutang WHERE id = ?").bind(id).first(), 201);
+  return jsonRes(await env.DB.prepare("SELECT * FROM piutang WHERE id = ? AND user_id = ?").bind(id, uid).first(), 201);
 }
 
 async function updatePiutang(uid, id, body, env) {
   const ptg = await env.DB.prepare("SELECT * FROM piutang WHERE id = ? AND user_id = ?").bind(id, uid).first();
   if (!ptg) return jsonRes({ error: "Data piutang tidak ditemukan" }, 404);
 
-  const VALID = { borrower_name: 1, amount: 1, returned: 1, note: 1, lend_date: 1, due_date: 1, status: 1 };
+  const validators = {
+    borrower_name: value => validateFinancialString(value, "borrower_name", { max: 100 }),
+    amount: value => validateFinancialAmount(value, "amount", { min: 1 }),
+    returned: value => validateFinancialAmount(value, "returned"),
+    note: value => validateFinancialString(value, "note", { min: 0, max: 500 }),
+    lend_date: value => validateFinancialDate(value, "lend_date", false),
+    due_date: value => validateFinancialDate(value, "due_date"),
+    status: value => PIUTANG_STATUSES.has(value) ? { value } : { error: "status tidak valid" }
+  };
   const f = [], v = [];
-  for (const [k, val] of Object.entries(body)) {
-    if (VALID[k]) {
-      f.push(`${k} = ?`);
-      v.push(val);
-    }
+  for (const [field, validate] of Object.entries(validators)) {
+    if (body?.[field] === undefined) continue;
+    const checked = validate(body[field]);
+    if (checked.error) return jsonRes({ error: checked.error }, 400);
+    f.push(`${field} = ?`); v.push(checked.value);
   }
+  const nextAmount = body?.amount ?? ptg.amount;
+  const nextReturned = body?.returned ?? ptg.returned;
+  if (nextReturned > nextAmount) return jsonRes({ error: "returned tidak boleh melebihi amount" }, 400);
   if (f.length) {
-    v.push(id);
-    await env.DB.prepare(`UPDATE piutang SET ${f.join(", ")} WHERE id = ?`).bind(...v).run();
+    v.push(id, uid);
+    await env.DB.prepare(`UPDATE piutang SET ${f.join(", ")} WHERE id = ? AND user_id = ?`).bind(...v).run();
   }
-  return jsonRes(await env.DB.prepare("SELECT * FROM piutang WHERE id = ?").bind(id).first());
+  return jsonRes(await env.DB.prepare("SELECT * FROM piutang WHERE id = ? AND user_id = ?").bind(id, uid).first());
 }
 
 async function deletePiutang(uid, id, env) {
@@ -4464,7 +4781,13 @@ async function deletePiutang(uid, id, env) {
 // ─────────────────────────────────────────────────────
 // ADMIN BOT (Separate Telegram Bot for Management)
 // ─────────────────────────────────────────────────────
-async function handleAdminBot(body, env) {
+function parseAdminBoundedInteger(value, { min = 0, max = 1_000_000_000 } = {}) {
+  if (typeof value !== "string" || !/^\d+$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= min && parsed <= max ? parsed : null;
+}
+
+async function handleAdminBot(body, env, updateId) {
   const msg = body?.message;
   if (!msg) return;
   if (!requirePrivateTelegramChat(msg.chat, msg.from?.id)) return;
@@ -4558,7 +4881,8 @@ async function handleAdminBot(body, env) {
       if (!email) { await adminSend(chatId, "📝 Format: /extend email@contoh.com 30d", ADMIN_TOKEN); return; }
       const user = await env.DB.prepare("SELECT id, name, email, plan, plan_expired_at FROM users WHERE email = ?").bind(email).first();
       if (!user) { await adminSend(chatId, `❌ User "${email}" tidak ditemukan.`, ADMIN_TOKEN); return; }
-      const days = duration === 'lifetime' ? 0 : (parseInt(duration) || 30);
+      const days = duration === 'lifetime' ? 0 : parseAdminBoundedInteger(duration.replace(/d$/i, ''), { min: 1, max: 3650 });
+      if (days === null) { await adminSend(chatId, "❌ Durasi harus 1-3650 hari atau lifetime.", ADMIN_TOKEN); return; }
       let expiredAt = null;
       if (days > 0) {
         const base = user.plan_expired_at ? new Date(user.plan_expired_at) : new Date();
@@ -4566,6 +4890,7 @@ async function handleAdminBot(body, env) {
         base.setDate(base.getDate() + days);
         expiredAt = base.toISOString();
       }
+      await auditAdminBotMutation(fromId, updateId, "extend_premium", user.id, { before: { plan: user.plan, plan_expired_at: user.plan_expired_at }, after: { plan: "premium", plan_expired_at: expiredAt } }, env);
       await env.DB.prepare("UPDATE users SET plan = 'premium', plan_expired_at = ? WHERE id = ?").bind(expiredAt, user.id).run();
       await adminSend(chatId, `✅ *Premium diperpanjang!*\n\n*User:* ${user.name} (${user.email})\n*Baru expired:* ${expiredAt ? expiredAt.slice(0,10) : 'Lifetime'}`, ADMIN_TOKEN);
       return;
@@ -4577,6 +4902,7 @@ async function handleAdminBot(body, env) {
       if (!email) { await adminSend(chatId, "📝 Format: /revoke email@contoh.com", ADMIN_TOKEN); return; }
       const user = await env.DB.prepare("SELECT id, name FROM users WHERE email = ?").bind(email).first();
       if (!user) { await adminSend(chatId, `❌ User "${email}" tidak ditemukan.`, ADMIN_TOKEN); return; }
+      await auditAdminBotMutation(fromId, updateId, "revoke_premium", user.id, { after: { plan: "free" } }, env);
       await env.DB.prepare("UPDATE users SET plan = 'free', plan_expired_at = NULL WHERE id = ?").bind(user.id).run();
       await adminSend(chatId, `⬇️ *Premium dicabut*\n\n*User:* ${user.name} (${user.email})\nStatus sekarang: Free`, ADMIN_TOKEN);
       return;
@@ -4588,6 +4914,7 @@ async function handleAdminBot(body, env) {
       if (!email) { await adminSend(chatId, "📝 Format: /ban email@contoh.com", ADMIN_TOKEN); return; }
       const user = await env.DB.prepare("SELECT id, name FROM users WHERE email = ?").bind(email).first();
       if (!user) { await adminSend(chatId, `❌ User "${email}" tidak ditemukan.`, ADMIN_TOKEN); return; }
+      await auditAdminBotMutation(fromId, updateId, "ban_user", user.id, { after: { is_banned: 1 } }, env);
       await env.DB.prepare("UPDATE users SET is_banned = 1, token_version = COALESCE(token_version, 0) + 1 WHERE id = ?").bind(user.id).run();
       await adminSend(chatId, `🚫 *User di-ban*\n\n*User:* ${user.name} (${user.email})`, ADMIN_TOKEN);
       return;
@@ -4599,6 +4926,7 @@ async function handleAdminBot(body, env) {
       if (!email) { await adminSend(chatId, "📝 Format: /unban email@contoh.com", ADMIN_TOKEN); return; }
       const user = await env.DB.prepare("SELECT id, name FROM users WHERE email = ?").bind(email).first();
       if (!user) { await adminSend(chatId, `❌ User "${email}" tidak ditemukan.`, ADMIN_TOKEN); return; }
+      await auditAdminBotMutation(fromId, updateId, "unban_user", user.id, { after: { is_banned: 0 } }, env);
       await env.DB.prepare("UPDATE users SET is_banned = 0 WHERE id = ?").bind(user.id).run();
       await adminSend(chatId, `✅ *User di-unban*\n\n*User:* ${user.name} (${user.email})`, ADMIN_TOKEN);
       return;
@@ -4611,6 +4939,7 @@ async function handleAdminBot(body, env) {
       const user = await env.DB.prepare("SELECT id, name FROM users WHERE email = ?").bind(email).first();
       if (!user) { await adminSend(chatId, `❌ User "${email}" tidak ditemukan.`, ADMIN_TOKEN); return; }
       const uid = user.id;
+      await auditAdminBotMutation(fromId, updateId, "delete_user", uid, { email }, env);
       await env.DB.prepare("DELETE FROM transaction_items WHERE transaction_id IN (SELECT id FROM transactions WHERE user_id = ?)").bind(uid).run().catch(() => {});
       await env.DB.prepare("DELETE FROM transactions WHERE user_id = ?").bind(uid).run().catch(() => {});
       await env.DB.prepare("DELETE FROM accounts WHERE user_id = ?").bind(uid).run().catch(() => {});
@@ -4646,10 +4975,11 @@ async function handleAdminBot(body, env) {
     if (text.startsWith('/setprice ')) {
       const parts = text.slice(10).trim().split(/\s+/);
       const priceId = parts[0];
-      const price = parseInt(parts[1]);
-      if (!priceId || isNaN(price)) { await adminSend(chatId, "📝 Format: /setprice id harga\nContoh: /setprice p30 29000", ADMIN_TOKEN); return; }
+      const price = parseAdminBoundedInteger(parts[1], { min: 1, max: 1_000_000_000 });
+      if (!priceId || price === null) { await adminSend(chatId, "📝 Format: /setprice id harga\nHarga harus integer positif yang valid.", ADMIN_TOKEN); return; }
       const existing = await env.DB.prepare("SELECT * FROM pricing WHERE id = ?").bind(priceId).first();
       if (!existing) { await adminSend(chatId, `❌ Pricing ID "${priceId}" tidak ditemukan.\nID yang valid: p30, p90, p365, p0`, ADMIN_TOKEN); return; }
+      await auditAdminBotMutation(fromId, updateId, "set_price", priceId, { before: existing.price, after: price }, env);
       await env.DB.prepare("UPDATE pricing SET price = ? WHERE id = ?").bind(price, priceId).run();
       await adminSend(chatId, `✅ *Harga diupdate!*\n\n*${existing.label}:* Rp ${price.toLocaleString('id-ID')}`, ADMIN_TOKEN);
       return;
@@ -4659,10 +4989,11 @@ async function handleAdminBot(body, env) {
     if (text.startsWith('/setoriginal ')) {
       const parts = text.slice(13).trim().split(/\s+/);
       const priceId = parts[0];
-      const origPrice = parseInt(parts[1]);
-      if (!priceId || isNaN(origPrice)) { await adminSend(chatId, "📝 Format: /setoriginal id harga_asli\nContoh: /setoriginal p30 17000", ADMIN_TOKEN); return; }
+      const origPrice = parseAdminBoundedInteger(parts[1], { min: 1, max: 1_000_000_000 });
+      if (!priceId || origPrice === null) { await adminSend(chatId, "📝 Format: /setoriginal id harga_asli\nHarga harus integer positif yang valid.", ADMIN_TOKEN); return; }
       const existing = await env.DB.prepare("SELECT * FROM pricing WHERE id = ?").bind(priceId).first();
       if (!existing) { await adminSend(chatId, `❌ Pricing ID "${priceId}" tidak ditemukan.`, ADMIN_TOKEN); return; }
+      await auditAdminBotMutation(fromId, updateId, "set_original_price", priceId, { before: existing.original_price, after: origPrice }, env);
       await env.DB.prepare("UPDATE pricing SET original_price = ? WHERE id = ?").bind(origPrice, priceId).run();
       await adminSend(chatId, `✅ *Harga coret diupdate!*\n\n*${existing.label}:* ~~Rp ${origPrice.toLocaleString('id-ID')}~~ → Rp ${existing.price.toLocaleString('id-ID')}`, ADMIN_TOKEN);
       return;
@@ -4687,10 +5018,10 @@ async function handleAdminBot(body, env) {
       const parts = text.slice(15).trim().split(/\s+/);
       const code = parts[0]?.toUpperCase();
       const type = parts[1]; // percent or fixed
-      const value = parseInt(parts[2]);
-      const maxUses = parseInt(parts[3]) || 0;
+      const value = parseAdminBoundedInteger(parts[2], { min: 1, max: 1_000_000_000 });
+      const maxUses = parts[3] === undefined ? 0 : parseAdminBoundedInteger(parts[3], { min: 0, max: 1_000_000 });
       const expiredAt = parts[4] || null;
-      if (!code || !type || isNaN(value) || !['percent', 'fixed'].includes(type)) {
+      if (!code || !type || value === null || maxUses === null || !['percent', 'fixed'].includes(type)) {
         await adminSend(chatId, "📝 Format: /coupon create KODE percent/fixed nilai [max_uses] [expired_at]\n\nContoh: /coupon create NEWYEAR percent 20 100 2026-12-31", ADMIN_TOKEN);
         return;
       }
@@ -4698,6 +5029,7 @@ async function handleAdminBot(body, env) {
       const id = 'cpn_' + Date.now();
       const desc = type === 'percent' ? `Diskon ${value}%` : `Potongan Rp ${value.toLocaleString('id-ID')}`;
       try {
+        await auditAdminBotMutation(fromId, updateId, "create_coupon", code, { type, value, max_uses: maxUses, expired_at: expiredAt }, env);
         await env.DB.prepare(
           "INSERT INTO coupons (id, code, type, value, description, max_uses, expired_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
         ).bind(id, code, type, value, desc, maxUses, expiredAt).run();
@@ -4711,6 +5043,7 @@ async function handleAdminBot(body, env) {
     if (text.startsWith('/coupon delete ')) {
       const code = text.slice(15).trim().toUpperCase();
       if (!code) { await adminSend(chatId, "📝 Format: /coupon delete KODE", ADMIN_TOKEN); return; }
+      await auditAdminBotMutation(fromId, updateId, "delete_coupon", code, {}, env);
       const result = await env.DB.prepare("DELETE FROM coupons WHERE code = ?").bind(code).run();
       if (result.meta?.changes > 0) { await adminSend(chatId, `🗑️ Kupon *${code}* dihapus.`, ADMIN_TOKEN); }
       else { await adminSend(chatId, `❌ Kupon "${code}" tidak ditemukan.`, ADMIN_TOKEN); }
@@ -4813,7 +5146,7 @@ async function cleanupOldData(env) {
   try {
     await ensureDedup(env);
     await env.DB.prepare(
-      "DELETE FROM processed_bot_updates WHERE created_at < datetime('now', '-7 days')"
+      "DELETE FROM processed_bot_updates_v2 WHERE created_at < datetime('now', '-7 days')"
     ).run();
     await env.DB.prepare("DELETE FROM telegram_link_challenges WHERE expires_at < datetime('now', '-1 day')").run();
     await env.DB.prepare("DELETE FROM otp_challenges WHERE expires_at < datetime('now', '-1 day')").run();
