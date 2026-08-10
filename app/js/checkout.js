@@ -77,7 +77,15 @@
     if (authRedirecting || order?.status !== 'pending') return;
     if (refreshInFlight || document.hidden) { schedulePoll(); return; }
     refreshInFlight = true; setState('verifying', 'Memverifikasi pembayaran');
-    try { render(await request(`/payment/orders/${encodeURIComponent(orderId)}/refresh`, { method:'POST' })); }
+    try {
+      const refreshed = await request(`/payment/orders/${encodeURIComponent(orderId)}/refresh`, { method:'POST' });
+      render(refreshed);
+      if (manual && refreshed.status === 'pending') {
+        $('errorBanner').hidden = false;
+        $('errorBanner').textContent = 'Pembayaran belum ditemukan. Silakan selesaikan pembayaran lalu cek kembali.';
+        setState('pending', 'Menunggu pembayaran');
+      }
+    }
     catch (e) { if (!authRedirecting) { $('errorBanner').hidden = false; $('errorBanner').textContent = navigator.onLine ? e.message : 'Koneksi terputus'; setState('pending','Menunggu pembayaran'); } }
     finally { refreshInFlight = false; if (!authRedirecting && order?.status === 'pending') schedulePoll(); }
   }

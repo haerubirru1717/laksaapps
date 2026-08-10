@@ -73,8 +73,20 @@ test('controller supports countdown terminal states, recovery, save QR, and succ
   assert.match(js, /clearTimeout|clearInterval/);
 });
 
-test('checkout styling is mobile-first glassmorphism with protected white QR surface', () => {
+test('manual pending refresh keeps checkout actionable and explains payment is not found yet', () => {
+  const js = read('app/js/checkout.js');
+  const start = js.indexOf('async function refreshStatus');
+  const end = js.indexOf('\n  function startCountdown', start);
+  const refreshBody = js.slice(start, end);
+  assert.match(refreshBody, /manual[\s\S]*status === 'pending'[\s\S]*Pembayaran belum ditemukan/);
+  assert.doesNotMatch(refreshBody, /disabled\s*=\s*true/);
+});
+
+test('checkout styling follows Laksa blue glassmorphism with protected white QR surface', () => {
   const css = read('app/css/pages/checkout.css');
+  assert.match(css, /#2563eb/i);
+  assert.match(css, /#6366f1/i);
+  assert.match(css, /#0f172a/i);
   assert.match(css, /backdrop-filter/);
   assert.match(css, /font-variant-numeric:\s*tabular-nums/);
   assert.match(css, /\.checkout-qr-card[\s\S]*background:\s*#fff/i);
