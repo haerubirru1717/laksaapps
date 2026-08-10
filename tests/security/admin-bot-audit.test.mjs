@@ -29,6 +29,12 @@ test('all sensitive admin bot mutations are audited', () => {
   }
 });
 
+test('admin audit schema is ensured before every audit insert', () => {
+  assert.match(worker, /async function ensureAdminAuditSchema/);
+  assert.match(bodyOf('logAdminAction'), /await ensureAdminAuditSchema\(env\)/);
+  assert.match(bodyOf('ensureAdminAuditSchema'), /CREATE TABLE IF NOT EXISTS admin_audit_logs/);
+});
+
 test('admin audit IDs are cryptographically random and persistence fails closed', () => {
   const start = worker.indexOf('function adminAuditStatement');
   const end = worker.indexOf('\nasync function auditAdminBotMutation', start);

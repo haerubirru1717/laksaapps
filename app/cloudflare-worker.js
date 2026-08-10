@@ -242,6 +242,18 @@ async function authenticateUserToken(req, env) {
   return { payload, user };
 }
 
+async function ensureAdminAuditSchema(env) {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_audit_logs (
+    id TEXT PRIMARY KEY,
+    admin_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    target TEXT,
+    details TEXT,
+    created_at DATETIME NOT NULL
+  )`).run();
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit_logs(created_at DESC)").run();
+}
+
 function adminAuditStatement(adminId, action, target, details, env) {
   return env.DB.prepare(
     "INSERT INTO admin_audit_logs (id, admin_id, action, target, details, created_at) VALUES (?, ?, ?, ?, ?, ?)"
@@ -256,6 +268,7 @@ function adminAuditStatement(adminId, action, target, details, env) {
 }
 
 async function logAdminAction(adminId, action, target, details, env) {
+  await ensureAdminAuditSchema(env);
   await adminAuditStatement(adminId, action, target, details, env).run();
 }
 
