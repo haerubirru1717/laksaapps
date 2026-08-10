@@ -1057,6 +1057,11 @@ async function routeAPI(req, url, env) {
     if (!result.ok) return jsonRes({ error: result.error }, result.status);
     return jsonRes(result);
   }
+  const paymentQrMatch = path.match(/^\/payment\/orders\/([^/]+)\/qr$/);
+  if (paymentQrMatch && m === "GET") {
+    if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
+    return handleGetPaymentQrImage(uid, decodeURIComponent(paymentQrMatch[1]), env);
+  }
   const paymentOrderMatch = path.match(/^\/payment\/orders\/([^/]+)$/);
   if (paymentOrderMatch && m === "GET") {
     if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
@@ -3474,6 +3479,32 @@ async function handleRefreshPaymentOrder(uid, orderId, env) {
   const verified = await handleKlikQrisWebhook({ order_id: orderId, status: "SUCCESS", signature: payment.provider_signature }, env);
   if (verified.status >= 500) return verified;
   return handleGetPaymentOrder(uid, orderId, env);
+}
+
+async function handleGetPaymentQrImage(uid, orderId, env) {
+  await ensurePaymentIntegritySchema(env);
+  if (!/^LAKSA-\d{10,}-[a-f0-9-]{8}$/i.test(orderId)) return jsonRes({ error: "QRIS tidak ditemukan" }, 404);
+  const payment = await env.DB.prepare("SELECT provider_qris_url, status FROM payment_requests WHERE id = ? AND user_id = ?").bind(orderId, uid).first();
+  if (!payment || !["pending", "approved"].includes(payment.status)) return jsonRes({ error: "QRIS tidak tersedia" }, 404);
+  const sourceUrl = sanitizeKlikQrisUrl(payment.provider_qris_url);
+  if (!sourceUrl) return jsonRes({ error: "QRIS tidak valid" }, 502);
+  const response = await fetchWithTimeout(sourceUrl, { headers: { "Accept": "image/png,image/jpeg,image/webp", "User-Agent": "LaksaCheckout/1.0" }, redirect: "manual" }, 12_000);
+  if (response.status >= 300 && response.status < 400) {
+    const redirectUrl = sanitizeKlikQrisUrl(response.headers.get("Location"));
+    if (!redirectUrl) return jsonRes({ error: "Redirect QRIS tidak valid" }, 502);
+    return handleProxyQrResponse(await fetchWithTimeout(redirectUrl, { headers: { "Accept": "image/png,image/jpeg,image/webp" } }, 12_000));
+  }
+  return handleProxyQrResponse(response);
+}
+
+async function handleProxyQrResponse(response) {
+  const contentType = String(response.headers.get("Content-Type") || "").split(";")[0].toLowerCase();
+  const allowed = new Set(["image/png", "image/jpeg", "image/webp"]);
+  const length = Number(response.headers.get("Content-Length") || 0);
+  if (!response.ok || !allowed.has(contentType) || length > 2 * 1024 * 1024) return jsonRes({ error: "Gambar QRIS tidak tersedia" }, 502);
+  const bytes = await response.arrayBuffer();
+  if (bytes.byteLength < 32 || bytes.byteLength > 2 * 1024 * 1024) return jsonRes({ error: "Gambar QRIS tidak valid" }, 502);
+  return new Response(bytes, { headers: { "Content-Type": contentType, "Cache-Control": "private, max-age=60", "X-Content-Type-Options": "nosniff" } });
 }
 
 async function handleKlikQrisWebhook(body, env) {

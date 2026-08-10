@@ -35,9 +35,8 @@ test('controller validates order and QR URL and never renders API data as HTML',
   const js = read('app/js/checkout.js');
   assert.match(js, /searchParams\.get\(['"]order['"]\)/);
   assert.doesNotMatch(js, /searchParams\.get\(['"](?!order['"]|view['"])/);
-  assert.match(js, /new URL\(.*qris_url/);
-  assert.match(js, /protocol !== ['"]https:['"]/);
-  assert.match(js, /hostname !== ['"]klikqris\.com['"]/);
+  assert.match(js, /\/payment\/orders\/\$\{encodeURIComponent\(orderId\)\}\/qr/);
+  assert.match(js, /blob\.type\.startsWith\(['"]image\//);
   assert.match(js, /checkoutQr\.src\s*=/);
   assert.match(js, /textContent\s*=/);
   assert.doesNotMatch(js, /innerHTML\s*=/);

@@ -38,6 +38,16 @@ test('manual checkout refresh is owned, rate-limited and server verified', () =>
   assert.doesNotMatch(body, /body\?\.status|body\.status/);
 });
 
+test('owned QR proxy validates ownership, provider host, type and size', () => {
+  const body = bodyOf('handleGetPaymentQrImage');
+  const proxy = bodyOf('handleProxyQrResponse');
+  assert.match(body, /WHERE id = \? AND user_id = \?/);
+  assert.match(body, /sanitizeKlikQrisUrl/);
+  assert.match(proxy, /image\//);
+  assert.match(proxy, /2 \* 1024 \* 1024/);
+  assert.match(proxy, /Cache-Control/);
+});
+
 test('payment routes expose only authenticated owned order operations', () => {
   assert.match(worker, /paymentOrderMatch/);
   assert.match(worker, /paymentRefreshMatch/);

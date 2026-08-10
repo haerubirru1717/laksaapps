@@ -46,16 +46,30 @@
     $('adminFee').textContent = money(data.admin_fee);
     $('totalAmount').textContent = money(data.total_amount);
     $('orderId').textContent = data.order_id;
-    if (data.qris_url) {
-      const candidate = new URL(data.qris_url);
-      const qr = validateQr(candidate.toString());
-      const checkoutQr = $('checkoutQr');
-      checkoutQr.src = qr.toString();
-      $('qrFallback').href = qr.toString();
-    }
+    if (data.qris_url && data.status === 'pending') loadQrImage();
     if (data.status === 'approved') success();
     else if (data.status === 'expired' || data.status === 'failed') expired();
     else { setState('pending', 'Menunggu pembayaran'); startCountdown(data.expired_at); schedulePoll(); }
+  }
+  async function loadQrImage() {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12_000);
+    try {
+      const response = await fetch(`${CLOUD_URL}/payment/orders/${encodeURIComponent(orderId)}/qr`, { signal: controller.signal, headers: { Authorization:`Bearer ${token}` } });
+      if (response.status === 401) { authRedirecting=true; localStorage.removeItem('laksa_token'); location.assign('/app.html#/login'); return; }
+      if (!response.ok) throw new Error('QRIS tidak dapat dimuat');
+      const blob = await response.blob();
+      if (!blob.type.startsWith('image/')) throw new Error('Format QRIS tidak valid');
+      const href = URL.createObjectURL(blob);
+      const checkoutQr = $('checkoutQr');
+      if (checkoutQr.dataset.blobUrl) URL.revokeObjectURL(checkoutQr.dataset.blobUrl);
+      checkoutQr.dataset.blobUrl = href;
+      checkoutQr.src = href;
+      $('qrFallback').hidden = true;
+    } catch (error) {
+      $('errorBanner').hidden=false; $('errorBanner').textContent=`Gambar QRIS gagal dimuat. ${error.message}`;
+      $('qrFallback').hidden=false;
+    } finally { clearTimeout(timeout); }
   }
   function interval() { const elapsed = Date.now() - startedAt; return elapsed < 60_000 ? 5_000 : elapsed < 300_000 ? 10_000 : 20_000; }
   function schedulePoll() { clearTimeout(pollTimer); if (!document.hidden && order?.status === 'pending') pollTimer = setTimeout(() => refreshStatus(false), interval()); }
@@ -83,7 +97,7 @@
   $('refreshPayment').addEventListener('click', () => refreshStatus(true));
   $('newPayment').addEventListener('click', () => location.assign('/app.html#upgrade'));
   $('checkoutQr').addEventListener('error', () => { $('qrFallback').hidden = false; });
-  $('saveQr').addEventListener('click', async () => { if (!order?.qris_url) return; try { const response = await fetch(validateQr(order.qris_url)); if(!response.ok) throw new Error('QR tidak dapat diunduh'); const blob = await response.blob(); if(!blob.type.startsWith('image/')) throw new Error('Format QR tidak valid'); const href = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = href; a.download = `laksa-qris-${orderId}.png`; a.click(); setTimeout(()=>URL.revokeObjectURL(href),5000); } catch(e) { $('errorBanner').hidden=false; $('errorBanner').textContent=`Gagal menyimpan QR. Gunakan tombol Buka QRIS. ${e.message}`; $('qrFallback').hidden=false; } });
+  $('saveQr').addEventListener('click', async () => { const href=$('checkoutQr').dataset.blobUrl; if(!href){await loadQrImage();return;} const a=document.createElement('a');a.href=href;a.download=`laksa-qris-${orderId}.png`;a.click(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && order?.status === 'pending') refreshStatus(false); });
   addEventListener('online', () => { if (order?.status === 'pending') refreshStatus(false); });
   addEventListener('offline', () => { $('errorBanner').hidden = false; $('errorBanner').textContent = 'Koneksi terputus'; });
