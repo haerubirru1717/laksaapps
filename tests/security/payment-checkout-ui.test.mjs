@@ -31,6 +31,14 @@ test('checkout markup is accessible, complete, and has no inline handlers', () =
   assert.match(html, /Diproses aman oleh KlikQRIS/);
 });
 
+test('checkout uses official app icon and human payment admin label', () => {
+  const html = read('app/checkout.html');
+  assert.match(html, /icons\/laksa_logo\.svg/);
+  assert.doesNotMatch(html, />laksa\.<\/b>/i);
+  assert.match(html, />Admin pembayaran</);
+  assert.doesNotMatch(html, /kode unik KlikQRIS/i);
+});
+
 test('controller validates order and QR URL and never renders API data as HTML', () => {
   const js = read('app/js/checkout.js');
   assert.match(js, /searchParams\.get\(['"]order['"]\)/);

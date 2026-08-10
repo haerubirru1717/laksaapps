@@ -73,6 +73,8 @@ const PENDING_TEXT_TTL_MS = 5 * 60 * 1000; // 5 menit
 
 // JWT config
 const JWT_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 hari
+const NOTIFICATION_USER_CAP = 200;
+const NOTIFICATION_RETENTION_DAYS = 90;
 // Batas PBKDF2 yang saat ini didukung runtime Cloudflare Workers.
 const PBKDF2_ITERATIONS = 100000;
 const MAX_JSON_BODY_BYTES = 1_000_000;
@@ -507,7 +509,7 @@ async function handleForgotPassword(req, body, env) {
   if (!email) return jsonRes({ error: "Email wajib diisi" }, 400);
   const emailLower = email.toLowerCase().trim();
   const user = await env.DB.prepare("SELECT id, name FROM users WHERE email = ?").bind(emailLower).first();
-  
+
   // Jangan bocorkan apakah email terdaftar (user enumeration).
   // Balas sukses generik tanpa token, persis seperti alur OTP admin.
   if (!user) {
@@ -561,7 +563,7 @@ async function handleForgotPassword(req, body, env) {
       },
       body: JSON.stringify(emailPayload)
     });
-    
+
     if (!resp.ok) {
       const errText = await resp.text();
       console.error("Resend API error:", errText);
@@ -1088,6 +1090,19 @@ async function routeAPI(req, url, env) {
   if (path === "/notifications" && m === "GET") {
     if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
     return handleListNotifications(uid, url, env);
+  }
+  if (path === "/notifications" && m === "DELETE") {
+    if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
+    await ensurePaymentIntegritySchema(env);
+    await env.DB.prepare("DELETE FROM user_notifications WHERE user_id = ?").bind(uid).run();
+    return jsonRes({ ok: true });
+  }
+  const notificationDeleteMatch = path.match(/^\/notifications\/([^/]+)$/);
+  if (notificationDeleteMatch && m === "DELETE") {
+    if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
+    await ensurePaymentIntegritySchema(env);
+    const changed = await env.DB.prepare("DELETE FROM user_notifications WHERE id = ? AND user_id = ?").bind(decodeURIComponent(notificationDeleteMatch[1]), uid).run();
+    return (changed.meta?.changes || 0) ? jsonRes({ ok: true }) : jsonRes({ error: "Notifikasi tidak ditemukan" }, 404);
   }
   if (path === "/notifications/unread-count" && m === "GET") {
     if (!uid) return jsonRes({ error: "Autentikasi diperlukan" }, 401);
@@ -2666,7 +2681,7 @@ function resolveAccount(accountName, accs) {
   for (const a of accs) {
     const accName = a.name.toLowerCase();
     const cleanName = accName.replace(/\bbank\b|\be-wallet\b|\bcard\b|\bwallet\b|\btabungan\b|\brekening\b/gi, "").trim();
-    
+
     // Check clean name initials (e.g., "central asia" -> "ca")
     const words = cleanName.split(/\s+/).filter(w => w.length > 0);
     if (words.length >= 2) {
@@ -2675,7 +2690,7 @@ function resolveAccount(accountName, accs) {
         return a;
       }
     }
-    
+
     // Check full name initials (e.g., "bank central asia" -> "bca")
     const allWords = accName.split(/\s+/).filter(w => w.length > 0);
     if (allWords.length >= 2) {
@@ -2735,9 +2750,9 @@ function resolveCategory(catName, note, store, type, cats) {
     const matched = cats.find(c => c.name.toLowerCase().includes(catName.toLowerCase()));
     if (matched) return matched;
   }
-  
+
   const text = ((note || "") + " " + (store || "")).toLowerCase();
-  
+
   if (text.includes("makan") || text.includes("minum") || text.includes("bakso") || text.includes("kopi") || text.includes("cafe") || text.includes("warung") || text.includes("resto") || text.includes("teh") || text.includes("susu") || text.includes("martabak")) {
     return cats.find(c => c.id === "c1") || cats.find(c => c.name.includes("Makanan"));
   }
@@ -2922,12 +2937,12 @@ async function handleAdminStats(adminId, env) {
     const totalUsers = await env.DB.prepare("SELECT COUNT(*) as cnt FROM users").first();
     const premiumUsers = await env.DB.prepare("SELECT COUNT(*) as cnt FROM users WHERE plan = 'premium'").first();
     const bannedUsers = await env.DB.prepare("SELECT COUNT(*) as cnt FROM users WHERE is_banned = 1").first();
-    
+
     const revenue = await env.DB.prepare("SELECT SUM(amount) as total FROM payment_requests WHERE status = 'approved'").first();
     const recentPayments = await env.DB.prepare(
       "SELECT id, user_id, email, pricing_id, amount, provider_total, status, created_at, resolved_at, resolved_by FROM payment_requests ORDER BY created_at DESC LIMIT 10"
     ).all();
-    
+
     // Growth metrics (last 30 days)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const newUsersLast30Days = await env.DB.prepare("SELECT COUNT(*) as cnt FROM users WHERE created_at >= ?").bind(thirtyDaysAgo).first();
@@ -2982,7 +2997,7 @@ async function handleAdminGetUsers(adminId, url, env) {
 
     query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
     const bindings = [...params, limit, offset];
-    
+
     const users = await env.DB.prepare(query).bind(...bindings).all();
     const total = await env.DB.prepare(countQuery).bind(...params).first();
 
@@ -3170,7 +3185,7 @@ async function handleAdminUpdatePricing(adminId, body, env) {
     if (normalizedActive === 1 && normalizedPrice < 1) {
       return jsonRes({ error: "Paket aktif harus memiliki harga minimal Rp1" }, 400);
     }
-    
+
     const result = await env.DB.prepare(
       "UPDATE pricing SET price = ?, original_price = ?, label = ?, active = ? WHERE id = ?"
     ).bind(normalizedPrice, normalizedOriginalPrice, normalizedLabel, normalizedActive, normalizedId).run();
@@ -3374,6 +3389,7 @@ async function createKlikQrisCheckout(uid, pricingId, rawCouponCode, env, { reus
     .bind(`notif_${crypto.randomUUID()}`, uid, `payment:${reqId}:pending`,
       `QRIS ${providerTotal.toLocaleString('id-ID')} menunggu pembayaran.`, reqId,
       JSON.stringify({ total_amount: providerTotal, expired_at: providerExpiry })).run();
+  await pruneUserNotifications(uid, env);
 
   return {
     ok: true,
@@ -3425,12 +3441,51 @@ async function addPaymentColumn(env, definition) {
   }
 }
 
+async function pruneUserNotifications(uid, env) {
+  await env.DB.prepare("DELETE FROM user_notifications WHERE user_id = ? AND (created_at < datetime('now', '-' || ? || ' days') OR (read_at IS NOT NULL AND created_at < datetime('now', '-30 days')))")
+    .bind(uid, NOTIFICATION_RETENTION_DAYS).run().catch(() => {});
+
+  const countRow = await env.DB.prepare("SELECT COUNT(*) count FROM user_notifications WHERE user_id = ?").bind(uid).first();
+  const total = Number(countRow?.count || 0);
+  if (total > NOTIFICATION_USER_CAP) {
+    const thresholdRow = await env.DB.prepare("SELECT created_at FROM user_notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 1 OFFSET ?")
+      .bind(uid, NOTIFICATION_USER_CAP - 1).first();
+    if (thresholdRow?.created_at) {
+      await env.DB.prepare("DELETE FROM user_notifications WHERE user_id = ? AND created_at < ?")
+        .bind(uid, thresholdRow.created_at).run().catch(() => {});
+    }
+  }
+
+  await env.DB.prepare("DELETE FROM notification_deliveries WHERE user_id = ? AND status IN ('completed', 'failed') AND created_at < datetime('now', '-90 days')")
+    .bind(uid).run().catch(() => {});
+}
+
 async function handleListNotifications(uid, url, env) {
   await ensurePaymentIntegritySchema(env);
-  const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
-  const result = await env.DB.prepare("SELECT id, type, title, message, entity_type, entity_id, metadata_json, read_at, created_at FROM user_notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?")
-    .bind(uid, limit).all();
-  return jsonRes({ notifications: result.results || [] });
+  const NOTIFICATION_PAGE_DEFAULT = 20;
+  const NOTIFICATION_PAGE_MAX = 50;
+  const limit = Math.min(NOTIFICATION_PAGE_MAX, Math.max(1, Number(url.searchParams.get("limit")) || NOTIFICATION_PAGE_DEFAULT));
+  const cursor = url.searchParams.get("cursor");
+
+  let query = "SELECT id, type, title, message, entity_type, entity_id, metadata_json, read_at, created_at FROM user_notifications WHERE user_id = ?";
+  const binds = [uid];
+  if (cursor) {
+    query += " AND created_at < ?";
+    binds.push(cursor);
+  }
+  query += " ORDER BY created_at DESC LIMIT ?";
+  binds.push(limit + 1);
+
+  const result = await env.DB.prepare(query).bind(...binds).all();
+  const rows = result.results || [];
+
+  let nextCursor = null;
+  if (rows.length > limit) {
+    const extraRow = rows.pop();
+    nextCursor = extraRow.created_at;
+  }
+
+  return jsonRes({ notifications: rows, next_cursor: nextCursor });
 }
 
 function sanitizeKlikQrisUrl(rawUrl) {
@@ -3638,6 +3693,8 @@ async function handleKlikQrisWebhook(body, env) {
   const results = await env.DB.batch(statements);
   const fulfilled = (results.at(-1)?.meta?.changes || 0) === 1;
   if (!fulfilled) return jsonRes({ ok: true, duplicate: true });
+
+  await pruneUserNotifications(payment.user_id, env);
 
   await logAdminAction("klikqris", "approve_premium", payment.user_id, {
     order_id: orderId,
@@ -4718,8 +4775,8 @@ function cors(response, request = null) {
   if (request) {
     const reqOrigin = request.headers.get("Origin");
     if (reqOrigin) {
-      const isAllowed = ALLOWED_ORIGINS.includes(reqOrigin) || 
-                        reqOrigin.startsWith("http://localhost:") || 
+      const isAllowed = ALLOWED_ORIGINS.includes(reqOrigin) ||
+                        reqOrigin.startsWith("http://localhost:") ||
                         reqOrigin.startsWith("http://127.0.0.1:");
       if (isAllowed) {
         origin = reqOrigin;
