@@ -1,6 +1,6 @@
 /*
   Cache-Control: no-store
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src https: data:; connect-src 'self' https://laksana.haerubirru17.workers.dev; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self' https://laksana.haerubirru17.workers.dev; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Resource-Policy: same-origin
   Permissions-Policy: camera=(), geolocation=(), microphone=(), payment=(), usb=()

@@ -51,10 +51,52 @@ function formatNumber(value) {
 }
 
 // ─────────────────────────────────────────────────────
-// INITIALIZATION
+// INITIALIZATION / RESPONSIVE SHELL
 // ─────────────────────────────────────────────────────
+const ADMIN_THEME_KEY = 'laksa_admin_theme';
+let sessionExpiryInFlight = false;
+
+function applyAdminTheme(theme, save = true) {
+  const normalized = theme === 'dark' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', normalized);
+  document.querySelectorAll('[data-theme-toggle]').forEach(button => {
+    const icon = button.querySelector('span[aria-hidden]');
+    if (icon) icon.textContent = normalized === 'dark' ? '☀' : '☾';
+    const label = button.querySelector('.theme-toggle-label');
+    if (label) label.textContent = normalized === 'dark' ? 'Glass Gelap' : 'Glass Terang';
+    button.setAttribute('aria-label', normalized === 'dark' ? 'Gunakan tema terang' : 'Gunakan tema gelap');
+  });
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', normalized === 'dark' ? '#070b14' : '#eaf4ff');
+  if (save) localStorage.setItem(ADMIN_THEME_KEY, normalized);
+}
+
+function setActiveTab(tab, { load = true } = {}) {
+  if (!['dashboard', 'users', 'pricing', 'coupons', 'logs'].includes(tab)) return;
+  state.activeTab = tab;
+  updateTabUI();
+  document.querySelectorAll('[data-tab]').forEach(item => {
+    const current = item.dataset.tab === tab;
+    item.classList.toggle('active', current);
+    const button = item.matches('button') ? item : item.querySelector('button');
+    if (button) current ? button.setAttribute('aria-current', 'page') : button.removeAttribute('aria-current');
+  });
+  if (load) loadActiveTab();
+}
+
+function handleSessionExpired() {
+  if (sessionExpiryInFlight) return;
+  sessionExpiryInFlight = true;
+  alert('Sesi Anda telah kedaluwarsa. Silakan login kembali.');
+  logout();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  applyAdminTheme(localStorage.getItem(ADMIN_THEME_KEY) || 'light', false);
+  document.querySelectorAll('[data-theme-toggle]').forEach(button => button.addEventListener('click', () => {
+    applyAdminTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  }));
   setupEventListeners();
+  setActiveTab(state.activeTab, { load: false });
   checkAuth();
 });
 
@@ -130,9 +172,8 @@ async function apiCall(path, method = 'GET', body = null, { silent = false } = {
   }
 
   // Autentikasi kedaluwarsa
-  if (resp.status === 401 && path !== '/admin/auth/me') {
-    alert('Sesi Anda telah kedaluwarsa. Silakan login kembali.');
-    logout();
+  if (resp.status === 401 && path.startsWith('/admin/') && path !== '/admin/auth/me') {
+    handleSessionExpired();
     return null;
   }
 
@@ -202,6 +243,7 @@ function setupEventListeners() {
         state_token: state.stateToken
       });
       if (res && res.token) {
+        sessionExpiryInFlight = false;
         state.token = res.token;
         state.telegramId = res.admin.telegram_id;
         sessionStorage.setItem('admin_token', res.token);
@@ -266,13 +308,10 @@ function setupEventListeners() {
   });
 
   // Menu Sidebar SPA Navigation
-  document.querySelectorAll('.sidebar-menu .menu-item').forEach(item => {
+  document.querySelectorAll('.sidebar-menu .menu-item, .admin-bottom-nav button[data-tab]').forEach(item => {
     item.addEventListener('click', () => {
       const tab = item.getAttribute('data-tab');
-      if (tab === state.activeTab) return;
-      state.activeTab = tab;
-      updateTabUI();
-      loadActiveTab();
+      if (tab !== state.activeTab) setActiveTab(tab);
     });
   });
 
@@ -522,7 +561,7 @@ async function loadDashboardStats() {
 
     const payments = data.recent_payments || [];
     if (!payments.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-dim);">Belum ada riwayat transaksi upgrade.</td></tr>';
+      tbody.innerHTML = '<tr class="responsive-empty-row"><td colspan="6" style="text-align: center; color: var(--text-dim);">Belum ada riwayat transaksi upgrade.</td></tr>';
       return;
     }
 
@@ -545,13 +584,14 @@ async function loadDashboardStats() {
       }
 
       const tr = document.createElement('tr');
+      tr.className = 'responsive-data-row payment-data-row';
       tr.innerHTML = `
-        <td>${escapeHtml(date)}</td>
-        <td style="font-weight: 600;">${escapeHtml(tx.email)}</td>
-        <td><span class="badge badge-primary">${escapeHtml(tx.pricing_id)}</span></td>
-        <td style="font-weight: 600;">${escapeHtml(amount)}</td>
-        <td>${statusBadge}</td>
-        <td><div class="btn-action-group">${actionBtn}</div></td>
+        <td data-label="Tanggal">${escapeHtml(date)}</td>
+        <td data-label="Email" style="font-weight: 600;">${escapeHtml(tx.email)}</td>
+        <td data-label="Paket"><span class="badge badge-primary">${escapeHtml(tx.pricing_id)}</span></td>
+        <td data-label="Jumlah" style="font-weight: 600;">${escapeHtml(amount)}</td>
+        <td data-label="Status">${statusBadge}</td>
+        <td data-label="Aksi"><div class="btn-action-group">${actionBtn}</div></td>
       `;
       tbody.appendChild(tr);
     });
@@ -588,7 +628,7 @@ async function loadUsersList() {
 
     const users = data.users || [];
     if (!users.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-dim);">Tidak ada user ditemukan.</td></tr>';
+      tbody.innerHTML = '<tr class="responsive-empty-row"><td colspan="6" style="text-align: center; color: var(--text-dim);">Tidak ada user ditemukan.</td></tr>';
       return;
     }
 
@@ -619,13 +659,14 @@ async function loadUsersList() {
       `;
 
       const tr = document.createElement('tr');
+      tr.className = 'responsive-data-row user-data-row';
       tr.innerHTML = `
-        <td style="font-weight: 600;">${escapeHtml(u.name)}</td>
-        <td>${uemail}</td>
-        <td>${planBadge}</td>
-        <td>${escapeHtml(expDate)}</td>
-        <td>${statusBadge}</td>
-        <td><div class="btn-action-group">${actionBtn}</div></td>
+        <td data-label="Nama" style="font-weight: 600;">${escapeHtml(u.name)}</td>
+        <td data-label="Email">${uemail}</td>
+        <td data-label="Paket">${planBadge}</td>
+        <td data-label="Berlaku Hingga">${escapeHtml(expDate)}</td>
+        <td data-label="Status">${statusBadge}</td>
+        <td data-label="Aksi"><div class="btn-action-group">${actionBtn}</div></td>
       `;
       tbody.appendChild(tr);
     });
@@ -752,14 +793,14 @@ async function loadPricingAndSettings() {
     } else {
       pricing.forEach(p => {
         const div = document.createElement('div');
-        div.className = 'pricing-card';
+        div.className = 'pricing-card responsive-data-card';
         // Input memakai atribut name + form.elements (bukan id global),
         // sehingga id paket tidak perlu disisipkan ke id elemen.
         div.innerHTML = `
-          <h3 style="border-bottom: 1px solid var(--panel-border); padding-bottom: 0.5rem; margin-bottom: 1rem; color: #818cf8;">
+          <h3 class="responsive-card-heading" style="border-bottom: 1px solid var(--panel-border); padding-bottom: 0.5rem; margin-bottom: 1rem; color: #818cf8;">
             Paket ${escapeHtml(p.label)} (${escapeHtml(p.id)})
           </h3>
-          <form data-pricing-id="${escapeHtml(p.id)}">
+          <form class="responsive-card-body" data-pricing-id="${escapeHtml(p.id)}">
             <div class="form-group">
               <label>Nama Label Paket</label>
               <input type="text" name="label" class="input-control" value="${escapeHtml(p.label)}" required maxlength="80">
@@ -853,18 +894,20 @@ async function loadCouponsList() {
       const expiry = c.expired_at ? formatDate(c.expired_at).slice(0, 10) : 'Lifetime';
 
       const div = document.createElement('div');
-      div.className = 'coupon-card';
+      div.className = 'coupon-card responsive-data-card';
       div.innerHTML = `
-        <div class="coupon-code">${escapeHtml(c.code)}</div>
+        <div class="coupon-code responsive-card-heading">${escapeHtml(c.code)}</div>
         <div class="coupon-desc">${escapeHtml(c.description || '-')}</div>
-        <div class="coupon-meta">
+        <div class="coupon-meta responsive-card-meta">
           <strong>Potongan:</strong> ${escapeHtml(discVal)}<br>
           <strong>Digunakan:</strong> ${escapeHtml(uses)}<br>
           <strong>Kadaluarsa:</strong> ${escapeHtml(expiry)}
         </div>
-        <button class="btn-small btn-small-danger" style="margin-top: 1rem; width: 100%; border-color: transparent;" data-action="delete-coupon" data-code="${escapeHtml(c.code)}">
-          Hapus Kupon
-        </button>
+        <div class="responsive-card-actions">
+          <button class="btn-small btn-small-danger" style="margin-top: 1rem; width: 100%; border-color: transparent;" data-action="delete-coupon" data-code="${escapeHtml(c.code)}">
+            Hapus Kupon
+          </button>
+        </div>
       `;
       container.appendChild(div);
     });
@@ -909,7 +952,7 @@ async function loadLogsList() {
 
     const logs = data.logs || [];
     if (!logs.length) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-dim);">Belum ada log audit tercatat.</td></tr>';
+      tbody.innerHTML = '<tr class="responsive-empty-row"><td colspan="5" style="text-align: center; color: var(--text-dim);">Belum ada log audit tercatat.</td></tr>';
       return;
     }
 
@@ -930,12 +973,13 @@ async function loadLogsList() {
       }
 
       const tr = document.createElement('tr');
+      tr.className = 'responsive-data-row audit-data-row';
       tr.innerHTML = `
-        <td style="font-size: 0.8rem; color: var(--text-muted);">${escapeHtml(date)}</td>
-        <td><code>${escapeHtml(l.admin_id)}</code></td>
-        <td>${actionBadge}</td>
-        <td><code>${escapeHtml(l.target || '-')}</code></td>
-        <td>${detailsStr}</td>
+        <td data-label="Tanggal" style="font-size: 0.8rem; color: var(--text-muted);">${escapeHtml(date)}</td>
+        <td data-label="Admin"><code>${escapeHtml(l.admin_id)}</code></td>
+        <td data-label="Aktivitas">${actionBadge}</td>
+        <td data-label="Target"><code>${escapeHtml(l.target || '-')}</code></td>
+        <td data-label="Detail">${detailsStr}</td>
       `;
       tbody.appendChild(tr);
     });
