@@ -8,3 +8,19 @@
   Cross-Origin-Opener-Policy: same-origin-allow-popups
   Cross-Origin-Resource-Policy: same-origin
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data: blob:; connect-src 'self' https://laksana.haerubirru17.workers.dev; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none'; upgrade-insecure-requests
+
+# App documents must always fetch the latest asset-version references.
+/app
+  Cache-Control: no-store, no-cache, must-revalidate
+/app.html
+  Cache-Control: no-store, no-cache, must-revalidate
+/login
+  Cache-Control: no-store, no-cache, must-revalidate
+/register
+  Cache-Control: no-store, no-cache, must-revalidate
+/dashboard
+  Cache-Control: no-store, no-cache, must-revalidate
+/transactions
+  Cache-Control: no-store, no-cache, must-revalidate
+/settings
+  Cache-Control: no-store, no-cache, must-revalidate

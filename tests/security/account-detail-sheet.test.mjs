@@ -8,6 +8,7 @@ const banks = fs.readFileSync(new URL('../../app/banks.js', import.meta.url), 'u
 const css = fs.readFileSync(new URL('../../app/css/components.css', import.meta.url), 'utf8');
 const dashboard = fs.readFileSync(new URL('../../app/js/dashboard.js', import.meta.url), 'utf8');
 const appHtml = fs.readFileSync(new URL('../../app/app.html', import.meta.url), 'utf8');
+const headers = fs.readFileSync(new URL('../../app/_headers', import.meta.url), 'utf8');
 
 function accountSheetRenderer() {
   const start = settings.indexOf('function renderAccSheet()');
@@ -128,6 +129,12 @@ test('related production assets are cache-busted together', () => {
   assert.notEqual(bankVersion, '1.4.0');
   assert.notEqual(settingsVersion, '1.4.0');
   assert.notEqual(cssVersion, '2.3.1');
+});
+
+test('application documents always revalidate so new asset versions reach Chrome', () => {
+  for (const route of ['/app', '/app.html', '/login', '/register', '/dashboard', '/transactions', '/settings']) {
+    assert.match(headers, new RegExp(`(?:^|\\n)${route.replace('.', '\\.') }\\n(?:  .+\\n)*  Cache-Control: no-store, no-cache, must-revalidate`));
+  }
 });
 
 test('sheet shrinks to content and uses one mobile gutter without outer summary container', () => {
