@@ -9,6 +9,7 @@ const css = fs.readFileSync(new URL('../../app/css/components.css', import.meta.
 const dashboard = fs.readFileSync(new URL('../../app/js/dashboard.js', import.meta.url), 'utf8');
 const appHtml = fs.readFileSync(new URL('../../app/app.html', import.meta.url), 'utf8');
 const headers = fs.readFileSync(new URL('../../app/_headers', import.meta.url), 'utf8');
+const serviceWorker = fs.readFileSync(new URL('../../app/service-worker.js', import.meta.url), 'utf8');
 
 function accountSheetRenderer() {
   const start = settings.indexOf('function renderAccSheet()');
@@ -135,6 +136,12 @@ test('application documents always revalidate so new asset versions reach Chrome
   for (const route of ['/app', '/app.html', '/login', '/register', '/dashboard', '/transactions', '/settings']) {
     assert.match(headers, new RegExp(`(?:^|\\n)${route.replace('.', '\\.') }\\n(?:  .+\\n)*  Cache-Control: no-store, no-cache, must-revalidate`));
   }
+});
+
+test('service worker release cannot reuse pre-V3 UI assets', () => {
+  assert.match(serviceWorker, /CACHE_NAME\s*=\s*['"]laksa-v41['"]/);
+  assert.match(serviceWorker, /fetch\(e\.request,\s*\{\s*cache:\s*['"]no-store['"]\s*\}\)/);
+  assert.match(headers, /\/service-worker\.js\n(?:  .+\n)*  Cache-Control: no-store, no-cache, must-revalidate/);
 });
 
 test('sheet shrinks to content and uses one mobile gutter without outer summary container', () => {

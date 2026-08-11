@@ -1,4 +1,4 @@
-const CACHE_NAME = 'laksa-v40';
+const CACHE_NAME = 'laksa-v41';
 
 const ASSETS = [
   '/',
@@ -78,7 +78,7 @@ self.addEventListener('fetch', e => {
     return;
   }
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'no-store' })
       .then(response => {
         if (response && response.status === 200 && response.type === 'basic') {
           const responseToCache = response.clone();
