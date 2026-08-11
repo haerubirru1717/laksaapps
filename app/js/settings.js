@@ -399,8 +399,6 @@ function renderAccSheet() {
   const acc = getAccs().find(a => a.id === accSheetId);
   if (!acc) return;
   const b = detBank(acc.name);
-  const c1 = (b && b.color) ? b.color : (acc.color || '#7c3aed');
-  const c2 = (b && b.c2) ? b.c2 : (acc.color || '#4e1fb5');
   const isNeg = acc.balance < 0;
   const allTx = getTx();
   const accTx = allTx.filter(t => t.account_id === accSheetId || t.to_acc_id === accSheetId);
@@ -410,66 +408,55 @@ function renderAccSheet() {
   const monIn = monTx.filter(t => (t.type === 'income' && t.account_id === accSheetId) || (t.type === 'transfer' && t.to_acc_id === accSheetId)).reduce((s, t) => s + t.amount, 0);
   const monOut = monTx.filter(t => (t.type === 'expense' && t.account_id === accSheetId) || (t.type === 'transfer' && t.account_id === accSheetId && t.to_acc_id !== accSheetId)).reduce((s, t) => s + t.amount, 0);
   const monOpts = months.length ? months.map(m => `<option value="${m}"${m === accSheetMon ? ' selected' : ''}>${m}</option>`).join('') : `<option value="${thisMon()}">${thisMon()}</option>`;
-  const isEwalletAcc = b && b.isWallet || /ovo|gopay|dana|linkaja|shopeepay|spay|wallet/i.test(acc.name);
-  const nm2 = acc.name.toLowerCase();
-  let ewDarkImg2 = null;
-  if (nm2.includes('gopay'))                               ewDarkImg2 = '/ewallet/gopay.svg';
-  else if (nm2.includes('ovo'))                            ewDarkImg2 = '/ewallet/ovo.svg';
-  else if (nm2.includes('dana'))                           ewDarkImg2 = '/ewallet/dana.svg';
-  else if (nm2.includes('linkaja'))                        ewDarkImg2 = '/ewallet/linkaja.png';
-  else if (nm2.includes('shopee') || nm2.includes('spay')) ewDarkImg2 = '/ewallet/shopeepay.svg';
-  
-  const ewSheetImg  = ewDarkImg2;
-  // Bug #8 fix: kedua cabang ternary identik — sederhanakan jadi satu nilai
-  const sheetAvaBg  = `background:linear-gradient(135deg,${c1},${c2})`;
-  
-  const sheetInit = (acc.name.replace(/[^a-zA-Z0-9]/g,'').slice(0,2)||'?').toUpperCase();
-  const logoHtml = (isEwalletAcc && ewSheetImg)
-    ? `<img src="${ewSheetImg}" style="width:80%;height:80%;object-fit:contain;" onerror="this.style.display='none'">
-       <div class="acc-sheet-ava-fb" style="display:none">${sheetInit}</div>`
-    : getLogoHtml(acc.name, b, '', 'acc-sheet-ava-fb', 'width:100%;height:100%;object-fit:cover;border-radius:14px;', true);
-  
+  // Detail sheet consistently prefers the official website favicon for banks
+  // and e-wallets; dashboard cards keep their existing local-brand artwork.
+  const logoHtml = getLogoHtml(
+    acc.name, b, 'acc-sheet-logo', 'acc-sheet-ava-fb',
+    'width:100%;height:100%;object-fit:contain;', true
+  );
+
   el('accSheet').innerHTML = `
-<div class="acc-sheet-handle"></div>
-<div class="acc-sheet-banner">
-  <div class="acc-sheet-top">
-    <div class="acc-sheet-ava" style="${sheetAvaBg}">${logoHtml}</div>
-    <div style="flex:1;min-width:0">
-      <div class="acc-sheet-name" style="text-transform:uppercase">${esc(acc.name)}</div>
+<div class="acc-sheet-handle" aria-hidden="true"></div>
+<header class="acc-sheet-banner">
+  <div class="acc-sheet-top acc-sheet-identity">
+    <div class="acc-sheet-ava">${logoHtml}</div>
+    <div class="acc-sheet-account">
+      <div class="acc-sheet-name">${esc(acc.name)}</div>
       <div class="acc-sheet-bal${isNeg ? ' neg' : ''}">${fCur(acc.balance)}</div>
     </div>
-    <button class="acc-sheet-close" onclick="closeAccSheet()">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    <button class="acc-sheet-close" type="button" aria-label="Tutup detail rekening" onclick="closeAccSheet()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
-  <div class="acc-group-card">
-    <div class="acc-sheet-stats" style="margin-bottom:0">
-      <div class="acc-stat">
+  <section class="acc-sheet-summary" aria-label="Ringkasan bulan ini">
+    <div class="acc-sheet-stats">
+      <div class="acc-stat acc-stat-in">
         <div class="acc-stat-lbl">Masuk bulan ini</div>
         <div class="acc-stat-val t-inc">+${fCur(monIn)}</div>
       </div>
-      <div class="acc-stat">
+      <div class="acc-stat acc-stat-out">
         <div class="acc-stat-lbl">Keluar bulan ini</div>
         <div class="acc-stat-val t-exp">${fCur(monOut)}</div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem">
-      <div class="acc-seg">
+    <div class="acc-sheet-toolbar" aria-label="Filter transaksi rekening">
+      <div class="acc-seg" role="group" aria-label="Jenis transaksi">
         <button class="acc-tab${accSheetTab === 'all' ? ' active' : ''}" onclick="setAccTab('all',this)">Semua</button>
         <button class="acc-tab${accSheetTab === 'in' ? ' active' : ''}" onclick="setAccTab('in',this)">Masuk</button>
         <button class="acc-tab${accSheetTab === 'out' ? ' active' : ''}" onclick="setAccTab('out',this)">Keluar</button>
       </div>
-      <select class="acc-mon-sel" onchange="accSheetMon=this.value;renderAccSheet()">${monOpts}</select>
+      <label class="acc-month-field"><span>Bulan</span><select class="acc-mon-sel" aria-label="Pilih bulan" onchange="accSheetMon=this.value;renderAccSheet()">${monOpts}</select></label>
     </div>
-  </div>
-</div>
+  </section>
+</header>
+<div class="acc-sheet-content-head"><span>Riwayat transaksi</span><span>${monTx.length} transaksi</span></div>
 <div class="acc-sheet-body" id="accSheetBody"></div>
-<div class="acc-sheet-foot">
-  <button onclick="closeAccSheet();go('transactions')" style="width:100%;padding:.55rem;border-radius:12px;border:none;background:linear-gradient(135deg,#2563eb,#0ea5e9);color:#fff;font-family:inherit;font-size:.8rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.4rem;box-shadow:0 4px 14px rgba(37,99,235,.32);transition:all .18s" onmouseover="this.style.boxShadow='0 6px 20px rgba(37,99,235,.48)';this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 4px 14px rgba(37,99,235,.32)';this.style.transform=''">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
-    Lihat di Halaman Transaksi
+<footer class="acc-sheet-foot">
+  <button class="acc-sheet-cta" type="button" onclick="closeAccSheet();go('transactions')">
+    Lihat semua transaksi
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
   </button>
-</div>`;
+</footer>`;
   renderAccSheetBody();
 }
 function renderAccSheetBody() {

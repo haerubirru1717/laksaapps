@@ -109,6 +109,7 @@ const BANKS = {
   gopay:     {color:'#00ACEA',c2:'#008bbf',domain:'gopay.co.id'},
   ovo:       {color:'#6231A0',c2:'#4e2680',domain:'ovo.id'},
   dana:      {color:'#118EEA',c2:'#0d72c0',domain:'dana.id'},
+  linkaja:   {color:'#E31B23',c2:'#b9161c',domain:'www.linkaja.id'},
   shopeepay: {color:'#EE4D2D',c2:'#c93b1e',domain:'shopee.co.id'},
   shopee:    {color:'#EE4D2D',c2:'#c93b1e',domain:'shopee.co.id',slug:'shopeepay'},
 
