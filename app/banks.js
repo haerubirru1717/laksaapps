@@ -268,6 +268,18 @@ const detBank = (name) => {
   return { color: null, c2: null, domain: slug + '.co.id', guessed: true, slug: slug };
 };
 
+// Detail sheet is favicon-only: website favicon → initials. Never SVG.
+window._detailFaviconErr = function(img) {
+  _showInit(img, img.dataset.fbClass);
+};
+function getDetailFaviconHtml(accName, b, imgClass, fbClass) {
+  const init = (accName.replace(/[^a-zA-Z0-9]/g, '').slice(0, 3) || '?').toUpperCase();
+  const domain = b && b.domain ? b.domain : null;
+  if (!domain || (b && b.noLogo)) return `<div class="${fbClass}" style="display:flex">${init}</div>`;
+  const favUrl = (b && b.favicon) ? b.favicon : `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${domain}&size=128`;
+  return `<img class="${imgClass}" src="${favUrl}" alt="" data-fb-class="${fbClass}" onerror="window._detailFaviconErr(this)"/><div class="${fbClass}" style="display:none">${init}</div>`;
+}
+
 // ⚡ FUNGSI RENDER LOGO ⚡
 // Dashboard (useFavicon=false): SVG → Favicon (globe check) → Inisial
 // Detail   (useFavicon=true) : Favicon (globe check) → SVG → Inisial

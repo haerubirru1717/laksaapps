@@ -375,20 +375,89 @@ function dlF(content, name, mime) { const a = Object.assign(document.createEleme
 
 
 // ── Account Detail Sheet ──
+let accSheetTrigger = null;
+let accSheetDrag = null;
+
+function formatCompactIdr(value) {
+  const amount = Math.abs(Number(value) || 0);
+  const units = [
+    [1e12, 'Triliun'],
+    [1e9, 'Miliar'],
+    [1e6, 'Juta']
+  ];
+  for (const [size, label] of units) {
+    if (amount >= size) {
+      const scaled = amount / size;
+      const digits = scaled >= 10 ? 1 : 2;
+      return `Rp ${scaled.toLocaleString('id-ID', { maximumFractionDigits: digits })} ${label}`;
+    }
+  }
+  return fCur(amount);
+}
+function amountDisplayHtml(value, { sign = '', context = 'transaction' } = {}) {
+  const numeric = Number(value) || 0;
+  const amount = Math.abs(numeric);
+  const effectiveSign = sign || (numeric < 0 ? '−' : '');
+  const full = `${effectiveSign}${fCur(amount)}`;
+  const compactAt = context === 'metric' ? 100000000 : 1000000000;
+  const visible = amount < compactAt ? full : `${effectiveSign}${formatCompactIdr(amount)}`;
+  const sizeClass = full.length >= 20 ? ' amount-xl' : full.length >= 16 ? ' amount-lg' : '';
+  return `<span class="acc-amount${sizeClass}" aria-label="${full}" data-full-amount="${full}">${visible}</span>`;
+}
 
 function openAccDetail(id) {
+  accSheetTrigger = document.activeElement;
   accSheetId = id; accSheetTab = 'all'; accSheetMon = thisMon();
   renderAccSheet();
   el('accSheetOverlay').classList.add('open');
   el('accSheet').classList.add('open');
+  el('accSheet').setAttribute('aria-hidden', 'false');
   document.body.style.overflow = 'hidden';
 }
 function closeAccSheet() {
+  const sheet = el('accSheet');
   el('accSheetOverlay').classList.remove('open');
-  el('accSheet').classList.remove('open');
+  sheet.classList.remove('open');
+  sheet.style.removeProperty('--acc-sheet-drag-y');
+  sheet.setAttribute('aria-hidden', 'true');
   document.body.style.overflow = '';
   accSheetId = null;
+  if (accSheetTrigger && typeof accSheetTrigger.focus === 'function') accSheetTrigger.focus();
+  accSheetTrigger = null;
 }
+function initAccSheetDismiss() {
+  const overlay = el('accSheetOverlay');
+  const sheet = el('accSheet');
+  if (!overlay || !sheet || sheet.dataset.dismissReady) return;
+  sheet.dataset.dismissReady = 'true';
+  overlay.addEventListener('click', closeAccSheet);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && accSheetId) closeAccSheet();
+  });
+  sheet.addEventListener('pointerdown', e => {
+    if (!e.target.closest('.acc-sheet-handle')) return;
+    accSheetDrag = { id: e.pointerId, startY: e.clientY, lastY: e.clientY, startedAt: performance.now() };
+    sheet.setPointerCapture?.(e.pointerId);
+    sheet.classList.add('dragging');
+  });
+  sheet.addEventListener('pointermove', e => {
+    if (!accSheetDrag || e.pointerId !== accSheetDrag.id) return;
+    accSheetDrag.lastY = e.clientY;
+    sheet.style.setProperty('--acc-sheet-drag-y', `${Math.max(0, e.clientY - accSheetDrag.startY)}px`);
+  });
+  const finishDrag = e => {
+    if (!accSheetDrag || e.pointerId !== accSheetDrag.id) return;
+    const distance = Math.max(0, accSheetDrag.lastY - accSheetDrag.startY);
+    const velocity = distance / Math.max(1, performance.now() - accSheetDrag.startedAt);
+    sheet.classList.remove('dragging');
+    accSheetDrag = null;
+    if (distance >= 90 || velocity >= .65) closeAccSheet();
+    else sheet.style.removeProperty('--acc-sheet-drag-y');
+  };
+  sheet.addEventListener('pointerup', finishDrag);
+  sheet.addEventListener('pointercancel', finishDrag);
+}
+initAccSheetDismiss();
 function setAccTab(tab, btn) {
   accSheetTab = tab;
   document.querySelectorAll('.acc-tab').forEach(b => b.classList.remove('active'));
@@ -408,35 +477,28 @@ function renderAccSheet() {
   const monIn = monTx.filter(t => (t.type === 'income' && t.account_id === accSheetId) || (t.type === 'transfer' && t.to_acc_id === accSheetId)).reduce((s, t) => s + t.amount, 0);
   const monOut = monTx.filter(t => (t.type === 'expense' && t.account_id === accSheetId) || (t.type === 'transfer' && t.account_id === accSheetId && t.to_acc_id !== accSheetId)).reduce((s, t) => s + t.amount, 0);
   const monOpts = months.length ? months.map(m => `<option value="${m}"${m === accSheetMon ? ' selected' : ''}>${m}</option>`).join('') : `<option value="${thisMon()}">${thisMon()}</option>`;
-  // Detail sheet consistently prefers the official website favicon for banks
-  // and e-wallets; dashboard cards keep their existing local-brand artwork.
-  const logoHtml = getLogoHtml(
-    acc.name, b, 'acc-sheet-logo', 'acc-sheet-ava-fb',
-    'width:100%;height:100%;object-fit:contain;', true
-  );
+  const logoHtml = getDetailFaviconHtml(acc.name, b, 'acc-sheet-logo', 'acc-sheet-ava-fb');
 
   el('accSheet').innerHTML = `
-<div class="acc-sheet-handle" aria-hidden="true"></div>
+<div class="acc-sheet-dialog" role="dialog" aria-modal="true" aria-label="Detail rekening ${esc(acc.name)}">
+<div class="acc-sheet-handle" aria-label="Geser ke bawah untuk menutup" role="button" tabindex="0"></div>
 <header class="acc-sheet-banner">
   <div class="acc-sheet-top acc-sheet-identity">
     <div class="acc-sheet-ava">${logoHtml}</div>
     <div class="acc-sheet-account">
       <div class="acc-sheet-name">${esc(acc.name)}</div>
-      <div class="acc-sheet-bal${isNeg ? ' neg' : ''}">${fCur(acc.balance)}</div>
+      <div class="acc-sheet-bal${isNeg ? ' neg' : ''}">${amountDisplayHtml(acc.balance, { context: 'balance' })}</div>
     </div>
-    <button class="acc-sheet-close" type="button" aria-label="Tutup detail rekening" onclick="closeAccSheet()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
   </div>
   <section class="acc-sheet-summary" aria-label="Ringkasan bulan ini">
     <div class="acc-sheet-stats">
       <div class="acc-stat acc-stat-in">
         <div class="acc-stat-lbl">Masuk bulan ini</div>
-        <div class="acc-stat-val t-inc">+${fCur(monIn)}</div>
+        <div class="acc-stat-val t-inc">${amountDisplayHtml(monIn, { sign: '+', context: 'metric' })}</div>
       </div>
       <div class="acc-stat acc-stat-out">
         <div class="acc-stat-lbl">Keluar bulan ini</div>
-        <div class="acc-stat-val t-exp">${fCur(monOut)}</div>
+        <div class="acc-stat-val t-exp">${amountDisplayHtml(monOut, { context: 'metric' })}</div>
       </div>
     </div>
     <div class="acc-sheet-toolbar" aria-label="Filter transaksi rekening">
@@ -449,14 +511,15 @@ function renderAccSheet() {
     </div>
   </section>
 </header>
-<div class="acc-sheet-content-head"><span>Riwayat transaksi</span><span>${monTx.length} transaksi</span></div>
+<div class="acc-sheet-content-head"><span>Riwayat transaksi</span></div>
 <div class="acc-sheet-body" id="accSheetBody"></div>
 <footer class="acc-sheet-foot">
   <button class="acc-sheet-cta" type="button" onclick="closeAccSheet();go('transactions')">
-    Lihat semua transaksi
+    Lihat di Halaman Transaksi
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
   </button>
-</footer>`;
+</footer>
+</div>`;
   renderAccSheetBody();
 }
 function renderAccSheetBody() {
@@ -497,10 +560,10 @@ function renderAccSheetBody() {
       <div class="acc-tx-name">${esc(tx.note || cat.name)}</div>
       <div class="acc-tx-cat">${subLabel}</div>
     </div>
-    <div class="acc-tx-amt ${cls}">${sign}${fCur(tx.amount)}</div>
+    <div class="acc-tx-amt ${cls}">${amountDisplayHtml(tx.amount, { sign, context: 'transaction' })}</div>
   </div>`;
     }).join('');
-    return `<div class="acc-tx-group"><div class="acc-tx-date">${fDate(date)}</div>${items}</div>`;
+    return `<div class="acc-tx-group"><div class="acc-tx-date-row"><span class="acc-tx-date">${fDate(date)}</span><span class="acc-tx-date-count">${list.length} transaksi</span></div>${items}</div>`;
   }).join('');
 }
 

@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 
 const settings = fs.readFileSync(new URL('../../app/js/settings.js', import.meta.url), 'utf8');
 const banks = fs.readFileSync(new URL('../../app/banks.js', import.meta.url), 'utf8');
 const css = fs.readFileSync(new URL('../../app/css/components.css', import.meta.url), 'utf8');
 const dashboard = fs.readFileSync(new URL('../../app/js/dashboard.js', import.meta.url), 'utf8');
+const appHtml = fs.readFileSync(new URL('../../app/app.html', import.meta.url), 'utf8');
 
 function accountSheetRenderer() {
   const start = settings.indexOf('function renderAccSheet()');
@@ -16,9 +18,8 @@ function accountSheetRenderer() {
 
 test('account detail uses website favicon pipeline for banks and e-wallets only in sheet', () => {
   const sheet = accountSheetRenderer();
-  assert.match(sheet, /getLogoHtml\(/);
+  assert.match(sheet, /getDetailFaviconHtml\(/);
   assert.match(sheet, /acc\.name, b, 'acc-sheet-logo'/);
-  assert.match(sheet, /object-fit:contain;', true/);
   assert.doesNotMatch(sheet, /\/ewallet\/(gopay|ovo|dana|linkaja|shopeepay)/);
   assert.match(banks, /gopay:\s*\{[^}]*domain:'gopay\.co\.id'/);
   assert.match(banks, /ovo:\s*\{[^}]*domain:'ovo\.id'/);
@@ -34,7 +35,6 @@ test('account detail markup has semantic professional finance hierarchy', () => 
     'acc-sheet-identity', 'acc-sheet-summary', 'acc-sheet-toolbar',
     'acc-sheet-content-head', 'acc-sheet-cta'
   ]) assert.match(sheet, new RegExp(className));
-  assert.match(sheet, /aria-label="Tutup detail rekening"/);
   assert.match(sheet, /aria-label="Filter transaksi rekening"/);
   assert.doesNotMatch(sheet, /onmouseover=|onmouseout=/);
   assert.doesNotMatch(sheet, /style="width:100%;padding:/);
@@ -53,4 +53,90 @@ test('detail favicon images have a contained white brand tile treatment', () => 
   assert.match(css, /\.acc-sheet-ava\s*\{[\s\S]*background:\s*rgba\(255,\s*255,\s*255/);
   assert.match(css, /\.acc-sheet-ava img\s*\{[\s\S]*object-fit:\s*contain/);
   assert.match(css, /\.acc-sheet-ava img\s*\{[\s\S]*padding:/);
+});
+
+test('detail logo is favicon-only while dashboard retains SVG fallback', () => {
+  assert.match(banks, /function getDetailFaviconHtml\(/);
+  const detailStart = banks.indexOf('function getDetailFaviconHtml(');
+  const detailEnd = banks.indexOf('\n}', detailStart) + 2;
+  const detailHelper = banks.slice(detailStart, detailEnd);
+  assert.match(detailHelper, /faviconV2/);
+  assert.doesNotMatch(detailHelper, /Banks%20Logo|svgFallback|naturalWidth/);
+  assert.match(detailHelper, /onerror="window\._detailFaviconErr\(this\)"/);
+  assert.match(banks, /window\._detailFaviconErr\s*=\s*function/);
+  assert.match(dashboard, /getLogoHtml\(/, 'dashboard keeps its existing logo pipeline');
+});
+
+test('account detail removes close button and supports backdrop escape and swipe-down dismiss', () => {
+  const sheet = accountSheetRenderer();
+  assert.doesNotMatch(sheet, /acc-sheet-close|Tutup detail rekening/);
+  assert.match(sheet, /role="dialog"/);
+  assert.match(settings, /function initAccSheetDismiss\(/);
+  assert.match(settings, /pointerdown/);
+  assert.match(settings, /pointermove/);
+  assert.match(settings, /pointerup/);
+  assert.match(settings, /key\s*===\s*['"]Escape['"]/);
+  assert.match(settings, /accSheetOverlay/);
+  assert.match(settings, /accSheetTrigger/);
+});
+
+test('date group places per-date transaction count on the right', () => {
+  assert.match(settings, /acc-tx-date-row/);
+  assert.match(settings, /acc-tx-date-count/);
+  assert.match(settings, /\$\{list\.length\}\s+transaksi/);
+  const sheet = accountSheetRenderer();
+  assert.doesNotMatch(sheet, /\$\{monTx\.length\}\s+transaksi/);
+});
+
+test('adaptive amount display preserves full accessible value and never uses ellipsis', () => {
+  assert.match(settings, /function formatCompactIdr\(/);
+  assert.match(settings, /function amountDisplayHtml\(/);
+  assert.match(settings, /aria-label=/);
+  assert.match(settings, /data-full-amount=/);
+  assert.match(settings, /Miliar|Juta|Triliun/);
+  assert.doesNotMatch(css, /\.acc-(?:sheet-bal|stat-val|tx-amt)[^{]*\{[^}]*text-overflow:\s*ellipsis/);
+  assert.match(css, /font-variant-numeric:\s*tabular-nums/);
+});
+
+test('adaptive formatter renders Indonesian million billion and trillion values', () => {
+  const start = settings.indexOf('function formatCompactIdr(');
+  const end = settings.indexOf('\n\nfunction openAccDetail', start);
+  const source = `function fCur(v){return 'Rp '+Number(v).toLocaleString('id-ID')}\n${settings.slice(start, end)}\nthis.formatCompactIdr=formatCompactIdr;this.amountDisplayHtml=amountDisplayHtml;`;
+  const context = {};
+  vm.runInNewContext(source, context);
+  assert.equal(context.formatCompactIdr(750_000_000), 'Rp 750 Juta');
+  assert.equal(context.formatCompactIdr(12_500_000_000), 'Rp 12,5 Miliar');
+  assert.equal(context.formatCompactIdr(1_250_000_000_000), 'Rp 1,25 Triliun');
+  const html = context.amountDisplayHtml(12_500_000_000, { sign: '+', context: 'transaction' });
+  assert.match(html, />\+Rp 12,5 Miliar</);
+  assert.match(html, /aria-label="\+Rp 12\.500\.000\.000"/);
+
+  const negativeBalance = context.amountDisplayHtml(-1_000_000, { context: 'balance' });
+  assert.match(negativeBalance, />−Rp 1\.000\.000</);
+  assert.match(negativeBalance, /aria-label="−Rp 1\.000\.000"/);
+
+  const largeBalance = context.amountDisplayHtml(125_750_000_000, { context: 'balance' });
+  assert.match(largeBalance, />Rp 125,8 Miliar</);
+  assert.match(largeBalance, /data-full-amount="Rp 125\.750\.000\.000"/);
+});
+
+test('related production assets are cache-busted together', () => {
+  const bankVersion = appHtml.match(/banks\.js\?v=([0-9.]+)/)?.[1];
+  const settingsVersion = appHtml.match(/settings\.js\?v=([0-9.]+)/)?.[1];
+  const cssVersion = appHtml.match(/components\.css\?v=([0-9.]+)/)?.[1];
+  assert.ok(bankVersion && settingsVersion && cssVersion);
+  assert.notEqual(bankVersion, '1.4.0');
+  assert.notEqual(settingsVersion, '1.4.0');
+  assert.notEqual(cssVersion, '2.3.1');
+});
+
+test('sheet shrinks to content and uses one mobile gutter without outer summary container', () => {
+  const sheet = accountSheetRenderer();
+  const v3 = css.slice(css.indexOf('Account detail V3'));
+  assert.doesNotMatch(sheet, /acc-group-card/);
+  assert.match(v3, /--acc-sheet-gutter:/);
+  assert.match(v3, /\.acc-sheet\s*\{[^}]*height:\s*auto/);
+  assert.match(v3, /\.acc-sheet\s*\{[^}]*width:\s*100%/);
+  assert.match(v3, /\.acc-sheet-body\s*\{[^}]*padding:[^;]*var\(--acc-sheet-gutter\)/);
+  assert.match(v3, /\.acc-sheet-foot\s*\{[^}]*padding:[^;]*var\(--acc-sheet-gutter\)/);
 });

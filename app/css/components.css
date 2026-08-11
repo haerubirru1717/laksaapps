@@ -4243,6 +4243,172 @@
       }
     }
 
+    /* Account detail V3: single-gutter, content-sized mobile sheet. */
+    .acc-sheet {
+      --acc-sheet-gutter: clamp(.8rem, 4vw, 1rem);
+      width: 100%;
+      height: auto;
+      max-height: none;
+      display: block;
+      transform: translateY(calc(100% + var(--acc-sheet-drag-y, 0px)));
+    }
+
+    .acc-sheet.open {
+      transform: translateY(var(--acc-sheet-drag-y, 0px));
+    }
+
+    .acc-sheet.dragging {
+      transition: none;
+      user-select: none;
+    }
+
+    .acc-sheet-dialog {
+      max-height: min(92dvh, 880px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .acc-sheet-handle {
+      width: 54px;
+      height: 24px;
+      margin: 0 auto;
+      background: transparent;
+      position: relative;
+      flex: 0 0 auto;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .acc-sheet-handle::after {
+      content: '';
+      position: absolute;
+      top: 10px;
+      left: 7px;
+      width: 40px;
+      height: 4px;
+      border-radius: 99px;
+      background: var(--gs-border-hi);
+    }
+
+    .acc-sheet-banner {
+      padding: .25rem var(--acc-sheet-gutter) .65rem;
+    }
+
+    .acc-sheet-identity {
+      grid-template-columns: 52px minmax(0, 1fr);
+      min-height: 70px;
+      margin: 0;
+      gap: .7rem;
+      border-bottom: 1px solid var(--gs-border);
+    }
+
+    .acc-sheet-ava {
+      width: 48px;
+      height: 48px;
+      padding: 5px;
+      border-radius: 14px;
+    }
+
+    .acc-sheet-ava img {
+      padding: 0;
+    }
+
+    .acc-sheet-summary {
+      padding-top: .7rem;
+      gap: .65rem;
+    }
+
+    .acc-sheet-stats {
+      gap: .55rem;
+    }
+
+    .acc-stat {
+      padding: .65rem .7rem;
+      border-radius: 13px;
+    }
+
+    .acc-sheet-toolbar {
+      padding-top: .6rem;
+      gap: .55rem;
+    }
+
+    .acc-sheet-content-head {
+      min-height: 38px;
+      padding: .55rem var(--acc-sheet-gutter) .3rem;
+    }
+
+    .acc-sheet-body {
+      width: 100%;
+      min-height: 0;
+      max-height: 42dvh;
+      padding: 0 var(--acc-sheet-gutter) .55rem;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    .acc-tx-date-row {
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .75rem;
+      padding: .25rem .1rem .35rem;
+    }
+
+    .acc-tx-date {
+      margin: 0;
+      padding: 0;
+    }
+
+    .acc-tx-date-count {
+      color: var(--ink3);
+      font: 600 .62rem/1 'JetBrains Mono', monospace;
+      white-space: nowrap;
+    }
+
+    .acc-tx-item {
+      width: 100%;
+      min-height: 58px;
+      padding: .6rem .7rem;
+    }
+
+    .acc-sheet-foot {
+      padding: .55rem var(--acc-sheet-gutter) calc(.65rem + env(safe-area-inset-bottom));
+    }
+
+    .acc-sheet-bal,
+    .acc-stat-val,
+    .acc-tx-amt,
+    .acc-amount {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .acc-sheet-bal .amount-lg { font-size: .88em; }
+    .acc-sheet-bal .amount-xl { font-size: .76em; }
+    .acc-stat-val .amount-lg,
+    .acc-stat-val .amount-xl { font-size: .88em; }
+    .acc-tx-amt .amount-lg,
+    .acc-tx-amt .amount-xl { font-size: .9em; }
+
+    @media (max-width: 380px) {
+      .acc-sheet-toolbar { grid-template-columns: 1fr; }
+      .acc-month-field, .acc-mon-sel { width: 100%; }
+      .acc-sheet-bal { white-space: normal; }
+    }
+
+    @media (min-width: 769px) {
+      .acc-sheet {
+        width: min(620px, calc(100vw - 2rem));
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%) translateY(calc(100% + var(--acc-sheet-drag-y, 0px)));
+      }
+      .acc-sheet.open {
+        transform: translateX(-50%) translateY(var(--acc-sheet-drag-y, 0px));
+      }
+    }
+
     .toasts {
       position: fixed;
       bottom: 5rem;
