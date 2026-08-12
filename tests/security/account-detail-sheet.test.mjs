@@ -140,7 +140,7 @@ test('application documents always revalidate so new asset versions reach Chrome
 });
 
 test('service worker release cannot reuse pre-V3 UI assets', () => {
-  assert.match(serviceWorker, /CACHE_NAME\s*=\s*['"]laksa-v48['"]/);
+  assert.match(serviceWorker, /CACHE_NAME\s*=\s*['"]laksa-v49['"]/);
   assert.match(serviceWorker, /fetch\(e\.request,\s*\{\s*cache:\s*['"]no-store['"]\s*\}\)/);
   assert.match(headers, /\/service-worker\.js\n(?:  .+\n)*  Cache-Control: no-store, no-cache, must-revalidate/);
 });
@@ -186,6 +186,7 @@ test('final sections form a compact upward-flowing hierarchy with visible CTA', 
   assert.match(finalCss, /\.acc-sheet-identity\s*\{[^}]*min-height:\s*72px/);
   assert.match(finalCss, /\.acc-stat\s*\{[^}]*min-height:\s*52px/);
   assert.match(finalCss, /\.acc-sheet-content-head\s*\{[^}]*padding:\s*\.15rem/);
+  assert.match(finalCss, /\.acc-tx-date-row\s*\{[^}]*margin-bottom:\s*2px/);
   assert.match(finalCss, /\.acc-tx-item\s*\{[^}]*min-height:\s*52px/);
   assert.match(finalCss, /\.acc-sheet-cta\s*\{[^}]*min-height:\s*52px/);
 });

@@ -4637,6 +4637,16 @@
       align-items: center;
     }
 
+    .acc-tx-group {
+      margin-bottom: .45rem;
+    }
+
+    .acc-tx-date-row {
+      min-height: 22px;
+      padding: .1rem .1rem .05rem;
+      margin-bottom: 2px;
+    }
+
     .acc-tx-item {
       min-height: 52px;
       padding: .45rem .65rem;
