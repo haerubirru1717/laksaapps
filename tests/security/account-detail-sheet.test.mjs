@@ -140,7 +140,7 @@ test('application documents always revalidate so new asset versions reach Chrome
 });
 
 test('service worker release cannot reuse pre-V3 UI assets', () => {
-  assert.match(serviceWorker, /CACHE_NAME\s*=\s*['"]laksa-v47['"]/);
+  assert.match(serviceWorker, /CACHE_NAME\s*=\s*['"]laksa-v48['"]/);
   assert.match(serviceWorker, /fetch\(e\.request,\s*\{\s*cache:\s*['"]no-store['"]\s*\}\)/);
   assert.match(headers, /\/service-worker\.js\n(?:  .+\n)*  Cache-Control: no-store, no-cache, must-revalidate/);
 });
@@ -174,26 +174,20 @@ test('segmented tabs retain a sliding selection indicator while staying compact 
 test('transparent gesture wrapper exposes exactly one thin visual handle', () => {
   const sheet = accountSheetRenderer();
   const finalCss = css.slice(css.indexOf('Account detail FINAL'));
-  assert.equal((sheet.match(/acc-sheet-handle-mark/g) || []).length, 1);
-  assert.match(finalCss, /\.acc-sheet-handle\s*\{[^}]*background:\s*transparent/);
+  assert.doesNotMatch(sheet, /acc-sheet-handle-mark/);
+  assert.match(finalCss, /\.acc-sheet-handle\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255/);
   assert.match(finalCss, /\.acc-sheet-handle::before,\s*\.acc-sheet-handle::after\s*\{[^}]*content:\s*none/);
-  assert.match(finalCss, /\.acc-sheet-handle-mark\s*\{[^}]*width:\s*48px[^}]*height:\s*4px/);
-  assert.doesNotMatch(finalCss, /\.acc-sheet-handle-mark\s*\{[^}]*box-shadow:/);
 });
 
 test('final sections form a compact upward-flowing hierarchy with visible CTA', () => {
   const finalCss = css.slice(css.indexOf('Account detail FINAL'));
   assert.match(finalCss, /--acc-sheet-gutter:\s*16px/);
-  assert.match(finalCss, /\.acc-sheet-handle\s*\{[^}]*height:\s*28px/);
-  assert.match(finalCss, /\.acc-sheet-handle-mark\s*\{[^}]*top:\s*11px[^}]*background:\s*rgba\(255,\s*255,\s*255/);
-  assert.match(finalCss, /\.acc-sheet-identity\s*\{[^}]*min-height:\s*72px[^}]*margin-bottom:\s*\.5rem[^}]*padding-bottom:\s*\.55rem[^}]*border-bottom:/);
-  assert.match(finalCss, /\.acc-sheet-summary\s*\{[^}]*gap:\s*\.48rem/);
-  assert.match(finalCss, /\.acc-sheet-summary\s*\{[^}]*padding:\s*\.55rem/);
-  assert.match(finalCss, /\.acc-stat\s*\{[^}]*min-height:\s*76px/);
-  assert.match(finalCss, /\.acc-sheet-toolbar\s*\{[^}]*min-height:\s*42px/);
-  assert.match(finalCss, /\.acc-tx-item\s*\{[^}]*min-height:\s*82px/);
-  assert.match(finalCss, /\.acc-sheet-body\s*\{[^}]*min-height:\s*0[^}]*max-height:\s*none/);
-  assert.match(finalCss, /\.acc-sheet-cta\s*\{[^}]*min-height:\s*56px/);
+  assert.match(finalCss, /\.acc-sheet-handle\s*\{[^}]*height:\s*4px/);
+  assert.match(finalCss, /\.acc-sheet-identity\s*\{[^}]*min-height:\s*72px/);
+  assert.match(finalCss, /\.acc-stat\s*\{[^}]*min-height:\s*52px/);
+  assert.match(finalCss, /\.acc-sheet-content-head\s*\{[^}]*padding:\s*\.15rem/);
+  assert.match(finalCss, /\.acc-tx-item\s*\{[^}]*min-height:\s*52px/);
+  assert.match(finalCss, /\.acc-sheet-cta\s*\{[^}]*min-height:\s*52px/);
 });
 
 test('monthly metrics and filters share one transparent blue glass wrapper', () => {

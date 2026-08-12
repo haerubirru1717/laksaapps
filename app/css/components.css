@@ -4545,35 +4545,24 @@
     }
 
     .acc-sheet-handle {
-      width: 100%;
-      height: 28px;
-      margin: 0;
+      width: 44px;
+      height: 4px;
+      margin: 10px auto 4px;
       padding: 0;
       position: relative;
       border: 0;
-      background: transparent;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, .82);
       box-shadow: none;
       touch-action: none;
       cursor: grab;
+      flex-shrink: 0;
     }
 
     .acc-sheet-handle::before,
     .acc-sheet-handle::after {
-      content: none;
-      display: none;
-    }
-
-    .acc-sheet-handle-mark {
-      position: absolute;
-      top: 11px;
-      left: 50%;
-      width: 48px;
-      height: 4px;
-      transform: translateX(-50%);
-      border-radius: 999px;
-      background: rgba(255, 255, 255, .82);
-      border: 0;
-      pointer-events: none;
+      content: none !important;
+      display: none !important;
     }
 
     .acc-sheet-summary {
@@ -4609,16 +4598,17 @@
     }
 
     .acc-stat {
-      min-height: 76px;
-      padding: .72rem .85rem;
+      min-height: 52px;
+      height: auto;
+      padding: .45rem .6rem;
       display: flex;
       flex-direction: column;
       justify-content: center;
     }
 
     .acc-sheet-summary .acc-sheet-toolbar {
-      min-height: 42px;
-      padding-top: .42rem;
+      min-height: 38px;
+      padding-top: .35rem;
       border-top: 1px solid rgba(148, 163, 184, .18);
     }
 
@@ -4631,7 +4621,12 @@
       overflow-y: auto;
     }
 
-    .acc-sheet-content-head,
+    .acc-sheet-content-head {
+      padding: .15rem var(--acc-sheet-gutter) .05rem;
+      min-height: 24px;
+      margin-bottom: 0;
+    }
+
     .acc-sheet-foot {
       padding-left: var(--acc-sheet-gutter);
       padding-right: var(--acc-sheet-gutter);
@@ -4643,22 +4638,22 @@
     }
 
     .acc-tx-item {
-      min-height: 82px;
-      padding: .7rem .85rem;
+      min-height: 52px;
+      padding: .45rem .65rem;
     }
 
     .acc-tx-ico,
     .acc-tx-ico .cat-icon-sm {
-      width: 44px;
-      height: 44px;
+      width: 36px;
+      height: 36px;
     }
 
     .acc-sheet-foot {
-      margin-top: .65rem;
+      margin-top: .4rem;
     }
 
     .acc-sheet-cta {
-      min-height: 56px;
+      min-height: 52px;
     }
 
     .acc-seg {
