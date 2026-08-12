@@ -483,7 +483,7 @@ function renderAccSheet() {
 
   el('accSheet').innerHTML = `
 <div class="acc-sheet-dialog" role="dialog" aria-modal="true" aria-label="Detail rekening ${esc(acc.name)}">
-<div class="acc-sheet-handle" aria-label="Geser ke bawah untuk menutup" role="button" tabindex="0"><span class="acc-sheet-handle-mark" aria-hidden="true"></span></div>
+<div class="acc-sheet-handle" aria-label="Geser ke bawah untuk menutup" role="button" tabindex="0"></div>
 <header class="acc-sheet-banner">
   <div class="acc-sheet-top acc-sheet-identity">
     <div class="acc-sheet-ava">${logoHtml}</div>

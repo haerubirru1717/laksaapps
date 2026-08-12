@@ -140,17 +140,17 @@ test('application documents always revalidate so new asset versions reach Chrome
 });
 
 test('service worker release cannot reuse pre-V3 UI assets', () => {
-  assert.match(serviceWorker, /CACHE_NAME\s*=\s*['"]laksa-v44['"]/);
+  assert.match(serviceWorker, /CACHE_NAME\s*=\s*['"]laksa-v45['"]/);
   assert.match(serviceWorker, /fetch\(e\.request,\s*\{\s*cache:\s*['"]no-store['"]\s*\}\)/);
   assert.match(headers, /\/service-worker\.js\n(?:  .+\n)*  Cache-Control: no-store, no-cache, must-revalidate/);
 });
 
-test('final glass sheet occupies balanced viewport space without opaque white plate', () => {
+test('final glass sheet uses exactly 80 percent viewport without opaque white plate', () => {
   const finalCss = css.slice(css.indexOf('Account detail FINAL'));
-  assert.match(finalCss, /\.acc-sheet\s*\{[^}]*height:\s*clamp\(72dvh,\s*76dvh,\s*78dvh\)/);
-  assert.match(finalCss, /\.acc-sheet\s*\{[^}]*min-height:\s*72dvh/);
-  assert.match(finalCss, /\.acc-sheet\s*\{[^}]*max-height:\s*78dvh/);
-  assert.doesNotMatch(finalCss, /(?:min|max)-height:\s*(?:[4-9]\d{2}px|(?:79|8\d|9\d|100)dvh)/);
+  assert.match(finalCss, /\.acc-sheet\s*\{[^}]*height:\s*80dvh/);
+  assert.match(finalCss, /\.acc-sheet\s*\{[^}]*min-height:\s*80dvh/);
+  assert.match(finalCss, /\.acc-sheet\s*\{[^}]*max-height:\s*80dvh/);
+  assert.doesNotMatch(finalCss, /\.acc-sheet\s*\{[^}]*height:\s*clamp/);
   assert.match(finalCss, /\.acc-sheet\s*\{[^}]*background:\s*linear-gradient/);
   assert.match(finalCss, /backdrop-filter:\s*blur\(/);
   assert.doesNotMatch(finalCss, /\.acc-sheet\s*\{[^}]*background:\s*(?:#fff|white|var\(--modal-bg)/);
@@ -170,15 +170,17 @@ test('segmented tabs retain a sliding selection indicator while staying compact 
   assert.match(finalCss, /\.acc-seg\s*\{[^}]*height:\s*32px/);
 });
 
-test('single explicit handle mark replaces every pseudo-element handle', () => {
+test('handle uses exactly one visual element with no child or pseudo-element marks', () => {
   const sheet = accountSheetRenderer();
   const finalCss = css.slice(css.indexOf('Account detail FINAL'));
-  assert.equal((sheet.match(/acc-sheet-handle-mark/g) || []).length, 1);
+  assert.match(sheet, /<div class="acc-sheet-handle"[^>]*><\/div>/);
+  assert.doesNotMatch(sheet, /acc-sheet-handle-mark/);
+  assert.match(finalCss, /\.acc-sheet-handle\s*\{[^}]*background:\s*rgba\(255,\s*255,\s*255/);
   assert.match(finalCss, /\.acc-sheet-handle::before,\s*\.acc-sheet-handle::after\s*\{[^}]*content:\s*none/);
-  assert.match(finalCss, /\.acc-sheet-handle-mark\s*\{[^}]*background:/);
+  assert.doesNotMatch(finalCss, /\.acc-sheet-handle-mark\s*\{/);
 });
 
-test('monthly metrics and filters share one coloured glass wrapper', () => {
+test('monthly metrics and filters share one transparent blue glass wrapper', () => {
   const sheet = accountSheetRenderer();
   const summaryStart = sheet.indexOf('<section class="acc-sheet-summary"');
   const stats = sheet.indexOf('<div class="acc-sheet-stats"', summaryStart);
@@ -186,7 +188,7 @@ test('monthly metrics and filters share one coloured glass wrapper', () => {
   const summaryEnd = sheet.indexOf('</section>', toolbar);
   assert.ok(summaryStart >= 0 && stats > summaryStart && toolbar > stats && summaryEnd > toolbar);
   const finalCss = css.slice(css.indexOf('Account detail FINAL'));
-  assert.match(finalCss, /\.acc-sheet-summary\s*\{[^}]*background:\s*linear-gradient/);
+  assert.match(finalCss, /\.acc-sheet-summary\s*\{[^}]*background:\s*linear-gradient\([^}]*rgba\(37,\s*99,\s*235/);
   assert.match(finalCss, /\.acc-sheet-summary\s*\{[^}]*backdrop-filter:\s*blur/);
   assert.match(finalCss, /\.acc-sheet-summary\s*\{[^}]*border-radius:/);
 });

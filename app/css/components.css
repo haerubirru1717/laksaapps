@@ -4519,9 +4519,9 @@
 
     /* Account detail FINAL: reference-matched coloured glass and balanced occupancy. */
     .acc-sheet {
-      height: clamp(72dvh, 76dvh, 78dvh);
-      min-height: 72dvh;
-      max-height: 78dvh;
+      height: 80dvh;
+      min-height: 80dvh;
+      max-height: 80dvh;
       background: linear-gradient(155deg,
         rgba(239, 248, 255, .88) 0%,
         rgba(229, 244, 255, .84) 42%,
@@ -4542,34 +4542,36 @@
       flex: 0 0 auto;
     }
 
+    .acc-sheet-handle {
+      width: 38px;
+      height: 4px;
+      padding: 9px 8px;
+      margin: 0 auto;
+      box-sizing: content-box;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .78);
+      background-clip: content-box;
+      box-shadow: none;
+      touch-action: none;
+      cursor: grab;
+    }
+
     .acc-sheet-handle::before,
     .acc-sheet-handle::after {
       content: none;
       display: none;
     }
 
-    .acc-sheet-handle-mark {
-      position: absolute;
-      top: 9px;
-      left: 50%;
-      width: 38px;
-      height: 4px;
-      transform: translateX(-50%);
-      border-radius: 999px;
-      background: rgba(255, 255, 255, .76);
-      box-shadow: 0 1px 2px rgba(15, 47, 98, .08);
-      pointer-events: none;
-    }
-
     .acc-sheet-summary {
       gap: .62rem;
       padding: .7rem;
-      border: 1px solid rgba(255, 255, 255, .54);
+      border: 1px solid rgba(147, 197, 253, .42);
       border-radius: 20px;
-      background: linear-gradient(145deg, rgba(255, 255, 255, .22), rgba(218, 239, 255, .2));
-      backdrop-filter: blur(18px) saturate(125%);
-      -webkit-backdrop-filter: blur(18px) saturate(125%);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .38), 0 10px 24px rgba(38, 76, 112, .08);
+      background: linear-gradient(145deg, rgba(37, 99, 235, .2), rgba(14, 165, 233, .13));
+      backdrop-filter: blur(18px) saturate(135%);
+      -webkit-backdrop-filter: blur(18px) saturate(135%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 10px 24px rgba(30, 64, 175, .1);
     }
 
     .acc-sheet-summary .acc-sheet-toolbar {
