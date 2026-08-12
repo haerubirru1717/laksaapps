@@ -462,6 +462,8 @@ function setAccTab(tab, btn) {
   accSheetTab = tab;
   document.querySelectorAll('.acc-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  const segmented = btn.closest('.acc-seg');
+  if (segmented) segmented.dataset.active = tab;
   renderAccSheetBody();
 }
 function renderAccSheet() {
@@ -502,7 +504,8 @@ function renderAccSheet() {
       </div>
     </div>
     <div class="acc-sheet-toolbar" aria-label="Filter transaksi rekening">
-      <div class="acc-seg" role="group" aria-label="Jenis transaksi">
+      <div class="acc-seg" role="group" aria-label="Jenis transaksi" data-active="${accSheetTab}">
+        <span class="acc-seg-indicator" aria-hidden="true"></span>
         <button class="acc-tab${accSheetTab === 'all' ? ' active' : ''}" onclick="setAccTab('all',this)">Semua</button>
         <button class="acc-tab${accSheetTab === 'in' ? ' active' : ''}" onclick="setAccTab('in',this)">Masuk</button>
         <button class="acc-tab${accSheetTab === 'out' ? ' active' : ''}" onclick="setAccTab('out',this)">Keluar</button>

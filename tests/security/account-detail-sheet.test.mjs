@@ -139,9 +139,34 @@ test('application documents always revalidate so new asset versions reach Chrome
 });
 
 test('service worker release cannot reuse pre-V3 UI assets', () => {
-  assert.match(serviceWorker, /CACHE_NAME\s*=\s*['"]laksa-v42['"]/);
+  assert.match(serviceWorker, /CACHE_NAME\s*=\s*['"]laksa-v43['"]/);
   assert.match(serviceWorker, /fetch\(e\.request,\s*\{\s*cache:\s*['"]no-store['"]\s*\}\)/);
   assert.match(headers, /\/service-worker\.js\n(?:  .+\n)*  Cache-Control: no-store, no-cache, must-revalidate/);
+});
+
+test('final glass sheet occupies balanced viewport space without opaque white plate', () => {
+  const finalCss = css.slice(css.indexOf('Account detail FINAL'));
+  assert.match(finalCss, /\.acc-sheet\s*\{[^}]*height:\s*clamp\(72dvh,\s*76dvh,\s*78dvh\)/);
+  assert.match(finalCss, /\.acc-sheet\s*\{[^}]*min-height:\s*72dvh/);
+  assert.match(finalCss, /\.acc-sheet\s*\{[^}]*max-height:\s*78dvh/);
+  assert.doesNotMatch(finalCss, /(?:min|max)-height:\s*(?:[4-9]\d{2}px|(?:79|8\d|9\d|100)dvh)/);
+  assert.match(finalCss, /\.acc-sheet\s*\{[^}]*background:\s*linear-gradient/);
+  assert.match(finalCss, /backdrop-filter:\s*blur\(/);
+  assert.doesNotMatch(finalCss, /\.acc-sheet\s*\{[^}]*background:\s*(?:#fff|white|var\(--modal-bg)/);
+  assert.match(finalCss, /\.acc-sheet-body\s*\{[^}]*flex:\s*1/);
+  assert.match(finalCss, /\.acc-sheet-foot\s*\{[^}]*background:\s*transparent/);
+});
+
+test('segmented tabs retain a sliding selection indicator while staying compact and inline', () => {
+  const sheet = accountSheetRenderer();
+  const finalCss = css.slice(css.indexOf('Account detail FINAL'));
+  assert.match(sheet, /acc-seg-indicator/);
+  assert.match(settings, /dataset\.active\s*=\s*tab/);
+  assert.match(finalCss, /\.acc-seg-indicator\s*\{[^}]*transition:\s*transform/);
+  assert.match(finalCss, /\.acc-seg\[data-active="in"\]\s+\.acc-seg-indicator/);
+  assert.match(finalCss, /\.acc-seg\[data-active="out"\]\s+\.acc-seg-indicator/);
+  assert.match(finalCss, /\.acc-sheet-toolbar\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto/);
+  assert.match(finalCss, /\.acc-seg\s*\{[^}]*height:\s*32px/);
 });
 
 test('V4 mobile layout keeps compact filters inline and removes footer plate', () => {

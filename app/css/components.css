@@ -4517,6 +4517,91 @@
       }
     }
 
+    /* Account detail FINAL: reference-matched coloured glass and balanced occupancy. */
+    .acc-sheet {
+      height: clamp(72dvh, 76dvh, 78dvh);
+      min-height: 72dvh;
+      max-height: 78dvh;
+      background: linear-gradient(155deg,
+        rgba(239, 248, 255, .88) 0%,
+        rgba(229, 244, 255, .84) 42%,
+        rgba(238, 236, 255, .82) 72%,
+        rgba(221, 250, 246, .86) 100%);
+      backdrop-filter: blur(28px) saturate(145%);
+      -webkit-backdrop-filter: blur(28px) saturate(145%);
+      border-top: 1px solid rgba(255, 255, 255, .72);
+      box-shadow: 0 -18px 60px rgba(15, 72, 130, .2);
+    }
+
+    .acc-sheet-dialog {
+      min-height: inherit;
+      background: transparent;
+    }
+
+    .acc-sheet-banner {
+      flex: 0 0 auto;
+    }
+
+    .acc-sheet-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .acc-sheet-toolbar {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+    }
+
+    .acc-seg {
+      position: relative;
+      isolation: isolate;
+      height: 32px;
+      min-height: 32px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, .34);
+    }
+
+    .acc-seg-indicator {
+      position: absolute;
+      z-index: 0;
+      inset: 2px auto 2px 2px;
+      width: calc((100% - 4px) / 3);
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(219, 234, 254, .94), rgba(207, 250, 254, .9));
+      border: 1px solid rgba(37, 99, 235, .2);
+      box-shadow: 0 2px 8px rgba(37, 99, 235, .1);
+      transform: translateX(0);
+      transition: transform .24s cubic-bezier(.2, .8, .2, 1);
+      pointer-events: none;
+    }
+
+    .acc-seg[data-active="in"] .acc-seg-indicator {
+      transform: translateX(100%);
+    }
+
+    .acc-seg[data-active="out"] .acc-seg-indicator {
+      transform: translateX(200%);
+    }
+
+    .acc-tab,
+    .acc-tab.active {
+      position: relative;
+      z-index: 1;
+      height: 30px;
+      min-height: 30px;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+    }
+
+    .acc-sheet-foot {
+      flex: 0 0 auto;
+      background: transparent;
+      border-top: 0;
+      box-shadow: none;
+    }
+
     .toasts {
       position: fixed;
       bottom: 5rem;
