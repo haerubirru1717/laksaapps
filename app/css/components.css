@@ -4535,7 +4535,8 @@
     }
 
     .acc-sheet-dialog {
-      min-height: inherit;
+      height: 100%;
+      min-height: 0;
       background: transparent;
     }
 
@@ -4545,7 +4546,7 @@
 
     .acc-sheet-handle {
       width: 100%;
-      height: 42px;
+      height: 28px;
       margin: 0;
       padding: 0;
       position: relative;
@@ -4564,20 +4565,20 @@
 
     .acc-sheet-handle-mark {
       position: absolute;
-      top: 17px;
+      top: 11px;
       left: 50%;
-      width: 52px;
-      height: 5px;
+      width: 48px;
+      height: 4px;
       transform: translateX(-50%);
       border-radius: 999px;
-      background: rgba(203, 213, 225, .82);
+      background: rgba(255, 255, 255, .82);
       border: 0;
       pointer-events: none;
     }
 
     .acc-sheet-summary {
-      gap: .62rem;
-      padding: .7rem;
+      gap: .48rem;
+      padding: .55rem;
       border: 1px solid rgba(147, 197, 253, .42);
       border-radius: 20px;
       background: linear-gradient(145deg, rgba(37, 99, 235, .2), rgba(14, 165, 233, .13));
@@ -4592,13 +4593,15 @@
     }
 
     .acc-sheet-identity {
-      min-height: 104px;
-      margin-bottom: .75rem;
+      min-height: 72px;
+      margin-bottom: .5rem;
+      padding-bottom: .55rem;
+      border-bottom: 1px solid rgba(255, 255, 255, .48);
     }
 
     .acc-sheet-ava {
-      width: 58px;
-      height: 58px;
+      width: 52px;
+      height: 52px;
     }
 
     .acc-sheet-summary .acc-sheet-stats {
@@ -4606,22 +4609,23 @@
     }
 
     .acc-stat {
-      min-height: 104px;
-      padding: 1rem;
+      min-height: 76px;
+      padding: .72rem .85rem;
       display: flex;
       flex-direction: column;
       justify-content: center;
     }
 
     .acc-sheet-summary .acc-sheet-toolbar {
-      min-height: 56px;
-      padding-top: .58rem;
+      min-height: 42px;
+      padding-top: .42rem;
       border-top: 1px solid rgba(148, 163, 184, .18);
     }
 
     .acc-sheet-body {
-      flex: 1;
-      min-height: clamp(150px, 18dvh, 190px);
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: none;
       padding-left: var(--acc-sheet-gutter);
       padding-right: var(--acc-sheet-gutter);
       overflow-y: auto;
@@ -4639,18 +4643,22 @@
     }
 
     .acc-tx-item {
-      min-height: 108px;
-      padding: 1rem 1.1rem;
+      min-height: 82px;
+      padding: .7rem .85rem;
     }
 
     .acc-tx-ico,
     .acc-tx-ico .cat-icon-sm {
-      width: 50px;
-      height: 50px;
+      width: 44px;
+      height: 44px;
+    }
+
+    .acc-sheet-foot {
+      margin-top: .65rem;
     }
 
     .acc-sheet-cta {
-      min-height: 60px;
+      min-height: 56px;
     }
 
     .acc-seg {

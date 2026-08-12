@@ -1,4 +1,4 @@
-const CACHE_NAME = 'laksa-v46';
+const CACHE_NAME = 'laksa-v47';
 
 const ASSETS = [
   '/',
