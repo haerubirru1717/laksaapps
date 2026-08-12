@@ -62,8 +62,9 @@ test('detail logo is favicon-only while dashboard retains SVG fallback', () => {
   const detailStart = banks.indexOf('function getDetailFaviconHtml(');
   const detailEnd = banks.indexOf('\n}', detailStart) + 2;
   const detailHelper = banks.slice(detailStart, detailEnd);
-  assert.match(detailHelper, /faviconV2/);
-  assert.doesNotMatch(detailHelper, /Banks%20Logo|svgFallback|naturalWidth/);
+  assert.match(detailHelper, /\/icons\/favicons\/\$\{slug\}\.png/);
+  assert.match(banks, /LOCAL_DETAIL_FAVICONS/);
+  assert.doesNotMatch(detailHelper, /faviconV2|Banks%20Logo|svgFallback|naturalWidth/);
   assert.match(detailHelper, /onerror="window\._detailFaviconErr\(this\)"/);
   assert.match(banks, /window\._detailFaviconErr\s*=\s*function/);
   assert.match(dashboard, /getLogoHtml\(/, 'dashboard keeps its existing logo pipeline');
@@ -139,7 +140,7 @@ test('application documents always revalidate so new asset versions reach Chrome
 });
 
 test('service worker release cannot reuse pre-V3 UI assets', () => {
-  assert.match(serviceWorker, /CACHE_NAME\s*=\s*['"]laksa-v43['"]/);
+  assert.match(serviceWorker, /CACHE_NAME\s*=\s*['"]laksa-v44['"]/);
   assert.match(serviceWorker, /fetch\(e\.request,\s*\{\s*cache:\s*['"]no-store['"]\s*\}\)/);
   assert.match(headers, /\/service-worker\.js\n(?:  .+\n)*  Cache-Control: no-store, no-cache, must-revalidate/);
 });
@@ -169,6 +170,27 @@ test('segmented tabs retain a sliding selection indicator while staying compact 
   assert.match(finalCss, /\.acc-seg\s*\{[^}]*height:\s*32px/);
 });
 
+test('single explicit handle mark replaces every pseudo-element handle', () => {
+  const sheet = accountSheetRenderer();
+  const finalCss = css.slice(css.indexOf('Account detail FINAL'));
+  assert.equal((sheet.match(/acc-sheet-handle-mark/g) || []).length, 1);
+  assert.match(finalCss, /\.acc-sheet-handle::before,\s*\.acc-sheet-handle::after\s*\{[^}]*content:\s*none/);
+  assert.match(finalCss, /\.acc-sheet-handle-mark\s*\{[^}]*background:/);
+});
+
+test('monthly metrics and filters share one coloured glass wrapper', () => {
+  const sheet = accountSheetRenderer();
+  const summaryStart = sheet.indexOf('<section class="acc-sheet-summary"');
+  const stats = sheet.indexOf('<div class="acc-sheet-stats"', summaryStart);
+  const toolbar = sheet.indexOf('<div class="acc-sheet-toolbar"', stats);
+  const summaryEnd = sheet.indexOf('</section>', toolbar);
+  assert.ok(summaryStart >= 0 && stats > summaryStart && toolbar > stats && summaryEnd > toolbar);
+  const finalCss = css.slice(css.indexOf('Account detail FINAL'));
+  assert.match(finalCss, /\.acc-sheet-summary\s*\{[^}]*background:\s*linear-gradient/);
+  assert.match(finalCss, /\.acc-sheet-summary\s*\{[^}]*backdrop-filter:\s*blur/);
+  assert.match(finalCss, /\.acc-sheet-summary\s*\{[^}]*border-radius:/);
+});
+
 test('V4 mobile layout keeps compact filters inline and removes footer plate', () => {
   const v4 = css.slice(css.indexOf('Account detail V4'));
   assert.match(v4, /\.acc-sheet-toolbar\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto/);
@@ -188,13 +210,19 @@ test('V4 sheet is visually isolated and exposes exactly one drag-handle mark', (
   assert.match(v4, /\.acc-sheet-handle::after\s*\{[^}]*content:\s*['"]['"]/);
 });
 
-test('official website favicons are vendored locally for stable detail rendering', () => {
-  for (const [slug, file] of [['bni','bni.png'], ['gopay','gopay.png'], ['dana','dana.png'], ['shopeepay','shopeepay.png']]) {
-    assert.match(banks, new RegExp(`${slug}:\\s*\\{[^}]*favicon:'/icons/favicons/${file}'`));
-    assert.ok(fs.existsSync(new URL(`../../app/icons/favicons/${file}`, import.meta.url)));
+test('every supported institution with an official domain has a validated local favicon', () => {
+  const institutionSlugs = [...banks.matchAll(/^\s*([a-z0-9]+):\s*\{[^\n]*domain:'[^']+'/gm)].map(match => match[1]);
+  const localList = banks.match(/const LOCAL_DETAIL_FAVICONS = new Set\('([^']+)'\.split/)?.[1]?.split(',') || [];
+  const localSet = new Set(localList);
+  const missing = institutionSlugs.filter(slug => !localSet.has(slug));
+  assert.deepEqual(missing, [], `institutions missing validated favicon: ${missing.join(', ')}`);
+  for (const slug of institutionSlugs) {
+    const path = new URL(`../../app/icons/favicons/${slug}.png`, import.meta.url);
+    assert.ok(fs.existsSync(path), `missing favicon file for ${slug}`);
+    const data = fs.readFileSync(path);
+    assert.equal(data.subarray(1, 4).toString('ascii'), 'PNG', `${slug} favicon must be PNG`);
+    assert.ok(data.length >= 100, `${slug} favicon is unexpectedly empty`);
   }
-  assert.match(banks, /ovo:\s*\{[^}]*favicon:'https:\/\/www\.ovo\.id\/favicon\.ico'/);
-  assert.match(banks, /linkaja:\s*\{[^}]*favicon:'https:\/\/www\.linkaja\.id\/assets\/favicon\.ico'/);
   assert.match(css, /\.acc-sheet-ava-fb\s*\{[^}]*color:\s*var\(--navy/);
 });
 
