@@ -1,7 +1,7 @@
 const BANKS = {
   // ── Bank Pemerintah ──
   bri:       {color:'#00529c',c2:'#003d7a',domain:'www.bri.co.id'},
-  bni:       {color:'#005e6a',c2:'#f15a23',domain:'www.bni.co.id'},
+  bni:       {color:'#005e6a',c2:'#f15a23',domain:'www.bni.co.id',favicon:'/icons/favicons/bni.png'},
   bca:       {color:'#0060af',c2:'#004d8c',domain:'www.bca.co.id'},
   mandiri:   {color:'#003d77',c2:'#002d58',domain:'www.bankmandiri.co.id'},
   btn:       {color:'#0069ab',c2:'#005289',domain:'www.btn.co.id'},
@@ -106,11 +106,11 @@ const BANKS = {
 
   // ── E-Wallet & Digital Payment ──
   jenius:    {color:'#2B5592',c2:'#1d3d70',domain:'jenius.com'},
-  gopay:     {color:'#00ACEA',c2:'#008bbf',domain:'gopay.co.id'},
-  ovo:       {color:'#6231A0',c2:'#4e2680',domain:'ovo.id'},
-  dana:      {color:'#118EEA',c2:'#0d72c0',domain:'dana.id'},
-  linkaja:   {color:'#E31B23',c2:'#b9161c',domain:'www.linkaja.id'},
-  shopeepay: {color:'#EE4D2D',c2:'#c93b1e',domain:'shopee.co.id'},
+  gopay:     {color:'#00ACEA',c2:'#008bbf',domain:'gopay.co.id',favicon:'/icons/favicons/gopay.png'},
+  ovo:       {color:'#6231A0',c2:'#4e2680',domain:'ovo.id',favicon:'https://www.ovo.id/favicon.ico'},
+  dana:      {color:'#118EEA',c2:'#0d72c0',domain:'dana.id',favicon:'/icons/favicons/dana.png'},
+  linkaja:   {color:'#E31B23',c2:'#b9161c',domain:'www.linkaja.id',favicon:'https://www.linkaja.id/assets/favicon.ico'},
+  shopeepay: {color:'#EE4D2D',c2:'#c93b1e',domain:'shopee.co.id',favicon:'/icons/favicons/shopeepay.png'},
   shopee:    {color:'#EE4D2D',c2:'#c93b1e',domain:'shopee.co.id',slug:'shopeepay'},
 
   // ── Kas/Tunai ──

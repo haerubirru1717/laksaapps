@@ -139,9 +139,38 @@ test('application documents always revalidate so new asset versions reach Chrome
 });
 
 test('service worker release cannot reuse pre-V3 UI assets', () => {
-  assert.match(serviceWorker, /CACHE_NAME\s*=\s*['"]laksa-v41['"]/);
+  assert.match(serviceWorker, /CACHE_NAME\s*=\s*['"]laksa-v42['"]/);
   assert.match(serviceWorker, /fetch\(e\.request,\s*\{\s*cache:\s*['"]no-store['"]\s*\}\)/);
   assert.match(headers, /\/service-worker\.js\n(?:  .+\n)*  Cache-Control: no-store, no-cache, must-revalidate/);
+});
+
+test('V4 mobile layout keeps compact filters inline and removes footer plate', () => {
+  const v4 = css.slice(css.indexOf('Account detail V4'));
+  assert.match(v4, /\.acc-sheet-toolbar\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto/);
+  assert.match(v4, /\.acc-seg\s*\{[^}]*min-height:\s*32px/);
+  assert.match(v4, /\.acc-tab\s*\{[^}]*min-height:\s*30px/);
+  assert.match(v4, /\.acc-month-field\s*>\s*span\s*\{[^}]*display:\s*none/);
+  assert.match(v4, /\.acc-sheet-foot\s*\{[^}]*background:\s*transparent/);
+  assert.match(v4, /\.acc-sheet-foot\s*\{[^}]*border-top:\s*0/);
+});
+
+test('V4 sheet is visually isolated and exposes exactly one drag-handle mark', () => {
+  const v4 = css.slice(css.indexOf('Account detail V4'));
+  assert.match(v4, /\.acc-sheet\s*\{[^}]*background:\s*var\(--modal-bg/);
+  assert.match(v4, /\.acc-sheet-overlay\s*\{[^}]*background:\s*rgba\(15,\s*23,\s*42,\s*\.62\)/);
+  assert.match(v4, /\.acc-sheet-handle\s*\{[^}]*background:\s*transparent/);
+  assert.match(v4, /\.acc-sheet-handle::before\s*\{[^}]*content:\s*none/);
+  assert.match(v4, /\.acc-sheet-handle::after\s*\{[^}]*content:\s*['"]['"]/);
+});
+
+test('official website favicons are vendored locally for stable detail rendering', () => {
+  for (const [slug, file] of [['bni','bni.png'], ['gopay','gopay.png'], ['dana','dana.png'], ['shopeepay','shopeepay.png']]) {
+    assert.match(banks, new RegExp(`${slug}:\\s*\\{[^}]*favicon:'/icons/favicons/${file}'`));
+    assert.ok(fs.existsSync(new URL(`../../app/icons/favicons/${file}`, import.meta.url)));
+  }
+  assert.match(banks, /ovo:\s*\{[^}]*favicon:'https:\/\/www\.ovo\.id\/favicon\.ico'/);
+  assert.match(banks, /linkaja:\s*\{[^}]*favicon:'https:\/\/www\.linkaja\.id\/assets\/favicon\.ico'/);
+  assert.match(css, /\.acc-sheet-ava-fb\s*\{[^}]*color:\s*var\(--navy/);
 });
 
 test('sheet shrinks to content and uses one mobile gutter without outer summary container', () => {

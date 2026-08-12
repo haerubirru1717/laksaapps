@@ -4409,6 +4409,114 @@
       }
     }
 
+    /* Account detail V4: mobile production corrections. */
+    .acc-sheet-overlay {
+      background: rgba(15, 23, 42, .62);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .acc-sheet {
+      background: var(--modal-bg, #f4f9ff);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      isolation: isolate;
+    }
+
+    .acc-sheet-dialog {
+      background: var(--modal-bg, #f4f9ff);
+    }
+
+    .acc-sheet-handle {
+      width: 54px;
+      height: 22px;
+      background: transparent;
+      box-shadow: none;
+      border: 0;
+    }
+
+    .acc-sheet-handle::before {
+      content: none;
+    }
+
+    .acc-sheet-handle::after {
+      content: '';
+      width: 36px;
+      height: 4px;
+      left: 9px;
+      top: 9px;
+      border-radius: 99px;
+      background: color-mix(in srgb, var(--ink3) 58%, transparent);
+      box-shadow: none;
+    }
+
+    .acc-sheet-toolbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: .45rem;
+      padding-top: .5rem;
+    }
+
+    .acc-seg {
+      width: 100%;
+      min-height: 32px;
+      height: 32px;
+      padding: 2px;
+      border-radius: 10px;
+    }
+
+    .acc-tab {
+      min-height: 30px;
+      height: 30px;
+      padding: .2rem .48rem;
+      border-radius: 8px;
+      line-height: 1;
+    }
+
+    .acc-month-field {
+      width: auto;
+      display: block;
+      padding: 0;
+    }
+
+    .acc-month-field > span {
+      display: none;
+    }
+
+    .acc-mon-sel {
+      width: auto;
+      min-width: 104px;
+      min-height: 32px;
+      height: 32px;
+      padding: .25rem 1.6rem .25rem .55rem;
+      border-radius: 10px;
+    }
+
+    .acc-sheet-foot {
+      padding: .5rem var(--acc-sheet-gutter) calc(.65rem + env(safe-area-inset-bottom));
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border-top: 0;
+      box-shadow: none;
+    }
+
+    .acc-sheet-ava-fb {
+      color: var(--navy, #0f2f62);
+      background: #fff;
+    }
+
+    @media (max-width: 420px) {
+      .acc-sheet-toolbar {
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+      .acc-month-field,
+      .acc-mon-sel {
+        width: auto;
+      }
+    }
+
     .toasts {
       position: fixed;
       bottom: 5rem;
