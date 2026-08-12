@@ -4519,6 +4519,7 @@
 
     /* Account detail FINAL: reference-matched coloured glass and balanced occupancy. */
     .acc-sheet {
+      --acc-sheet-gutter: 16px;
       height: 80dvh;
       min-height: 80dvh;
       max-height: 80dvh;
@@ -4543,15 +4544,13 @@
     }
 
     .acc-sheet-handle {
-      width: 38px;
-      height: 4px;
-      padding: 9px 8px;
-      margin: 0 auto;
-      box-sizing: content-box;
+      width: 100%;
+      height: 42px;
+      margin: 0;
+      padding: 0;
+      position: relative;
       border: 0;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, .78);
-      background-clip: content-box;
+      background: transparent;
       box-shadow: none;
       touch-action: none;
       cursor: grab;
@@ -4561,6 +4560,19 @@
     .acc-sheet-handle::after {
       content: none;
       display: none;
+    }
+
+    .acc-sheet-handle-mark {
+      position: absolute;
+      top: 17px;
+      left: 50%;
+      width: 52px;
+      height: 5px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: rgba(203, 213, 225, .82);
+      border: 0;
+      pointer-events: none;
     }
 
     .acc-sheet-summary {
@@ -4574,20 +4586,71 @@
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 10px 24px rgba(30, 64, 175, .1);
     }
 
+    .acc-sheet-banner {
+      padding-left: var(--acc-sheet-gutter);
+      padding-right: var(--acc-sheet-gutter);
+    }
+
+    .acc-sheet-identity {
+      min-height: 104px;
+      margin-bottom: .75rem;
+    }
+
+    .acc-sheet-ava {
+      width: 58px;
+      height: 58px;
+    }
+
+    .acc-sheet-summary .acc-sheet-stats {
+      gap: .7rem;
+    }
+
+    .acc-stat {
+      min-height: 104px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
     .acc-sheet-summary .acc-sheet-toolbar {
+      min-height: 56px;
       padding-top: .58rem;
       border-top: 1px solid rgba(148, 163, 184, .18);
     }
 
     .acc-sheet-body {
       flex: 1;
-      min-height: 0;
+      min-height: clamp(150px, 18dvh, 190px);
+      padding-left: var(--acc-sheet-gutter);
+      padding-right: var(--acc-sheet-gutter);
       overflow-y: auto;
+    }
+
+    .acc-sheet-content-head,
+    .acc-sheet-foot {
+      padding-left: var(--acc-sheet-gutter);
+      padding-right: var(--acc-sheet-gutter);
     }
 
     .acc-sheet-toolbar {
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
+    }
+
+    .acc-tx-item {
+      min-height: 108px;
+      padding: 1rem 1.1rem;
+    }
+
+    .acc-tx-ico,
+    .acc-tx-ico .cat-icon-sm {
+      width: 50px;
+      height: 50px;
+    }
+
+    .acc-sheet-cta {
+      min-height: 60px;
     }
 
     .acc-seg {
